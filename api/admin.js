@@ -12,7 +12,7 @@
  *   DATABASE_URL   Base de datos de miembros (Vercel → Storage → Neon); la crea Vercel al conectarla
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { DbError, deleteMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
+import { DbError, normalizePhone, deleteMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
 
 const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'];
 const EVENTS_DIR = 'src/content/eventos';
@@ -222,6 +222,7 @@ function validateImport(list) {
         campfireNombre: short(item?.campfireNombre, 30),
         edad: Number.isInteger(edad) && edad > 0 && edad < 120 ? edad : null,
         fecha: Number.isNaN(fecha.getTime()) ? '' : fecha.toISOString(),
+        telefono: normalizePhone(item?.telefono),
       };
     })
     .filter((item) => item.entrenador);
@@ -258,7 +259,9 @@ export default async function handler(req, res) {
       case 'miembros':
         return res.status(200).json({ miembros: await listMembers() });
       case 'miembroMostrar':
-        return res.status(200).json({ miembro: await updateMember(String(body.id ?? ''), { mostrar: body.mostrar === true }) });
+        return res.status(200).json({ miembro: await updateMember(String(body.id ?? ''), 'mostrar', body.mostrar === true) });
+      case 'miembroContacto':
+        return res.status(200).json({ miembro: await updateMember(String(body.id ?? ''), 'contacto', body.contacto === true) });
       case 'miembroEliminar':
         return res.status(200).json(await deleteMember(String(body.id ?? '')));
       case 'importar':

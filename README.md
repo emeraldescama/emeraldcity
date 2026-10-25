@@ -75,7 +75,9 @@ El formulario de `/unirse` guarda a cada miembro en la base de datos de la pági
 3. Cuando pregunte, conéctala al proyecto de la página (**Connect**). Vercel agrega sola la variable `DATABASE_URL`, y la tabla de miembros se crea sola la primera vez.
 4. Ve a **Deployments** → **⋯** del último → **Redeploy**.
 
-**Traer a los miembros que ya estaban en la hoja de Google:** en la hoja, *Archivo → Descargar → Valores separados por comas (.csv)*; luego en el panel, pestaña **Miembros → Importar hoja anterior**. La página reconoce las columnas por su título, muestra qué encontró antes de importar y no duplica códigos que ya existan.
+**Traer a los miembros que ya estaban en la hoja de Google:** en la hoja, *Archivo → Descargar → Microsoft Excel (.xlsx)* (o .csv); luego en el panel, pestaña **Miembros → Importar hoja anterior**. La página reconoce las columnas por su título (también teléfono y la columna de la captura, que no se importa), muestra qué encontró antes de importar y no duplica a nadie. Volver a importar la hoja actualiza los datos de los miembros importados antes.
+
+**Haz amigos:** cada tarjeta tiene una manito para recomendar a quien envía regalos (un voto por dispositivo; desde 3 votos sale la marca "Envía regalos") y, si el miembro lo aceptó, el botón "Tengo intercambio con suerte", que abre WhatsApp con él vía `/api/contacto`. El teléfono nunca aparece en la lista pública. Para los miembros importados, el permiso de mensajes se activa desde la tabla de Miembros (columna WhatsApp).
 
 ## 6) Levantar servidor de desarrollo
 

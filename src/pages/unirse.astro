@@ -65,6 +65,12 @@ const tipClass = 'rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 t
           <input id="ciudad" name="ciudad" type="text" required maxlength="60" autocomplete="address-level2" placeholder="Ej: Caracas, Venezuela" class={inputClass} />
           <p class={helpClass}>Aparece junto a tu código en la lista de amigos.</p>
         </div>
+
+        <div>
+          <label for="telefono" class={labelClass}>Número de WhatsApp</label>
+          <input id="telefono" name="telefono" type="tel" required maxlength="20" autocomplete="tel" inputmode="tel" placeholder="Ej: 0412 1234567" class={inputClass} />
+          <p class={helpClass}>Con el código de área. No se publica en la página.</p>
+        </div>
       </fieldset>
 
       <!-- Paso 2 -->
@@ -117,6 +123,14 @@ const tipClass = 'rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 t
           <span class="text-sm text-zinc-300">
             <strong class="text-zinc-100">Quiero aparecer en "Haz amigos"</strong><br />
             Mostramos tu nombre de entrenador, tu código y tu ciudad para que otros entrenadores te agreguen.
+          </span>
+        </label>
+
+        <label class="flex items-start gap-3 cursor-pointer rounded-xl border border-zinc-800 p-4 hover:border-emerald-500/40 transition-colors">
+          <input id="acepta-contacto" name="contacto" type="checkbox" checked class="mt-0.5 w-5 h-5 accent-emerald-500 flex-shrink-0" />
+          <span class="text-sm text-zinc-300">
+            <strong class="text-zinc-100">Pueden escribirme para intercambios con suerte</strong><br />
+            Quien toque "Tengo intercambio con suerte" en tu tarjeta abrirá un chat de WhatsApp contigo. Tu número no aparece en la lista.
           </span>
         </label>
       </fieldset>

@@ -1,7 +1,7 @@
 /**
  * Recibe el formulario de /unirse y guarda al nuevo miembro en la base de datos.
  */
-import { DbError, addMember } from './_miembros.js';
+import { DbError, addMember, normalizePhone } from './_miembros.js';
 
 const MIN_AGE = 16;
 // La captura llega ya reducida desde el navegador; así cabe de sobra en la base de datos
@@ -31,7 +31,12 @@ function validate(body) {
   if (bytes.length > MAX_SCREENSHOT_BYTES) throw new FormError('La captura es demasiado pesada.');
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new FormError('La captura no es una imagen válida.');
 
+  const telefono = normalizePhone(body.telefono);
+  if (!telefono) throw new FormError('El número de WhatsApp no es válido. Escríbelo con el código de área, por ejemplo 0412 1234567.');
+
   return {
+    telefono,
+    contacto: body.contacto === true,
     entrenador: text(body.entrenador, 'Nombre de entrenador', 30),
     nombre: text(body.nombre, 'Nombre y apellido', 80),
     ciudad: text(body.ciudad, 'Ciudad o país', 60),

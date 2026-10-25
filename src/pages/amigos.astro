@@ -28,8 +28,18 @@ import Layout from '../layouts/Layout.astro';
       <li class="glass-panel rounded-2xl p-4"><strong class="block text-amber-400 text-xs uppercase tracking-wider mb-1">Paso 3</strong>Pega el código y envía la solicitud.</li>
     </ol>
 
+    <!-- Recomendar e intercambios -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-sm text-zinc-300">
+      <p class="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <strong class="text-amber-300">¿Te envía regalos todos los días?</strong> Toca la manito para recomendarlo. Los más recomendados salen con la marca "Envía regalos".
+      </p>
+      <p class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+        <strong class="text-emerald-300">¿Tienen un intercambio con suerte?</strong> Toca "Tengo intercambio con suerte" y se abre un chat de WhatsApp con ese entrenador.
+      </p>
+    </div>
+
     <!-- Buscador -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
       <label for="buscar-amigo" class="sr-only">Buscar entrenador</label>
       <input
         id="buscar-amigo"
@@ -37,7 +47,15 @@ import Layout from '../layouts/Layout.astro';
         placeholder="Buscar por nombre o ciudad"
         class="w-full sm:max-w-sm rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 outline-none px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500"
       />
-      <p id="amigos-total" class="text-sm font-semibold text-zinc-400" aria-live="polite"></p>
+      <label for="ordenar-amigos" class="sr-only">Ordenar</label>
+      <select
+        id="ordenar-amigos"
+        class="rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 outline-none px-4 py-3 text-sm text-zinc-100"
+      >
+        <option value="recomendados">Más recomendados</option>
+        <option value="recientes">Más recientes</option>
+      </select>
+      <p id="amigos-total" class="text-sm font-semibold text-zinc-400 sm:ml-auto" aria-live="polite"></p>
     </div>
 
     <!-- Lista -->
@@ -64,12 +82,52 @@ import Layout from '../layouts/Layout.astro';
     entrenador: string;
     codigo: string;
     ciudad: string;
+    contacto: boolean;
+    recomendaciones: number;
   }
+
+  // Desde cuántas recomendaciones se muestra la marca "Envía regalos"
+  const RECOMMENDED_FROM = 3;
+  const DEVICE_KEY = 'emerald-dispositivo';
+  const VOTES_KEY = 'emerald-recomendados';
 
   const $ = (id: string) => document.getElementById(id)!;
   let amigos: Amigo[] = [];
 
   const formatCode = (code: string) => code.replace(/(\d{4})(?=\d)/g, '$1 ');
+
+  /** Identificador anónimo de este dispositivo, para un voto por entrenador */
+  function deviceId(): string {
+    try {
+      let id = localStorage.getItem(DEVICE_KEY);
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(DEVICE_KEY, id);
+      }
+      return id;
+    } catch {
+      return crypto.randomUUID();
+    }
+  }
+
+  function myVotes(): Set<string> {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(VOTES_KEY) ?? '[]'));
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveVote(codigo: string, voted: boolean) {
+    const votes = myVotes();
+    if (voted) votes.add(codigo);
+    else votes.delete(codigo);
+    try {
+      localStorage.setItem(VOTES_KEY, JSON.stringify([...votes]));
+    } catch {
+      // Sin almacenamiento: el voto se guarda igual, solo no se marca al recargar
+    }
+  }
 
   async function copy(code: string, button: HTMLButtonElement) {
     try {
@@ -91,44 +149,104 @@ import Layout from '../layouts/Layout.astro';
     }, 2000);
   }
 
-  function render() {
-    const query = ($('buscar-amigo') as HTMLInputElement).value.trim().toLowerCase();
-    const shown = amigos.filter((a) => !query || `${a.entrenador} ${a.ciudad}`.toLowerCase().includes(query));
-    const list = $('amigos-lista');
-    list.replaceChildren();
+  async function recommend(amigo: Amigo, button: HTMLButtonElement) {
+    button.disabled = true;
+    try {
+      const res = await fetch('/api/amigos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: 'recomendar', codigo: amigo.codigo, dispositivo: deviceId() }),
+      });
+      if (!res.ok) throw new Error();
+      const { recomendaciones, recomendado } = await res.json();
+      amigo.recomendaciones = recomendaciones;
+      saveVote(amigo.codigo, recomendado);
+      render();
+    } catch {
+      button.disabled = false;
+      button.title = 'No se pudo guardar. Inténtalo de nuevo.';
+    }
+  }
 
-    for (const amigo of shown) {
-      const item = document.createElement('li');
-      item.className = 'glass-card rounded-2xl p-5 flex items-center gap-4';
+  const THUMB = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>';
 
-      const avatar = document.createElement('span');
-      avatar.className = 'w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg font-black text-emerald-300 flex-shrink-0';
-      avatar.textContent = amigo.entrenador.charAt(0).toUpperCase();
+  function card(amigo: Amigo, voted: boolean): HTMLLIElement {
+    const item = document.createElement('li');
+    item.className = 'glass-card rounded-2xl p-5 flex flex-col gap-4';
 
-      const info = document.createElement('div');
-      info.className = 'min-w-0 flex-1';
-      const name = document.createElement('p');
-      name.className = 'font-bold text-zinc-100 truncate';
-      name.textContent = amigo.entrenador;
-      const code = document.createElement('p');
-      code.className = 'font-mono text-base tracking-widest text-amber-400';
-      code.textContent = formatCode(amigo.codigo);
-      const city = document.createElement('p');
-      city.className = 'text-xs text-zinc-400 truncate';
-      city.textContent = amigo.ciudad;
-      info.append(name, code, city);
+    const top = document.createElement('div');
+    top.className = 'flex items-center gap-4';
+    const avatar = document.createElement('span');
+    avatar.className = 'w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg font-black text-emerald-300 flex-shrink-0';
+    avatar.textContent = amigo.entrenador.charAt(0).toUpperCase();
 
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'copiar px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors flex-shrink-0';
-      button.textContent = 'Copiar';
-      button.setAttribute('aria-label', `Copiar el código de ${amigo.entrenador}`);
-      button.addEventListener('click', () => copy(amigo.codigo, button));
+    const info = document.createElement('div');
+    info.className = 'min-w-0 flex-1';
+    const name = document.createElement('p');
+    name.className = 'font-bold text-zinc-100 truncate flex items-center gap-2';
+    const nameText = document.createElement('span');
+    nameText.className = 'truncate';
+    nameText.textContent = amigo.entrenador;
+    name.append(nameText);
+    if (amigo.recomendaciones >= RECOMMENDED_FROM) {
+      const badge = document.createElement('span');
+      badge.className = 'flex-shrink-0 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-400 text-zinc-950';
+      badge.textContent = 'Envía regalos';
+      name.append(badge);
+    }
+    const code = document.createElement('p');
+    code.className = 'font-mono text-base tracking-widest text-amber-400';
+    code.textContent = formatCode(amigo.codigo);
+    const city = document.createElement('p');
+    city.className = 'text-xs text-zinc-400 truncate';
+    city.textContent = amigo.ciudad;
+    info.append(name, code, city);
 
-      item.append(avatar, info, button);
-      list.append(item);
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'copiar px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors flex-shrink-0';
+    copyButton.textContent = 'Copiar';
+    copyButton.setAttribute('aria-label', `Copiar el código de ${amigo.entrenador}`);
+    copyButton.addEventListener('click', () => copy(amigo.codigo, copyButton));
+    top.append(avatar, info, copyButton);
+
+    const bottom = document.createElement('div');
+    bottom.className = 'flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-800';
+    const like = document.createElement('button');
+    like.type = 'button';
+    like.className = `recomendar inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-colors`;
+    like.dataset.activo = String(voted);
+    like.setAttribute('aria-pressed', String(voted));
+    like.setAttribute('aria-label', `${voted ? 'Quitar recomendación a' : 'Recomendar a'} ${amigo.entrenador}: envía regalos`);
+    like.innerHTML = `${THUMB}<span>${amigo.recomendaciones}</span>`;
+    like.title = voted ? 'Ya lo recomendaste. Toca para quitar tu voto.' : 'Recomiéndalo si te envía regalos';
+    like.addEventListener('click', () => recommend(amigo, like));
+    bottom.append(like);
+
+    if (amigo.contacto) {
+      const trade = document.createElement('a');
+      trade.href = `/api/contacto?codigo=${amigo.codigo}`;
+      trade.target = '_blank';
+      trade.rel = 'noopener';
+      trade.className = 'inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400';
+      trade.textContent = 'Tengo intercambio con suerte';
+      bottom.append(trade);
     }
 
+    item.append(top, bottom);
+    return item;
+  }
+
+  function render() {
+    const query = ($('buscar-amigo') as HTMLInputElement).value.trim().toLowerCase();
+    const order = ($('ordenar-amigos') as HTMLSelectElement).value;
+    const votes = myVotes();
+    const shown = amigos
+      .filter((a) => !query || `${a.entrenador} ${a.ciudad}`.toLowerCase().includes(query))
+      // La lista llega de la más reciente a la más antigua; "sort" mantiene ese orden en los empates
+      .sort((a, b) => (order === 'recomendados' ? b.recomendaciones - a.recomendaciones : 0));
+
+    $('amigos-lista').replaceChildren(...shown.map((amigo) => card(amigo, votes.has(amigo.codigo))));
     $('amigos-total').textContent = amigos.length
       ? `${shown.length} de ${amigos.length} entrenador${amigos.length === 1 ? '' : 'es'}`
       : '';
@@ -149,6 +267,7 @@ import Layout from '../layouts/Layout.astro';
   }
 
   $('buscar-amigo').addEventListener('input', render);
+  $('ordenar-amigos').addEventListener('change', render);
   load();
 </script>
 
@@ -159,6 +278,16 @@ import Layout from '../layouts/Layout.astro';
   }
   .copiar:hover {
     background: rgba(16, 185, 129, 0.12);
+  }
+  .recomendar {
+    color: #a1a1aa;
+    border-color: #3f3f46;
+  }
+  .recomendar:hover,
+  .recomendar[data-activo='true'] {
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.5);
+    background: rgba(251, 191, 36, 0.1);
   }
   .copiar[data-copiado='true'] {
     color: #022c22;

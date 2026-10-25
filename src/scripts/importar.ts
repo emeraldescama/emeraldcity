@@ -13,9 +13,11 @@ export interface ImportedMember {
   campfire: boolean | null;
   campfireNombre: string;
   edad: number | null;
+  telefono: string;
 }
 
-type Field = keyof ImportedMember;
+// "captura" solo sirve para que esa columna no se confunda con otra; no se importa
+type Field = keyof ImportedMember | 'captura';
 
 /** Orden importa: los campos más específicos se reconocen primero */
 const FIELDS: { key: Field; label: string; match: (h: string) => boolean }[] = [
@@ -25,7 +27,9 @@ const FIELDS: { key: Field; label: string; match: (h: string) => boolean }[] = [
   { key: 'entrenador', label: 'Nombre de entrenador', match: (h) => /entrenador|trainer|nick/.test(h) && !h.includes('codigo') },
   { key: 'nombre', label: 'Nombre y apellido', match: (h) => /apellido|nombre completo|^nombre$/.test(h) },
   { key: 'codigo', label: 'Código de amistad', match: (h) => /codigo|friend code/.test(h) },
-  { key: 'ciudad', label: 'Ciudad o país', match: (h) => /ciudad|pais|zona|ubicacion|donde/.test(h) },
+  { key: 'captura', label: 'Captura (no se importa)', match: (h) => /captura|foto|imagen|screenshot|pantalla|perfil|adjunt|sube/.test(h) },
+  { key: 'telefono', label: 'Teléfono / WhatsApp', match: (h) => /telefono|celular|whatsapp|movil|^tel\b/.test(h) },
+  { key: 'ciudad', label: 'Ciudad o país', match: (h) => /ciudad|pais|zona|ubicacion|sector|donde/.test(h) },
   { key: 'edad', label: 'Edad', match: (h) => /edad/.test(h) },
 ];
 
@@ -123,6 +127,8 @@ export function readMembers([headerRow = [], ...rows]: string[][]): ImportPrevie
   }
 
   const get = (row: string[], key: Field) => (map.has(key) ? (row[map.get(key)!] ?? '').trim() : '');
+  // Un enlace nunca es una ciudad (por ejemplo, el link de Drive de una captura)
+  const place = (row: string[]) => (/^https?:\/\//i.test(get(row, 'ciudad')) ? '' : get(row, 'ciudad'));
   const members = rows
     .map((row) => {
       const campfire = normalize(get(row, 'campfire'));
@@ -131,7 +137,8 @@ export function readMembers([headerRow = [], ...rows]: string[][]): ImportPrevie
         fecha: parseDate(get(row, 'fecha')),
         entrenador: get(row, 'entrenador'),
         nombre: get(row, 'nombre'),
-        ciudad: get(row, 'ciudad'),
+        ciudad: place(row),
+        telefono: get(row, 'telefono'),
         codigo: parseCode(get(row, 'codigo')),
         // Si la hoja solo tenía el usuario de Campfire, tenerlo escrito cuenta como "Sí"
         campfire: campfire.startsWith('s') ? true : campfire.startsWith('n') ? false : get(row, 'campfireNombre') ? true : null,

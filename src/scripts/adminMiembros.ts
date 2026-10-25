@@ -17,6 +17,8 @@ export interface Miembro {
   campfire: boolean | null;
   campfireNombre: string;
   edad: number | null;
+  telefono: string;
+  contacto: boolean;
   mostrar: boolean;
   bienvenida: string;
   origen: 'web' | 'importado';
@@ -69,16 +71,34 @@ function confirmed(button: HTMLButtonElement, label: string): boolean {
 
 // ---------- Miembros ----------
 
+/** Celda de texto; lo largo se corta con "…" y se ve completo al pasar el mouse */
 function cell(text: string, className = '') {
   const td = document.createElement('td');
-  td.className = `px-3 py-2.5 whitespace-nowrap ${className}`;
+  td.className = `px-3 py-2.5 whitespace-nowrap max-w-[12rem] truncate ${className}`;
   td.textContent = text;
+  td.title = text;
   return td;
 }
 
+function switchButton(on: boolean, labels: [string, string], title: string, onClick: (button: HTMLButtonElement) => void, disabled = false) {
+  const td = document.createElement('td');
+  td.className = 'px-3 py-2.5';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `px-2.5 py-1 text-xs font-bold rounded-lg border whitespace-nowrap disabled:opacity-40 ${on ? 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' : 'text-zinc-400 border-zinc-700'}`;
+  button.textContent = on ? labels[0] : labels[1];
+  button.title = title;
+  button.disabled = disabled;
+  button.addEventListener('click', () => onClick(button));
+  td.append(button);
+  return td;
+}
+
+const formatPhone = (phone: string) => (phone ? `+${phone}` : '—');
+
 function renderMembers() {
   const query = $<HTMLInputElement>('member-search').value.trim().toLowerCase();
-  const shown = members.filter((m) => !query || `${m.entrenador} ${m.nombre} ${m.ciudad} ${m.codigo}`.toLowerCase().includes(query));
+  const shown = members.filter((m) => !query || `${m.entrenador} ${m.nombre} ${m.ciudad} ${m.codigo} ${m.telefono}`.toLowerCase().includes(query));
   $('member-count').textContent = `${members.length} miembro${members.length === 1 ? '' : 's'}`;
   $('member-empty').classList.toggle('hidden', members.length > 0);
   $('member-table-wrap').classList.toggle('hidden', members.length === 0);
@@ -88,38 +108,42 @@ function renderMembers() {
   for (const member of shown) {
     const tr = document.createElement('tr');
     tr.className = 'border-t border-zinc-800';
-    tr.append(
-      cell(formatDate(member.fecha), 'text-zinc-400'),
-      cell(member.entrenador, 'font-bold text-zinc-100'),
-      cell(member.nombre),
-      cell(member.ciudad),
-      cell(member.codigo ? formatCode(member.codigo) : '—', 'font-mono text-amber-400'),
-      cell(member.campfire ? member.campfireNombre || 'Sí' : member.campfire === false ? 'No' : '—'),
-      cell(member.edad ? String(member.edad) : '—'),
-    );
 
-    const friends = document.createElement('td');
-    friends.className = 'px-3 py-2.5';
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = `px-2.5 py-1 text-xs font-bold rounded-lg border ${member.mostrar ? 'text-emerald-300 border-emerald-500/40' : 'text-zinc-400 border-zinc-700'}`;
-    toggle.textContent = member.mostrar ? 'Visible' : 'Oculto';
-    toggle.title = member.mostrar ? 'Ocultar de Haz amigos' : 'Mostrar en Haz amigos';
-    toggle.addEventListener('click', () => toggleFriends(member, toggle));
-    friends.append(toggle);
-
-    const welcome = cell(member.bienvenida ? (member.bienvenida.includes('T') ? formatDate(member.bienvenida) : member.bienvenida) : 'Pendiente', member.bienvenida ? 'text-zinc-400' : 'text-amber-400 font-bold');
-
+    // Los interruptores van al principio y "Eliminar" queda fijo a la derecha: se ven sin desplazar la tabla
     const actions = document.createElement('td');
-    actions.className = 'px-3 py-2.5';
+    actions.className = 'px-3 py-2.5 sticky right-0 bg-zinc-950 border-l border-zinc-800';
     const remove = document.createElement('button');
     remove.type = 'button';
-    remove.className = 'px-2.5 py-1 text-xs font-bold text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/10';
+    remove.className = 'px-2.5 py-1 text-xs font-bold text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/10 whitespace-nowrap';
     remove.textContent = 'Eliminar';
     remove.addEventListener('click', () => removeMember(member, remove));
     actions.append(remove);
 
-    tr.append(friends, welcome, actions);
+    tr.append(
+      cell(member.entrenador, 'font-bold text-zinc-100'),
+      cell(member.codigo ? formatCode(member.codigo) : '—', 'font-mono text-amber-400'),
+      switchButton(member.mostrar, ['Visible', 'Oculto'], member.mostrar ? 'Ocultar de Haz amigos' : 'Mostrar en Haz amigos', (b) =>
+        toggleField(member, 'mostrar', b),
+      ),
+      switchButton(
+        member.contacto,
+        ['Acepta', 'No'],
+        member.telefono ? 'Permitir o no los mensajes de intercambio con suerte' : 'No tiene teléfono registrado',
+        (b) => toggleField(member, 'contacto', b),
+        !member.telefono,
+      ),
+      cell(member.ciudad),
+      cell(member.nombre),
+      cell(formatPhone(member.telefono), 'text-zinc-400'),
+      cell(member.campfire ? member.campfireNombre || 'Sí' : member.campfire === false ? 'No' : '—'),
+      cell(member.edad ? String(member.edad) : '—'),
+      cell(formatDate(member.fecha), 'text-zinc-400'),
+      cell(
+        member.bienvenida ? (member.bienvenida.includes('T') ? formatDate(member.bienvenida) : member.bienvenida) : 'Pendiente',
+        member.bienvenida ? 'text-zinc-400' : 'text-amber-400 font-bold',
+      ),
+      actions,
+    );
     body.append(tr);
   }
 }
@@ -140,13 +164,19 @@ export async function loadMembers(quiet = false) {
   }
 }
 
-async function toggleFriends(member: Miembro, button: HTMLButtonElement) {
+const TOGGLES = {
+  mostrar: { action: 'miembroMostrar', on: 'ya aparece en Haz amigos', off: 'ya no aparece en Haz amigos' },
+  contacto: { action: 'miembroContacto', on: 'ya recibe mensajes de intercambio', off: 'ya no recibe mensajes de intercambio' },
+} as const;
+
+async function toggleField(member: Miembro, field: keyof typeof TOGGLES, button: HTMLButtonElement) {
+  const { action, on, off } = TOGGLES[field];
   button.disabled = true;
   try {
-    const { miembro } = await api<{ miembro: Miembro }>('miembroMostrar', { id: member.id, mostrar: !member.mostrar });
+    const { miembro } = await api<{ miembro: Miembro }>(action, { id: member.id, [field]: !member[field] });
     members = members.map((m) => (m.id === miembro.id ? miembro : m));
     renderMembers();
-    showStatus(`${miembro.entrenador} ${miembro.mostrar ? 'ya aparece' : 'ya no aparece'} en Haz amigos (puede tardar 1 minuto).`, 'ok');
+    showStatus(`${miembro.entrenador} ${miembro[field] ? on : off}.`, 'ok');
   } catch (err) {
     button.disabled = false;
     showStatus((err as Error).message, 'error');
@@ -170,13 +200,15 @@ async function removeMember(member: Miembro, button: HTMLButtonElement) {
 }
 
 function downloadExcel() {
-  const headers = ['Fecha', 'Nombre de entrenador', 'Nombre y apellido', 'Ciudad o país', 'Código de amistad', '¿Tiene Campfire?', 'Nombre en Campfire', 'Edad', 'Aparece en Haz amigos', 'Bienvenida', 'Origen'];
+  const headers = ['Fecha', 'Nombre de entrenador', 'Nombre y apellido', 'Ciudad o país', 'Código de amistad', 'WhatsApp', 'Acepta mensajes de intercambio', '¿Tiene Campfire?', 'Nombre en Campfire', 'Edad', 'Aparece en Haz amigos', 'Bienvenida', 'Origen'];
   const rows = members.map((m) => [
     formatDate(m.fecha),
     m.entrenador,
     m.nombre,
     m.ciudad,
     m.codigo ? formatCode(m.codigo) : '',
+    m.telefono ? `+${m.telefono}` : '',
+    m.contacto ? 'Sí' : 'No',
     m.campfire === null ? '' : m.campfire ? 'Sí' : 'No',
     m.campfireNombre,
     m.edad,
@@ -220,10 +252,13 @@ async function confirmImport() {
   button.disabled = true;
   showStatus('Importando miembros…');
   try {
-    const { added, duplicated } = await api<{ added: number; duplicated: number }>('importar', { miembros: pendingImport.members });
+    const { added, updated, duplicated } = await api<{ added: number; updated: number; duplicated: number }>('importar', { miembros: pendingImport.members });
     cancelImport();
     await loadMembers();
-    showStatus(`Listo: se agregaron ${added} miembro${added === 1 ? '' : 's'}${duplicated ? ` y ${duplicated} ya ${duplicated === 1 ? 'estaba registrado' : 'estaban registrados'}` : ''}.`, 'ok');
+    const parts = [`se agregaron ${added}`];
+    if (updated) parts.push(`se actualizaron ${updated}`);
+    if (duplicated) parts.push(`${duplicated} se omitieron (repetidos o ya registrados en la web)`);
+    showStatus(`Listo: ${parts.join(', ')}.`, 'ok');
   } catch (err) {
     showStatus((err as Error).message, 'error');
   } finally {

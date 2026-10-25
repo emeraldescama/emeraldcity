@@ -57,6 +57,9 @@ function stepProblem(): { message: string; field?: HTMLElement } | null {
     }
   }
 
+  if (step === 1 && $<HTMLInputElement>('telefono').value.replace(/\D/g, '').length < 10) {
+    return { message: 'Escribe tu número de WhatsApp con el código de área, por ejemplo 0412 1234567.', field: $('telefono') };
+  }
   if (step === 2) {
     if (!screenshot) return { message: 'Sube la captura de tu perfil.', field: $('captura-zona') };
     if ($<HTMLInputElement>('codigo').value.replace(/\D/g, '').length !== 12) {
@@ -108,6 +111,8 @@ async function submit() {
         entrenador: $<HTMLInputElement>('entrenador').value,
         nombre: $<HTMLInputElement>('nombre').value,
         ciudad: $<HTMLInputElement>('ciudad').value,
+        telefono: $<HTMLInputElement>('telefono').value,
+        contacto: $<HTMLInputElement>('acepta-contacto').checked,
         codigo: $<HTMLInputElement>('codigo').value,
         mostrarEnAmigos: $<HTMLInputElement>('mostrar-amigos').checked,
         campfire,
