@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import WhatsAppButton from '../../components/WhatsAppButton.astro';
-import { getGeneralContactWhatsAppUrl } from '../../utils/whatsapp';
+import { getEventWhatsAppUrl } from '../../utils/whatsapp';
 import { getCollection, type CollectionEntry } from 'astro:content';
 
 export async function getStaticPaths() {
@@ -25,9 +25,7 @@ const formattedDate = new Intl.DateTimeFormat('es-VE', {
   year: 'numeric',
 }).format(new Date(post.data.date));
 
-const shareWhatsAppUrl = getGeneralContactWhatsAppUrl(
-  `¡Hola! Estoy leyendo sobre "${post.data.title}" en la web de Emerald City y me gustaría unirme a esta quedada.`
-);
+const shareWhatsAppUrl = getEventWhatsAppUrl(post.data.title);
 ---
 
 <Layout

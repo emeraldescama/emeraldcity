@@ -1,0 +1,76 @@
+---
+import WhatsAppButton from './WhatsAppButton.astro';
+import { getEventWhatsAppUrl } from '../utils/whatsapp';
+import { eventStart, formatLongDate, formatTime, type Evento } from '../utils/eventos';
+
+interface Props {
+  evento: Evento;
+}
+
+const { evento } = Astro.props;
+const dateLabel = formatLongDate(evento.date);
+const timeLabel = formatTime(evento.time);
+const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`);
+
+const typeBadgeClass = evento.type === 'Día de la Comunidad'
+  ? 'bg-zinc-950/85 text-amber-300 border-amber-500/50'
+  : 'bg-zinc-950/85 text-emerald-300 border-emerald-500/50';
+---
+
+<article
+  class="evento-card glass-card rounded-2xl overflow-hidden flex flex-col group h-full"
+  data-date={evento.date}
+  data-start={eventStart(evento)}
+>
+  <!-- Flyer -->
+  <a
+    href={evento.flyer}
+    target="_blank"
+    rel="noopener"
+    class="relative block overflow-hidden aspect-[4/5] bg-zinc-900"
+    aria-label={`Ver flyer completo de ${evento.title}`}
+  >
+    <img
+      src={evento.flyer}
+      alt={`Flyer: ${evento.title}`}
+      loading="lazy"
+      class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+    />
+    <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-transparent to-transparent"></div>
+
+    <div class="absolute top-3.5 left-3.5">
+      <span class={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-md uppercase tracking-wider ${typeBadgeClass}`}>
+        {evento.type}
+      </span>
+    </div>
+
+    <div class="absolute bottom-3 left-3.5 right-3.5">
+      <span class="text-xs font-bold uppercase tracking-wider text-amber-400">
+        {dateLabel} · {timeLabel}
+      </span>
+    </div>
+  </a>
+
+  <!-- Content -->
+  <div class="p-6 flex-grow flex flex-col justify-between gap-5">
+    <div>
+      <h3 class="text-lg sm:text-xl font-bold text-zinc-100 tracking-tight leading-snug">
+        {evento.title}
+      </h3>
+      <p class="text-sm text-zinc-400 mt-2 flex items-center gap-2">
+        <svg class="w-4 h-4 text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+        <span>{evento.location}</span>
+      </p>
+      {evento.description && (
+        <p class="text-zinc-400 text-sm mt-3 leading-relaxed whitespace-pre-line">
+          {evento.description}
+        </p>
+      )}
+    </div>
+
+    <WhatsAppButton href={attendUrl} label="Quiero asistir" variant="primary" size="md" fullWidth />
+  </div>
+</article>

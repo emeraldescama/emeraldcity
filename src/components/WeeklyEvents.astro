@@ -1,0 +1,77 @@
+---
+import EventCard from './EventCard.astro';
+import { caracasToday, formatWeekRange, weekRange, type Evento } from '../utils/eventos';
+
+interface Props {
+  eventos: Evento[];
+}
+
+const { eventos } = Astro.props;
+
+// Ubicación inicial calculada al compilar; el script la corrige con la fecha real del visitante
+const today = caracasToday();
+const week = weekRange(today);
+const upcoming = eventos.filter((e) => e.date >= week.start);
+const thisWeek = upcoming.filter((e) => e.date <= week.end);
+const later = upcoming.filter((e) => e.date > week.end);
+---
+
+<section class="mb-20" id="eventos">
+  <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-8">
+    <div>
+      <h2 class="text-xs font-bold tracking-widest text-amber-400 uppercase">Agenda Emerald</h2>
+      <p class="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight mt-1">Eventos de esta semana</p>
+    </div>
+    <p id="eventos-semana-rango" class="text-sm font-semibold text-zinc-400">
+      {formatWeekRange(week.start, week.end)}
+    </p>
+  </div>
+
+  <div id="eventos-semana" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    {thisWeek.map((evento) => <EventCard evento={evento} />)}
+  </div>
+
+  <div
+    id="eventos-semana-vacio"
+    class:list={['text-center py-14 px-6 glass-card rounded-2xl border border-zinc-800', { hidden: thisWeek.length > 0 }]}
+  >
+    <p class="text-zinc-300 text-base font-semibold">Esta semana no hay eventos publicados todavía.</p>
+    <p class="text-zinc-400 text-sm mt-2">Únete al grupo de WhatsApp para enterarte primero de las próximas quedadas.</p>
+  </div>
+
+  <div id="eventos-proximos-bloque" class:list={['mt-16', { hidden: later.length === 0 }]}>
+    <h3 class="text-2xl font-black text-zinc-100 tracking-tight mb-8">Próximamente</h3>
+    <div id="eventos-proximos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {later.map((evento) => <EventCard evento={evento} />)}
+    </div>
+  </div>
+</section>
+
+<script>
+  import { caracasToday, formatWeekRange, weekRange } from '../utils/eventos';
+
+  // Reubica cada evento según la semana actual del visitante (la página solo se recompila al publicar)
+  function placeEvents() {
+    const thisWeekGrid = document.getElementById('eventos-semana');
+    const laterGrid = document.getElementById('eventos-proximos');
+    if (!thisWeekGrid || !laterGrid) return;
+
+    const week = weekRange(caracasToday());
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('.evento-card'))
+      .sort((a, b) => Number(a.dataset.start) - Number(b.dataset.start));
+
+    for (const card of cards) {
+      const date = card.dataset.date ?? '';
+      if (date < week.start) card.remove();
+      else if (date <= week.end) thisWeekGrid.appendChild(card);
+      else laterGrid.appendChild(card);
+    }
+
+    const range = document.getElementById('eventos-semana-rango');
+    if (range) range.textContent = formatWeekRange(week.start, week.end);
+    document.getElementById('eventos-semana-vacio')?.classList.toggle('hidden', thisWeekGrid.children.length > 0);
+    document.getElementById('eventos-proximos-bloque')?.classList.toggle('hidden', laterGrid.children.length === 0);
+  }
+
+  placeEvents();
+</script>

@@ -53,6 +53,22 @@ export function getGimmiPassWhatsAppUrl(packageName: string, priceRef: number, p
 }
 
 /**
+ * Genera un enlace a WhatsApp para pedir información sobre un evento o quedada
+ * Formato del mensaje: "¡Hola! Estoy interesado en asistir al evento de Emerald City *[Nombre]* ([Fecha]). Me gustaría saber más sobre cómo unirme a la comunidad."
+ *
+ * @param eventName Nombre del evento (opcional)
+ * @param dateLabel Fecha legible del evento (opcional)
+ * @param phone Número de destino (por defecto usa BAZAR_WHATSAPP_PHONE: +58 422-2292700)
+ * @returns URL completa wa.me
+ */
+export function getEventWhatsAppUrl(eventName?: string, dateLabel?: string, phone: string = DEFAULT_WHATSAPP_PHONE): string {
+  const cleanPhone = phone.replace(/\D/g, '');
+  const eventPart = eventName ? ` *${eventName.trim()}*${dateLabel ? ` (${dateLabel})` : ''}` : '';
+  const message = `¡Hola! Estoy interesado en asistir al evento de Emerald City${eventPart}. Me gustaría saber más sobre cómo unirme a la comunidad.`;
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+}
+
+/**
  * Genera un enlace de contacto general para la comunidad
  */
 export function getGeneralContactWhatsAppUrl(customMessage?: string, phone: string = DEFAULT_WHATSAPP_PHONE): string {

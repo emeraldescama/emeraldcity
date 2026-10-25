@@ -1,17 +1,159 @@
 ---
+import Layout from '../../layouts/Layout.astro';
+import { DEFAULT_EVENT_LOCATION, EVENT_TYPES } from '../../utils/eventos';
+
+const inputClass = 'w-full rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 outline-none px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500';
+const labelClass = 'block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2';
+const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 hover:border-emerald-400/60 rounded-xl transition-colors disabled:opacity-40';
+const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 rounded-xl shadow-emerald-glow transition-all disabled:opacity-50';
 ---
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Emerald City Admin | Decap CMS</title>
-    <link rel="icon" type="image/png" href="/images/branding/logo-emerald-city.png" />
-    <!-- Especificar ruta explícita del config.yml de Decap CMS -->
-    <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url" />
-  </head>
-  <body>
-    <!-- Script de Decap CMS desde CDN -->
-    <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
-  </body>
-</html>
+
+<Layout title="Panel de Administración | Emerald City" noindex>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24">
+
+    <!-- Acceso con PIN -->
+    <section id="pin-screen" class="max-w-sm mx-auto glass-panel rounded-2xl p-8 text-center">
+      <img src="/images/branding/logo-emerald-city.png" alt="" class="w-16 h-16 mx-auto rounded-xl mb-5" />
+      <h1 class="text-2xl font-black text-zinc-100 tracking-tight">Panel de Administración</h1>
+      <p class="text-sm text-zinc-400 mt-2">Ingresa el PIN del equipo organizador.</p>
+      <form id="pin-form" class="mt-6 space-y-3">
+        <label for="pin-input" class="sr-only">PIN</label>
+        <input
+          id="pin-input"
+          type="password"
+          inputmode="numeric"
+          autocomplete="current-password"
+          required
+          placeholder="••••••"
+          class={`${inputClass} text-center text-2xl tracking-[0.5em]`}
+        />
+        <button id="pin-submit" type="submit" class={`${primaryButton} w-full`}>Entrar</button>
+        <p id="pin-error" class="text-sm text-red-400 min-h-[1.25rem]" role="alert"></p>
+      </form>
+    </section>
+
+    <!-- Panel -->
+    <section id="admin-panel" class="hidden">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight">Panel de Administración</h1>
+          <p class="text-sm text-zinc-400 mt-1">Lo que publiques aparece en la web en 1–2 minutos.</p>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" data-tab="eventos" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Eventos</button>
+          <button type="button" data-tab="flyer" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Flyer semanal</button>
+          <button id="logout" type="button" class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 rounded-xl border border-zinc-800">Salir</button>
+        </div>
+      </div>
+
+      <p id="status" class="hidden mb-6 px-4 py-3 rounded-xl text-sm font-semibold border" role="status"></p>
+
+      <!-- Pestaña: Eventos -->
+      <div id="tab-eventos" class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <form id="event-form" class="lg:col-span-2 glass-panel rounded-2xl p-6 space-y-5 self-start">
+          <div class="flex items-center justify-between">
+            <h2 id="form-title" class="text-xl font-black text-zinc-100">Nuevo evento</h2>
+            <button id="cancel-edit" type="button" class="hidden text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200">Cancelar edición</button>
+          </div>
+
+          <div>
+            <label for="ev-flyer" class={labelClass}>Flyer</label>
+            <label for="ev-flyer" class="block cursor-pointer rounded-xl border-2 border-dashed border-zinc-700 hover:border-emerald-400/60 transition-colors overflow-hidden">
+              <img id="flyer-preview" alt="Vista previa del flyer" class="hidden w-full max-h-96 object-contain bg-zinc-950" />
+              <span id="flyer-placeholder" class="block py-10 text-center text-sm text-zinc-400">Toca para elegir la imagen del flyer</span>
+            </label>
+            <input id="ev-flyer" type="file" accept="image/*" class="sr-only" />
+          </div>
+
+          <div>
+            <label for="ev-title" class={labelClass}>Título</label>
+            <input id="ev-title" type="text" maxlength="120" required placeholder="Día de la Comunidad de noviembre" class={inputClass} />
+          </div>
+
+          <div>
+            <label for="ev-type" class={labelClass}>Tipo</label>
+            <select id="ev-type" class={inputClass}>
+              {EVENT_TYPES.map((type) => <option value={type}>{type}</option>)}
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="ev-date" class={labelClass}>Fecha</label>
+              <input id="ev-date" type="date" required class={inputClass} />
+            </div>
+            <div>
+              <label for="ev-time" class={labelClass}>Hora</label>
+              <input id="ev-time" type="time" required value="14:00" class={inputClass} />
+            </div>
+          </div>
+
+          <div>
+            <label for="ev-location" class={labelClass}>Lugar</label>
+            <input id="ev-location" type="text" maxlength="120" required value={DEFAULT_EVENT_LOCATION} class={inputClass} />
+          </div>
+
+          <div>
+            <label for="ev-description" class={labelClass}>Descripción (opcional)</label>
+            <textarea id="ev-description" rows="4" maxlength="600" placeholder="Punto de encuentro, qué llevar, dinámicas…" class={inputClass}></textarea>
+          </div>
+
+          <button id="save-button" type="submit" class={`${primaryButton} w-full`}>Publicar evento</button>
+        </form>
+
+        <div class="lg:col-span-3">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-black text-zinc-100">Eventos publicados</h2>
+            <button id="refresh" type="button" class={ghostButton}>Actualizar</button>
+          </div>
+          <ul id="event-list" class="space-y-3"></ul>
+          <p id="event-list-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">
+            Todavía no hay eventos. Publica el primero con el formulario.
+          </p>
+        </div>
+      </div>
+
+      <!-- Pestaña: Flyer semanal -->
+      <div id="tab-flyer" class="hidden grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div class="lg:col-span-2 glass-panel rounded-2xl p-6 space-y-5 self-start">
+          <h2 class="text-xl font-black text-zinc-100">Flyer "Eventos de esta semana"</h2>
+          <p class="text-sm text-zinc-400">Se arma solo con los eventos publicados en la semana elegida (lunes a domingo).</p>
+
+          <div class="flex items-center gap-2">
+            <button id="week-prev" type="button" class={ghostButton} aria-label="Semana anterior">‹</button>
+            <p id="week-label" class="flex-1 text-center text-sm font-bold text-amber-400"></p>
+            <button id="week-next" type="button" class={ghostButton} aria-label="Semana siguiente">›</button>
+          </div>
+          <button id="week-today" type="button" class={`${ghostButton} w-full`}>Volver a esta semana</button>
+
+          <div class="space-y-3 pt-2">
+            <button id="flyer-share" type="button" class={`${primaryButton} w-full hidden`}>Compartir en WhatsApp</button>
+            <button id="flyer-download" type="button" class={`${ghostButton} w-full`}>Descargar imagen</button>
+            <button id="flyer-copy" type="button" class={`${ghostButton} w-full`}>Copiar texto para el grupo</button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-3">
+          <canvas id="flyer-canvas" class="w-full max-w-xl mx-auto rounded-2xl border border-emerald-500/30 shadow-emerald-glow"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+</Layout>
+
+<style>
+  .tab-button[aria-selected='true'] {
+    color: #022c22;
+    background: #34d399;
+    border-color: #34d399;
+  }
+  .tab-button[aria-selected='false'] {
+    color: #a1a1aa;
+    border-color: #27272a;
+  }
+</style>
+
+<script>
+  import { initAdmin } from '../../scripts/admin';
+  initAdmin();
+</script>

@@ -1,4 +1,5 @@
 import { defineCollection, z } from 'astro:content';
+import { EVENT_TYPES } from '../utils/eventos';
 
 const noticiasCollection = defineCollection({
   type: 'content',
@@ -38,10 +39,25 @@ const gimmiPassCollection = defineCollection({
   }),
 });
 
+// Eventos y quedadas cargados desde el panel de administración (/admin)
+const eventosCollection = defineCollection({
+  type: 'data',
+  schema: z.object({
+    title: z.string(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    time: z.string().regex(/^\d{2}:\d{2}$/),
+    location: z.string(),
+    type: z.enum(EVENT_TYPES),
+    description: z.string().default(''),
+    flyer: z.string(),
+  }),
+});
+
 // Collections updated with real 3D products
 export const collections = {
   'noticias': noticiasCollection,
   'bazar': bazarCollection,
   'gimmi-pass': gimmiPassCollection,
+  'eventos': eventosCollection,
 };
 

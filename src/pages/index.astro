@@ -7,11 +7,15 @@ import GimmiPassCard from '../components/GimmiPassCard.astro';
 import WhatsAppButton from '../components/WhatsAppButton.astro';
 import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
 import { getCollection } from 'astro:content';
+import { getEventos } from '../utils/getEventos';
 
 // Obtener noticias ordenadas por fecha descendente
 const allNews = await getCollection('noticias');
 const sortedNews = allNews.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 const latestNews = sortedNews.slice(0, 2);
+
+// Eventos cargados desde el panel (para la cuenta regresiva)
+const eventos = await getEventos();
 
 // Obtener items del Bazar
 const allBazar = await getCollection('bazar');
@@ -160,11 +164,7 @@ const joinWhatsAppUrl = getGeneralContactWhatsAppUrl('¡Hola Emerald City! Me gu
 
   <!-- Countdown Section -->
   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-10 mb-20 relative z-20">
-    <Countdown
-      targetDate="2026-03-22T14:00:00"
-      eventName="Community Day Clásico: Quedada en Los Próceres"
-      location="Paseo Los Próceres, Caracas • Punto Cero: Espejo de Agua"
-    />
+    <Countdown eventos={eventos} />
   </section>
 
   <!-- Quick Access: The 3 Main Pillars of Emerald City -->
@@ -195,7 +195,7 @@ const joinWhatsAppUrl = getGeneralContactWhatsAppUrl('¡Hola Emerald City! Me gu
           Noticias & Quedadas
         </h3>
         <p class="text-sm text-zinc-400 mt-3 leading-relaxed">
-          Calendario de Community Days, rutas de incursiones en Parque del Este y Los Próceres, y noticias del meta PvP.
+          Calendario de Community Days e incursiones en Parque del Este, flyers de cada quedada y noticias del meta PvP.
         </p>
         <div class="mt-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 group-hover:translate-x-1.5 transition-transform">
           Explorar Eventos

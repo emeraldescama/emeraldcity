@@ -1,10 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import NewsCard from '../../components/NewsCard.astro';
+import WeeklyEvents from '../../components/WeeklyEvents.astro';
 import { getCollection } from 'astro:content';
+import { getEventos } from '../../utils/getEventos';
 
 const allNews = await getCollection('noticias');
 const sortedNews = allNews.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+const eventos = await getEventos();
 ---
 
 <Layout
@@ -26,7 +29,11 @@ const sortedNews = allNews.sort((a, b) => new Date(b.data.date).getTime() - new 
       </p>
     </div>
 
+    <!-- Weekly Events (cargados desde /admin) -->
+    <WeeklyEvents eventos={eventos} />
+
     <!-- News Grid -->
+    <h2 class="text-2xl font-black text-zinc-100 tracking-tight mb-8">Noticias y crónicas</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {sortedNews.map((news) => (
         <NewsCard
@@ -58,14 +65,14 @@ const sortedNews = allNews.sort((a, b) => new Date(b.data.date).getTime() - new 
         </div>
         <div>
           <h4 class="text-sm font-bold text-zinc-200">¿Eres parte del equipo organizador de Emerald City?</h4>
-          <p class="text-xs text-zinc-400">Puedes crear o editar artículos y convocatorias desde el panel de administración.</p>
+          <p class="text-xs text-zinc-400">Publica los flyers de las quedadas y genera el flyer semanal desde el panel de administración.</p>
         </div>
       </div>
       <a
         href="/admin/"
         class="px-4 py-2 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 rounded-xl transition-colors whitespace-nowrap"
       >
-        Ir a Decap CMS
+        Entrar con PIN
       </a>
     </div>
 
