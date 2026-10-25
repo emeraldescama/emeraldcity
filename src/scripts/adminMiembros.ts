@@ -3,7 +3,7 @@
  * (ver, buscar, ocultar de Haz amigos, eliminar, descargar en Excel e importar la hoja
  * anterior) y el flyer de bienvenida de los registros nuevos.
  */
-import { readMembers, type ImportPreview } from './importar';
+import { readMembersFromFile, type ImportPreview } from './importar';
 import { drawWelcomeFlyer, welcomeText } from './welcomeFlyer';
 import { createXlsx } from './xlsx';
 
@@ -196,7 +196,7 @@ async function onImportFile() {
   input.value = '';
   if (!file) return;
   try {
-    pendingImport = readMembers(await file.text());
+    pendingImport = await readMembersFromFile(file);
     const { members: found, columns, withoutCode } = pendingImport;
     $('import-summary').textContent = `Encontramos ${found.length} miembro${found.length === 1 ? '' : 's'}${withoutCode ? ` (${withoutCode} sin código de amistad, no saldrán en Haz amigos)` : ''}. Los que ya estén registrados no se duplican.`;
     const list = $('import-columns');
@@ -210,7 +210,7 @@ async function onImportFile() {
     $('import-preview').classList.remove('hidden');
   } catch (err) {
     pendingImport = null;
-    showStatus((err as Error).message || 'No se pudo leer el archivo. Asegúrate de que sea un .csv.', 'error');
+    showStatus((err as Error).message || 'No se pudo leer el archivo. Usa el Excel (.xlsx) o el CSV que descarga Google.', 'error');
   }
 }
 

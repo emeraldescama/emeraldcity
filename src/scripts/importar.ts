@@ -1,7 +1,8 @@
 /**
- * Lee el CSV descargado de la hoja de Google anterior y reconoce sus columnas por el
- * título (nombre de entrenador, código, edad…), para importar a los miembros.
+ * Lee la hoja anterior (descargada de Google como Excel .xlsx o como CSV) y reconoce sus
+ * columnas por el título (nombre de entrenador, código, edad…), para importar a los miembros.
  */
+import { readXlsxRows } from './xlsxReader';
 
 export interface ImportedMember {
   fecha: string;
@@ -69,8 +70,12 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c.trim()));
 }
 
-/** "21/10/2026 14:30:05" (formato de Google en español) o fechas ISO */
+/** "21/10/2026 14:30:05" (formato de Google en español), fechas ISO o fechas de Excel */
 function parseDate(text: string): string {
+  // En un .xlsx la fecha es un número de días desde 1899-12-30, en hora local de Caracas
+  if (/^\d{5}(\.\d+)?$/.test(text)) {
+    return new Date((Number(text) - 25569) * 86_400_000 + 4 * 3_600_000).toISOString();
+  }
   const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (match) {
     const [, d, m, y, h = '0', min = '0', s = '0'] = match;
@@ -92,8 +97,17 @@ export interface ImportPreview {
   withoutCode: number;
 }
 
-export function readMembers(csv: string): ImportPreview {
-  const [headerRow = [], ...rows] = parseCsv(csv);
+/** Acepta el archivo tal como lo descarga Google: Excel (.xlsx) o CSV */
+export async function readMembersFromFile(file: File): Promise<ImportPreview> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.xls')) {
+    throw new Error('Ese es el formato de Excel antiguo (.xls). Guárdalo como .xlsx o descárgalo de Google como .xlsx o .csv.');
+  }
+  const rows = name.endsWith('.xlsx') ? await readXlsxRows(await file.arrayBuffer()) : parseCsv(await file.text());
+  return readMembers(rows);
+}
+
+export function readMembers([headerRow = [], ...rows]: string[][]): ImportPreview {
   const headers = headerRow.map(normalize);
   const used = new Set<number>();
   const map = new Map<Field, number>();

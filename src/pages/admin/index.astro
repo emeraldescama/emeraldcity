@@ -150,7 +150,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <div class="flex flex-wrap gap-2">
             <button id="member-excel" type="button" class={primaryButton}>Descargar Excel</button>
             <label for="member-import-file" class={`${ghostButton} cursor-pointer`}>Importar hoja anterior</label>
-            <input id="member-import-file" type="file" accept=".csv,text/csv" class="sr-only" />
+            <input id="member-import-file" type="file" accept=".xlsx,.csv,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="sr-only" />
             <button id="member-refresh" type="button" class={ghostButton}>Actualizar</button>
           </div>
         </div>
@@ -172,7 +172,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <p class="font-bold text-zinc-100">Todavía no hay miembros.</p>
           <p>Los que se registren en la página aparecerán aquí solos. Para traer a los que ya tienes en tu hoja de Google:</p>
           <ol class="list-decimal pl-5 space-y-1">
-            <li>Abre tu hoja y ve a <strong>Archivo → Descargar → Valores separados por comas (.csv)</strong>.</li>
+            <li>Abre tu hoja y ve a <strong>Archivo → Descargar → Microsoft Excel (.xlsx)</strong>. También sirve un archivo .csv.</li>
             <li>Aquí arriba toca <strong>Importar hoja anterior</strong> y elige ese archivo.</li>
           </ol>
         </div>
