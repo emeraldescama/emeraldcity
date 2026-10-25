@@ -60,6 +60,15 @@ export function weekRange(date: string): { start: string; end: string } {
   return { start: toDay(start), end: toDay(end) };
 }
 
+/**
+ * Semana que conviene compartir en el flyer: la actual, salvo los domingos,
+ * cuando ya interesa la que empieza el lunes siguiente.
+ */
+export function flyerWeek(today: string): { start: string; end: string; isNext: boolean } {
+  const isSunday = parseDay(today).getUTCDay() === 0;
+  return { ...weekRange(isSunday ? addDays(today, 1) : today), isNext: isSunday };
+}
+
 export function addDays(date: string, days: number): string {
   return toDay(new Date(parseDay(date).getTime() + days * DAY_MS));
 }

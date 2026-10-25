@@ -7,9 +7,9 @@ import {
   caracasToday,
   formatLongDate,
   formatTime,
+  flyerWeek,
   formatWeekRange,
   sortByStart,
-  weekRange,
   type Evento,
 } from '../utils/eventos';
 import { drawWeeklyFlyer, weeklyText } from './weeklyFlyer';
@@ -26,7 +26,7 @@ let pin = '';
 let events: Evento[] = [];
 let editingId: string | null = null;
 let pendingFlyer: { base64: string; dataUrl: string } | null = null;
-let weekStart = weekRange(caracasToday()).start;
+let weekStart = flyerWeek(caracasToday()).start;
 // Flyers subidos en esta sesión: la web tarda 1–2 min en publicarlos, así que el flyer semanal usa la copia local
 const localFlyers = new Map<string, string>();
 
@@ -407,7 +407,7 @@ export function initAdmin() {
 
   $('week-prev').addEventListener('click', () => setWeek(addDays(weekStart, -7)));
   $('week-next').addEventListener('click', () => setWeek(addDays(weekStart, 7)));
-  $('week-today').addEventListener('click', () => setWeek(weekRange(caracasToday()).start));
+  $('week-today').addEventListener('click', () => setWeek(flyerWeek(caracasToday()).start));
   $('flyer-download').addEventListener('click', onDownload);
   $('flyer-copy').addEventListener('click', onCopyText);
 
