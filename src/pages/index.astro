@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import Countdown from '../components/Countdown.astro';
 import WeeklyEvents from '../components/WeeklyEvents.astro';
+import AboutCommunity from '../components/AboutCommunity.astro';
 import NewsCard from '../components/NewsCard.astro';
 import ProductCard from '../components/ProductCard.astro';
 import GimmiPassCard from '../components/GimmiPassCard.astro';
@@ -172,6 +173,9 @@ const joinWhatsAppUrl = getGeneralContactWhatsAppUrl('¡Hola Emerald City! Me gu
   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-10 mb-20 relative z-20">
     <Countdown eventos={eventos} />
   </section>
+
+  <!-- ¿Qué es Emerald City? -->
+  <AboutCommunity />
 
   <!-- Quick Access: The 3 Main Pillars of Emerald City -->
   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">

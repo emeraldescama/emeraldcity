@@ -285,7 +285,7 @@ ${titleText}
 <circle cx="117" cy="1090" r="11" fill="#34d399"/>
 <text x="142" y="1101" class="bold" font-size="32" fill="#d4d4d8">${escapeXml(meetup.location)}</text>
 <path d="M60 1240H1020" stroke="#10b981" stroke-opacity="0.4" stroke-width="2"/>
-<text x="60" y="1296" class="bold" font-size="28" fill="#f4f4f5">Únete: WhatsApp +58 422 2292700</text>
+<text x="60" y="1296" class="bold" font-size="28" fill="#f4f4f5">Más información: WhatsApp +58 422 2292700</text>
 <text x="1020" y="1296" class="bold" font-size="28" fill="#fbbf24" text-anchor="end">@emeraldcityccs</text>
 </svg>
 `;

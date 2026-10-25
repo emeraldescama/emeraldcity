@@ -218,7 +218,7 @@ function drawFooter(ctx: CanvasRenderingContext2D, extra: number) {
 
   ctx.font = '700 26px Outfit, Inter, sans-serif';
   ctx.fillStyle = COLORS.text;
-  ctx.fillText('Únete: WhatsApp +58 422 2292700', 60, 1308);
+  ctx.fillText('Más información: WhatsApp +58 422 2292700', 60, 1308);
   ctx.textAlign = 'right';
   ctx.fillStyle = COLORS.amber;
   ctx.fillText('@emeraldcityccs', FLYER_WIDTH - 60, 1308);

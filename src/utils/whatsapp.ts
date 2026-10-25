@@ -73,6 +73,6 @@ export function getEventWhatsAppUrl(eventName?: string, dateLabel?: string, phon
  */
 export function getGeneralContactWhatsAppUrl(customMessage?: string, phone: string = DEFAULT_WHATSAPP_PHONE): string {
   const cleanPhone = phone.replace(/\D/g, '');
-  const message = customMessage || '¡Hola Emerald City! Vengo desde el sitio web oficial y me gustaría unirme a la comunidad.';
+  const message = customMessage || '¡Hola Emerald City! Me gustaría saber más información sobre la comunidad.';
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
