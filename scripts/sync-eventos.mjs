@@ -11,12 +11,15 @@
  *   - Día Dinamax con legendario     → Plaza Los Palos Grandes, 2:00 a 5:00 PM
  *   - GO Tour, GO Fest y Wild Area   → Plaza Los Palos Grandes, desde las 10:00 AM (cada día)
  *
+ * Cada flyer lleva la ilustración oficial de los Pokémon del evento (PokeAPI), guardada en
+ * public/images/pokemon/<número de Pokédex>.png.
+ *
  * Nunca modifica un evento que ya existe (así se respetan los cambios hechos desde /admin) y
  * no vuelve a crear los que se eliminaron desde el panel (data/eventos-descartados.json).
  *
  * Uso: node scripts/sync-eventos.mjs   (lo ejecuta a diario .github/workflows/sync-eventos.yml)
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,6 +28,9 @@ const FEED_URL = 'https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/ev
 const EVENTS_DIR = join(ROOT, 'src/content/eventos');
 const FLYERS_DIR = join(ROOT, 'public/images/eventos');
 const DISCARDED_FILE = join(ROOT, 'data/eventos-descartados.json');
+const POKEMON_DIR = join(ROOT, 'public/images/pokemon');
+const SPECIES_CSV = 'https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/pokemon_species.csv';
+const artworkUrl = (dex) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${dex}.png`;
 const DAYS_AHEAD = 35;
 
 const PARQUE_DEL_ESTE = 'Parque del Este, Caracas';
@@ -57,6 +63,15 @@ function isGlobal(name) {
   return /global/i.test(name);
 }
 
+/** Nombres (en inglés) de los Pokémon que aparecen en el nombre del evento */
+function pokemonInName(text) {
+  return text
+    .replace(/Community Day( Classic)?|Raid Day|Max Battle Day|Super Mega|\b(Mega|Dynamax|Gigantamax|Shadow)\b|\(.*?\)/gi, ' ')
+    .split(/,|\band\b/)
+    .map((name) => name.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
 /** Días (YYYY-MM-DD) que abarca un evento según su hora local */
 function eventDays(start, end) {
   const days = [];
@@ -74,20 +89,22 @@ function addDays(date, days) {
 /** Convierte un evento del calendario en los encuentros de Emerald City (uno por día) */
 function toMeetups(source) {
   const { eventID, name, eventType, start, end, link } = source;
-  const details = `Detalles oficiales del evento: ${link}`;
 
   if (eventType === 'community-day') {
     const classic = /classic/i.test(name);
     const pokemon = translateNames(name.replace(/Community Day( Classic)?/i, ''));
+    const spawns = source.extraData?.communityday?.spawns?.map((spawn) => spawn.name);
     return [{
+      pokemon: spawns?.length ? spawns : pokemonInName(name),
       id: `auto-${eventID}`,
+      link,
       type: 'Día de la Comunidad',
       title: `Día de la Comunidad${classic ? ' Clásico' : ''}${pokemon ? `: ${pokemon}` : ''}`,
       date: start.slice(0, 10),
       time: '14:00',
       hours: '2:00 – 5:00 PM',
       location: PARQUE_DEL_ESTE,
-      description: `Día de la Comunidad oficial de Pokémon GO. Nos reunimos en el Parque del Este de 2:00 a 5:00 PM para jugar en grupo. ${details}`,
+      description: `Día de la Comunidad oficial de Pokémon GO. Nos reunimos en el Parque del Este de 2:00 a 5:00 PM para jugar en grupo.`,
     }];
   }
 
@@ -102,14 +119,16 @@ function toMeetups(source) {
     const label = `Día de Incursiones${superMega ? ' Súper Mega' : ''}${isRaidDay ? '' : ' Dinamax'}`;
     const pokemon = subject.replace('Súper Mega', '').replace(/\s+/g, ' ').trim();
     return [{
+      pokemon: pokemonInName(name),
       id: `auto-${eventID}`,
+      link,
       type: 'Incursiones',
       title: pokemon ? `${label}: ${pokemon}` : label,
       date: start.slice(0, 10),
       time: '14:00',
       hours: '2:00 – 5:00 PM',
       location: PALOS_GRANDES,
-      description: `Nos reunimos en la Plaza Los Palos Grandes de 2:00 a 5:00 PM para hacer las incursiones en grupo. ${details}`,
+      description: `Nos reunimos en la Plaza Los Palos Grandes de 2:00 a 5:00 PM para hacer las incursiones en grupo.`,
     }];
   }
 
@@ -118,7 +137,9 @@ function toMeetups(source) {
     const baseTitle = name.replace(/\s*[-–:•]\s*Global/i, '').replace(/\bGlobal\b/i, '').replace(/\s+/g, ' ').trim();
     const days = eventDays(start, end);
     return days.map((date, i) => ({
+      pokemon: [],
       id: `auto-${eventID}${days.length > 1 ? `-dia-${i + 1}` : ''}`,
+      link,
       type: bigEvents[eventType],
       title: days.length > 1 ? `${baseTitle} · Día ${i + 1}` : baseTitle,
       flyerTitle: baseTitle,
@@ -127,12 +148,70 @@ function toMeetups(source) {
       time: '10:00',
       hours: 'Desde las 10:00 AM',
       location: PALOS_GRANDES,
-      description: `Nos reunimos en la Plaza Los Palos Grandes desde las 10:00 AM. ${details}`,
+      description: `Nos reunimos en la Plaza Los Palos Grandes desde las 10:00 AM.`,
     }));
   }
 
   return [];
 }
+
+// ---------- Ilustraciones de Pokémon ----------
+
+/** "Mr. Mime" → "mr-mime", "Farfetch'd" → "farfetchd", "Flabébé" → "flabebe" */
+function toIdentifier(name) {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/♀/g, '-f')
+    .replace(/♂/g, '-m')
+    .replace(/['.]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** Mapa identificador → número de Pokédex */
+async function loadPokedex() {
+  try {
+    const res = await fetch(SPECIES_CSV);
+    if (!res.ok) throw new Error(String(res.status));
+    const dex = new Map();
+    for (const row of (await res.text()).split('\n').slice(1)) {
+      const [id, identifier] = row.split(',');
+      if (id && identifier) dex.set(identifier, Number(id));
+    }
+    return dex;
+  } catch (err) {
+    console.warn(`No se pudo leer la Pokédex, los flyers saldrán sin ilustración (${err.message})`);
+    return new Map();
+  }
+}
+
+/** Descarga (una sola vez) la ilustración de cada Pokémon y devuelve hasta 3 */
+async function pokemonArt(names, dex) {
+  const art = [];
+  for (const name of names) {
+    const number = dex.get(toIdentifier(name));
+    if (!number || art.some((a) => a.number === number)) continue;
+    const file = join(POKEMON_DIR, `${number}.png`);
+    if (!existsSync(file)) {
+      const res = await fetch(artworkUrl(number));
+      if (!res.ok) continue;
+      mkdirSync(POKEMON_DIR, { recursive: true });
+      writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+    }
+    art.push({ number, path: `/images/pokemon/${number}.png`, base64: readFileSync(file).toString('base64') });
+    if (art.length === 3) break;
+  }
+  return art;
+}
+
+// Posición de las ilustraciones en el flyer según cuántos Pokémon hay
+const ART_LAYOUTS = {
+  1: [{ x: 500, y: 150, size: 540 }],
+  2: [{ x: 480, y: 150, size: 400 }, { x: 680, y: 320, size: 380 }],
+  3: [{ x: 500, y: 140, size: 330 }, { x: 740, y: 200, size: 310 }, { x: 600, y: 390, size: 320 }],
+};
 
 // ---------- Flyer ----------
 
@@ -144,9 +223,9 @@ function escapeXml(text) {
 }
 
 /** Corta el título en líneas de un ancho aproximado (Outfit Black ≈ 0.58 em por carácter) */
-function wrapTitle(title) {
-  for (const size of [104, 92, 80, 68, 58]) {
-    const maxChars = Math.floor(960 / (size * 0.58));
+function wrapTitle(title, width = 960, maxLines = 3) {
+  for (const size of width < 960 ? [76, 66, 58, 50, 44] : [104, 92, 80, 68, 58]) {
+    const maxChars = Math.floor(width / (size * 0.6));
     const lines = [];
     let line = '';
     for (const word of title.split(' ')) {
@@ -158,18 +237,19 @@ function wrapTitle(title) {
       }
     }
     if (line) lines.push(line);
-    if (lines.length <= 3 && lines.every((l) => l.length <= maxChars)) return { size, lines };
+    if (lines.length <= maxLines && lines.every((l) => l.length <= maxChars)) return { size, lines };
   }
-  return { size: 58, lines: [title.slice(0, 30), `${title.slice(30, 57)}…`] };
+  return { size: 44, lines: [title.slice(0, 18), `${title.slice(18, 34)}…`] };
 }
 
-function flyerSvg(meetup) {
+function flyerSvg(meetup, art = []) {
   assets ??= { logo: asset('logo-200.png'), black: asset('outfit-900.woff2'), bold: asset('outfit-700.woff2') };
   const d = new Date(`${meetup.date}T12:00:00Z`);
   const dateLabel = `${DAY_NAMES[d.getUTCDay()]} ${d.getUTCDate()} DE ${MONTH_NAMES[d.getUTCMonth()]}`;
   const accent = meetup.type === 'Día de la Comunidad' ? '#fbbf24' : '#34d399';
-  const { size, lines } = wrapTitle(meetup.flyerTitle ?? meetup.title);
-  const titleTop = 470;
+  // Con ilustración, el título va en la columna izquierda y el Pokémon a la derecha
+  const { size, lines } = art.length ? wrapTitle(meetup.flyerTitle ?? meetup.title, 430, 5) : wrapTitle(meetup.flyerTitle ?? meetup.title);
+  const titleTop = art.length ? 440 : 470;
   const titleText = lines
     .map((line, i) => `<text x="60" y="${titleTop + i * size * 1.08}" class="black" font-size="${size}" fill="#f4f4f5">${escapeXml(line)}</text>`)
     .join('');
@@ -192,9 +272,7 @@ text{font-family:'OutfitFlyer','Arial Black',Arial,sans-serif}
 <rect width="1080" height="1350" fill="url(#grid)"/>
 <rect width="1080" height="1350" fill="url(#glowA)"/>
 <rect width="1080" height="1350" fill="url(#glowB)"/>
-<circle cx="930" cy="330" r="250" fill="none" stroke="${accent}" stroke-opacity="0.16" stroke-width="34"/>
-<path d="M680 330H1180" stroke="${accent}" stroke-opacity="0.16" stroke-width="34"/>
-<circle cx="930" cy="330" r="62" fill="#030712" stroke="${accent}" stroke-opacity="0.3" stroke-width="20"/>
+${art.length ? artSvg(art, accent) : pokeballSvg(accent)}
 <image x="56" y="52" width="110" height="130" preserveAspectRatio="xMidYMid meet" xlink:href="data:image/png;base64,${assets.logo}" href="data:image/png;base64,${assets.logo}"/>
 <text x="186" y="112" class="black" font-size="46" fill="#f4f4f5">EMERALD<tspan fill="#34d399">CITY</tspan></text>
 <text x="188" y="150" class="bold" font-size="22" fill="#fbbf24" letter-spacing="1.5">COMUNIDAD POKÉMON GO · CARACAS</text>
@@ -213,6 +291,24 @@ ${titleText}
 `;
 }
 
+function pokeballSvg(accent) {
+  return `<circle cx="930" cy="330" r="250" fill="none" stroke="${accent}" stroke-opacity="0.16" stroke-width="34"/>
+<path d="M680 330H1180" stroke="${accent}" stroke-opacity="0.16" stroke-width="34"/>
+<circle cx="930" cy="330" r="62" fill="#030712" stroke="${accent}" stroke-opacity="0.3" stroke-width="20"/>`;
+}
+
+function artSvg(art, accent) {
+  const halo = `<circle cx="780" cy="440" r="290" fill="${accent}" fill-opacity="0.1"/>
+<circle cx="780" cy="440" r="290" fill="none" stroke="${accent}" stroke-opacity="0.22" stroke-width="3"/>`;
+  const images = ART_LAYOUTS[art.length]
+    .map(({ x, y, size }, i) => {
+      const href = `data:image/png;base64,${art[i].base64}`;
+      return `<image x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet" xlink:href="${href}" href="${href}"/>`;
+    })
+    .join('\n');
+  return `${halo}\n${images}`;
+}
+
 // ---------- Sincronización ----------
 
 function caracasToday() {
@@ -224,6 +320,7 @@ async function main() {
   if (!res.ok) throw new Error(`No se pudo leer el calendario (${res.status})`);
   const feed = await res.json();
 
+  const dex = await loadPokedex();
   const discarded = new Set(existsSync(DISCARDED_FILE) ? JSON.parse(readFileSync(DISCARDED_FILE, 'utf8')) : []);
   const today = caracasToday();
   const limit = addDays(today, DAYS_AHEAD);
@@ -235,10 +332,12 @@ async function main() {
       const jsonPath = join(EVENTS_DIR, `${id}.json`);
       if (meetup.date < today || meetup.date > limit || discarded.has(id) || existsSync(jsonPath)) continue;
 
+      const art = await pokemonArt(meetup.pokemon, dex);
       const flyer = `/images/eventos/${id}.svg`;
-      writeFileSync(join(FLYERS_DIR, `${id}.svg`), flyerSvg(meetup));
-      const { title, date, time, location, type, description } = meetup;
-      writeFileSync(jsonPath, `${JSON.stringify({ title, date, time, location, type, description, flyer }, null, 2)}\n`);
+      writeFileSync(join(FLYERS_DIR, `${id}.svg`), flyerSvg(meetup, art));
+      const { title, date, time, location, type, description, link } = meetup;
+      const image = art[0]?.path;
+      writeFileSync(jsonPath, `${JSON.stringify({ title, date, time, location, type, description, flyer, image, link }, null, 2)}\n`);
       created.push(`${date} ${time}  ${title}  (${location})`);
     }
   }

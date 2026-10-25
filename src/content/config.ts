@@ -50,6 +50,8 @@ const eventosCollection = defineCollection({
     type: z.enum(EVENT_TYPES),
     description: z.string().default(''),
     flyer: z.string(),
+    image: z.string().optional(),
+    link: z.string().url().optional(),
   }),
 });
 

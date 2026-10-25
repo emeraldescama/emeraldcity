@@ -151,15 +151,18 @@ async function drawEventRow(
 
   const pad = Math.round(rowH * 0.1);
   const thumb = rowH - pad * 2;
-  const flyer = await loadImage(flyerUrl);
+  // Si el evento tiene ilustración del Pokémon se muestra completa; si no, un recorte del flyer
+  const art = evento.image ? await loadImage(evento.image) : null;
+  const flyer = art ? null : await loadImage(flyerUrl);
   ctx.save();
   roundRect(ctx, x + pad, y + pad, thumb, thumb, 16);
   ctx.clip();
-  if (flyer) drawCover(ctx, flyer, x + pad, y + pad, thumb, thumb);
-  else {
-    ctx.fillStyle = '#064e3b';
-    ctx.fillRect(x + pad, y + pad, thumb, thumb);
-  }
+  ctx.fillStyle = '#064e3b';
+  ctx.fillRect(x + pad, y + pad, thumb, thumb);
+  if (art) {
+    const inset = thumb * 0.06;
+    ctx.drawImage(art, x + pad + inset, y + pad + inset, thumb - inset * 2, thumb - inset * 2);
+  } else if (flyer) drawCover(ctx, flyer, x + pad, y + pad, thumb, thumb);
   ctx.restore();
 
   const scale = Math.max(0.62, Math.min(1, rowH / 230));

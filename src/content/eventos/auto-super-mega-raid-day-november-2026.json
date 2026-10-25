@@ -4,6 +4,7 @@
   "time": "14:00",
   "location": "Plaza Los Palos Grandes, Caracas",
   "type": "Incursiones",
-  "description": "Nos reunimos en la Plaza Los Palos Grandes de 2:00 a 5:00 PM para hacer las incursiones en grupo. Detalles oficiales del evento: https://leekduck.com/events/super-mega-raid-day-november-2026/",
-  "flyer": "/images/eventos/auto-super-mega-raid-day-november-2026.svg"
+  "description": "Nos reunimos en la Plaza Los Palos Grandes de 2:00 a 5:00 PM para hacer las incursiones en grupo.",
+  "flyer": "/images/eventos/auto-super-mega-raid-day-november-2026.svg",
+  "link": "https://leekduck.com/events/super-mega-raid-day-november-2026/"
 }

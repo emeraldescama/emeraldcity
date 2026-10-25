@@ -4,6 +4,7 @@
   "time": "10:00",
   "location": "Plaza Los Palos Grandes, Caracas",
   "type": "Wild Area",
-  "description": "Nos reunimos en la Plaza Los Palos Grandes desde las 10:00 AM. Detalles oficiales del evento: https://leekduck.com/events/pokemon-go-wild-area-2026-global/",
-  "flyer": "/images/eventos/auto-pokemon-go-wild-area-2026-global-dia-2.svg"
+  "description": "Nos reunimos en la Plaza Los Palos Grandes desde las 10:00 AM.",
+  "flyer": "/images/eventos/auto-pokemon-go-wild-area-2026-global-dia-2.svg",
+  "link": "https://leekduck.com/events/pokemon-go-wild-area-2026-global/"
 }

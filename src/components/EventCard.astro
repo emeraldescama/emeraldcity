@@ -12,15 +12,13 @@ const dateLabel = formatLongDate(evento.date);
 const timeLabel = formatTime(evento.time);
 const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`);
 
-const typeBadgeClass = evento.type === 'Día de la Comunidad'
-  ? 'bg-zinc-950/85 text-amber-300 border-amber-500/50'
-  : 'bg-zinc-950/85 text-emerald-300 border-emerald-500/50';
 ---
 
 <article
   class="evento-card glass-card rounded-2xl overflow-hidden flex flex-col group h-full"
   data-date={evento.date}
   data-start={eventStart(evento)}
+  data-evento={JSON.stringify(evento)}
 >
   <!-- Flyer -->
   <a
@@ -36,24 +34,14 @@ const typeBadgeClass = evento.type === 'Día de la Comunidad'
       loading="lazy"
       class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
     />
-    <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-transparent to-transparent"></div>
-
-    <div class="absolute top-3.5 left-3.5">
-      <span class={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-md uppercase tracking-wider ${typeBadgeClass}`}>
-        {evento.type}
-      </span>
-    </div>
-
-    <div class="absolute bottom-3 left-3.5 right-3.5">
-      <span class="text-xs font-bold uppercase tracking-wider text-amber-400">
-        {dateLabel} · {timeLabel}
-      </span>
-    </div>
   </a>
 
   <!-- Content -->
   <div class="p-6 flex-grow flex flex-col justify-between gap-5">
     <div>
+      <p class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2">
+        {evento.type} · {dateLabel} · {timeLabel}
+      </p>
       <h3 class="text-lg sm:text-xl font-bold text-zinc-100 tracking-tight leading-snug">
         {evento.title}
       </h3>
@@ -68,6 +56,14 @@ const typeBadgeClass = evento.type === 'Día de la Comunidad'
         <p class="text-zinc-400 text-sm mt-3 leading-relaxed whitespace-pre-line">
           {evento.description}
         </p>
+      )}
+      {evento.link && (
+        <a href={evento.link} target="_blank" rel="noopener" class="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300">
+          Ver detalles oficiales
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </a>
       )}
     </div>
 

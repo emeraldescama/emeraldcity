@@ -21,6 +21,8 @@ export interface Evento {
   type: EventType;
   description: string;
   flyer: string;
+  image?: string; // Ilustración del Pokémon principal (eventos automáticos)
+  link?: string; // Página oficial del evento (eventos automáticos)
 }
 
 const CARACAS_OFFSET_MS = -4 * 60 * 60 * 1000;

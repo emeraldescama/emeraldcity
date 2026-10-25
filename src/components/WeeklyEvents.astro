@@ -22,9 +22,26 @@ const later = upcoming.filter((e) => e.date > week.end);
       <h2 class="text-xs font-bold tracking-widest text-amber-400 uppercase">Agenda Emerald</h2>
       <p class="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight mt-1">Eventos de esta semana</p>
     </div>
-    <p id="eventos-semana-rango" class="text-sm font-semibold text-zinc-400">
-      {formatWeekRange(week.start, week.end)}
-    </p>
+    <div class="flex flex-col sm:items-end gap-3">
+      <p id="eventos-semana-rango" class="text-sm font-semibold text-zinc-400">
+        {formatWeekRange(week.start, week.end)}
+      </p>
+      <button
+        id="descargar-semana"
+        type="button"
+        class:list={[
+          'inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 rounded-xl shadow-amber-glow transition-all disabled:opacity-60',
+          { hidden: thisWeek.length === 0 },
+        ]}
+      >
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        <span>Descargar imagen de la semana</span>
+      </button>
+    </div>
   </div>
 
   <div id="eventos-semana" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -48,7 +65,8 @@ const later = upcoming.filter((e) => e.date > week.end);
 </section>
 
 <script>
-  import { caracasToday, formatWeekRange, weekRange } from '../utils/eventos';
+  import { caracasToday, formatWeekRange, weekRange, type Evento } from '../utils/eventos';
+  import { drawWeeklyFlyer } from '../scripts/weeklyFlyer';
 
   // Reubica cada evento según la semana actual del visitante (la página solo se recompila al publicar)
   function placeEvents() {
@@ -71,7 +89,41 @@ const later = upcoming.filter((e) => e.date > week.end);
     if (range) range.textContent = formatWeekRange(week.start, week.end);
     document.getElementById('eventos-semana-vacio')?.classList.toggle('hidden', thisWeekGrid.children.length > 0);
     document.getElementById('eventos-proximos-bloque')?.classList.toggle('hidden', laterGrid.children.length === 0);
+    document.getElementById('descargar-semana')?.classList.toggle('hidden', thisWeekGrid.children.length === 0);
+  }
+
+  /** Arma en una sola imagen los eventos de la semana y la descarga (o la comparte en el celular) */
+  async function downloadWeek(button: HTMLButtonElement) {
+    const week = weekRange(caracasToday());
+    const eventos: Evento[] = Array.from(document.querySelectorAll<HTMLElement>('#eventos-semana .evento-card'))
+      .map((card) => JSON.parse(card.dataset.evento ?? '{}'));
+    button.disabled = true;
+    try {
+      const canvas = document.createElement('canvas');
+      await drawWeeklyFlyer(canvas, eventos, week.start, week.end, {
+        logoUrl: '/images/branding/logo-emerald-city.png',
+        flyerUrl: (evento) => evento.flyer,
+      });
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) return;
+      const file = new File([blob], `eventos-emerald-city-${week.start}.png`, { type: 'image/png' });
+
+      if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
+        await navigator.share({ files: [file] }).catch(() => undefined);
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally {
+      button.disabled = false;
+    }
   }
 
   placeEvents();
+  const downloadButton = document.getElementById('descargar-semana') as HTMLButtonElement | null;
+  downloadButton?.addEventListener('click', () => downloadWeek(downloadButton));
 </script>

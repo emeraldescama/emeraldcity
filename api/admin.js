@@ -172,7 +172,13 @@ async function saveEvent({ id, event: input, flyer }) {
     if (existing?.flyer?.startsWith('/images/eventos/')) changes.push({ path: `public${existing.flyer}`, delete: true });
   }
 
-  const saved = { ...event, flyer: flyerPath };
+  // La ilustración y el enlace oficial de los eventos automáticos se conservan al editar
+  const saved = {
+    ...event,
+    flyer: flyerPath,
+    ...(existing?.image ? { image: existing.image } : {}),
+    ...(existing?.link ? { link: existing.link } : {}),
+  };
   changes.push({ path: `${EVENTS_DIR}/${eventId}.json`, content: `${JSON.stringify(saved, null, 2)}\n` });
 
   await commit(`${existing ? 'Actualizar' : 'Publicar'} evento: ${event.title}`, changes);

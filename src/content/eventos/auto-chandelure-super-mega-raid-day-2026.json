@@ -4,6 +4,8 @@
   "time": "14:00",
   "location": "Plaza Los Palos Grandes, Caracas",
   "type": "Incursiones",
-  "description": "Nos reunimos en la Plaza Los Palos Grandes de 2:00 a 5:00 PM para hacer las incursiones en grupo. Detalles oficiales del evento: https://leekduck.com/events/chandelure-super-mega-raid-day-2026/",
-  "flyer": "/images/eventos/auto-chandelure-super-mega-raid-day-2026.svg"
+  "description": "Nos reunimos en la Plaza Los Palos Grandes de 2:00 a 5:00 PM para hacer las incursiones en grupo.",
+  "flyer": "/images/eventos/auto-chandelure-super-mega-raid-day-2026.svg",
+  "image": "/images/pokemon/609.png",
+  "link": "https://leekduck.com/events/chandelure-super-mega-raid-day-2026/"
 }

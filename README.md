@@ -45,7 +45,7 @@ Después de guardar las variables, vuelve a desplegar el proyecto en Vercel para
 
 1. Entra a `/admin` con el PIN.
 2. **Eventos:** sube el flyer, completa título, tipo, fecha, hora y lugar, y pulsa *Publicar evento*. El panel guarda el evento en `src/content/eventos/` y el flyer en `public/images/eventos/` con un commit en GitHub; Vercel recompila el sitio y el evento aparece en *Noticias y Quedadas* y en la cuenta regresiva del inicio en 1–2 minutos.
-3. **Flyer semanal:** elige la semana y descarga o comparte la imagen "Eventos de esta semana", o copia el texto para el grupo de WhatsApp.
+3. **Flyer semanal** (también lo puede descargar cualquier visitante con el botón *Descargar imagen de la semana* en *Noticias y Quedadas*): elige la semana y descarga o comparte la imagen "Eventos de esta semana", o copia el texto para el grupo de WhatsApp.
 
 La función del servidor está en `api/admin.js` (Vercel la detecta sola).
 
@@ -60,7 +60,7 @@ Todos los días a las 6:17 AM (hora de Caracas) la acción de GitHub **Sincroniz
 | Día Dinamax con un legendario | Plaza Los Palos Grandes | 2:00 – 5:00 PM |
 | GO Tour, GO Fest y Wild Area (globales) | Plaza Los Palos Grandes | Desde las 10:00 AM, cada día |
 
-Cada evento lleva un flyer generado con la temática de Emerald City. Los eventos automáticos aparecen en el panel con la marca **Automático** y se pueden editar como cualquier otro; el script nunca sobrescribe un evento existente. Si eliminas uno desde el panel, queda anotado en `data/eventos-descartados.json` y no se vuelve a crear.
+Cada evento lleva un flyer generado con la temática de Emerald City y la ilustración oficial de sus Pokémon (de PokeAPI, guardada en `public/images/pokemon/`), además de un enlace a los detalles oficiales del evento. Los eventos automáticos aparecen en el panel con la marca **Automático** y se pueden editar como cualquier otro; el script nunca sobrescribe un evento existente. Si eliminas uno desde el panel, queda anotado en `data/eventos-descartados.json` y no se vuelve a crear.
 
 Para ejecutarlo a mano: `npm run sync-eventos`, o en GitHub → **Actions → Sincronizar eventos → Run workflow**.
 
