@@ -12,9 +12,9 @@
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'Quedada', 'Torneo PvP', 'Otro'];
+const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'];
 const EVENTS_DIR = 'src/content/eventos';
-const FLYERS_DIR = 'public/images/eventos';
+const DISCARDED_FILE = 'data/eventos-descartados.json';
 // Vercel acepta hasta 4.5 MB por petición y el base64 ocupa un 33% más
 const MAX_FLYER_BYTES = 3 * 1024 * 1024;
 
@@ -88,10 +88,14 @@ async function commit(message, changes) {
   });
 }
 
-async function readEvent(id) {
-  const file = await github(`/contents/${EVENTS_DIR}/${id}.json?ref=${BRANCH}`, { allow404: true });
+async function readJson(path) {
+  const file = await github(`/contents/${path}?ref=${BRANCH}`, { allow404: true });
   if (!file) return null;
   return JSON.parse(Buffer.from(file.content, 'base64').toString('utf8'));
+}
+
+function readEvent(id) {
+  return readJson(`${EVENTS_DIR}/${id}.json`);
 }
 
 async function listEvents() {
@@ -180,6 +184,12 @@ async function deleteEvent({ id }) {
   if (!existing) throw new HttpError(404, 'Ese evento ya no existe.');
   const changes = [{ path: `${EVENTS_DIR}/${id}.json`, delete: true }];
   if (existing.flyer?.startsWith('/images/eventos/')) changes.push({ path: `public${existing.flyer}`, delete: true });
+  // Los eventos automáticos se anotan para que scripts/sync-eventos.mjs no los vuelva a crear
+  if (id.startsWith('auto-')) {
+    const discarded = new Set((await readJson(DISCARDED_FILE)) || []);
+    discarded.add(id);
+    changes.push({ path: DISCARDED_FILE, content: `${JSON.stringify([...discarded].sort(), null, 2)}\n` });
+  }
   await commit(`Eliminar evento: ${existing.title}`, changes);
   return { id };
 }

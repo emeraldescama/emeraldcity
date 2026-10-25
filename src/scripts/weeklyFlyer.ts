@@ -256,8 +256,10 @@ export async function drawWeeklyFlyer(
   } else {
     const gap = 20;
     const rowH = Math.min(230, (bottom - top - gap * (shown.length - 1)) / shown.length);
+    // Con pocos eventos, el bloque queda centrado en vez de pegado arriba
+    const blockTop = top + (bottom - top - (rowH * shown.length + gap * (shown.length - 1))) / 2;
     for (const [i, evento] of shown.entries()) {
-      await drawEventRow(ctx, evento, options.flyerUrl(evento), top + i * (rowH + gap), rowH);
+      await drawEventRow(ctx, evento, options.flyerUrl(evento), blockTop + i * (rowH + gap), rowH);
     }
   }
 

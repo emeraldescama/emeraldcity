@@ -49,6 +49,21 @@ Después de guardar las variables, vuelve a desplegar el proyecto en Vercel para
 
 La función del servidor está en `api/admin.js` (Vercel la detecta sola).
 
+### Eventos automáticos
+
+Todos los días a las 6:17 AM (hora de Caracas) la acción de GitHub **Sincronizar eventos** (`.github/workflows/sync-eventos.yml`) ejecuta `scripts/sync-eventos.mjs`. El script lee el calendario público de eventos de Pokémon GO (LeekDuck, vía ScrapedDuck) y publica los de los próximos 35 días con las reglas de la comunidad:
+
+| Evento | Lugar | Hora |
+| --- | --- | --- |
+| Día de la Comunidad | Parque del Este | 2:00 – 5:00 PM |
+| Día de Incursiones | Plaza Los Palos Grandes | 2:00 – 5:00 PM |
+| Día Dinamax con un legendario | Plaza Los Palos Grandes | 2:00 – 5:00 PM |
+| GO Tour, GO Fest y Wild Area (globales) | Plaza Los Palos Grandes | Desde las 10:00 AM, cada día |
+
+Cada evento lleva un flyer generado con la temática de Emerald City. Los eventos automáticos aparecen en el panel con la marca **Automático** y se pueden editar como cualquier otro; el script nunca sobrescribe un evento existente. Si eliminas uno desde el panel, queda anotado en `data/eventos-descartados.json` y no se vuelve a crear.
+
+Para ejecutarlo a mano: `npm run sync-eventos`, o en GitHub → **Actions → Sincronizar eventos → Run workflow**.
+
 ## 6) Levantar servidor de desarrollo
 
 ```bash

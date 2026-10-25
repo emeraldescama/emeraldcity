@@ -213,7 +213,7 @@ function renderEventList() {
     title.textContent = evento.title;
     const place = document.createElement('p');
     place.className = 'text-xs text-zinc-400 truncate';
-    place.textContent = `${evento.type} · ${evento.location}`;
+    place.textContent = `${evento.id.startsWith('auto-') ? 'Automático · ' : ''}${evento.type} · ${evento.location}`;
     info.append(when, title, place);
 
     const actions = document.createElement('div');

@@ -6,7 +6,7 @@
  * Todas las fechas se interpretan en hora de Caracas (UTC-4, sin horario de verano).
  */
 
-export const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'Quedada', 'Torneo PvP', 'Otro'] as const;
+export const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
 // Lugar oficial de los Días de la Comunidad
