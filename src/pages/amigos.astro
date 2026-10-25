@@ -1,0 +1,168 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Haz amigos Pokémon con la comunidad | Emerald City"
+  description="Códigos de amistad de los entrenadores de Emerald City. Cópialos y agrégalos en Pokémon GO."
+>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-24">
+
+    <!-- Encabezado -->
+    <div class="max-w-3xl mb-8">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 uppercase tracking-wider mb-4">
+        Códigos de amistad
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-black text-zinc-100 tracking-tight">
+        Haz amigos Pokémon <span class="text-emerald-400">con la comunidad</span>
+      </h1>
+      <p class="text-base sm:text-lg text-zinc-400 mt-4 leading-relaxed">
+        Copia el código de un entrenador y agrégalo en Pokémon GO. Más amigos significa más regalos, intercambios y bonos de ataque en las incursiones.
+      </p>
+    </div>
+
+    <!-- Cómo agregar -->
+    <ol class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8 text-sm text-zinc-300">
+      <li class="glass-panel rounded-2xl p-4"><strong class="block text-amber-400 text-xs uppercase tracking-wider mb-1">Paso 1</strong>Toca <strong>Copiar</strong> en el entrenador que quieras.</li>
+      <li class="glass-panel rounded-2xl p-4"><strong class="block text-amber-400 text-xs uppercase tracking-wider mb-1">Paso 2</strong>En Pokémon GO: tu avatar → <strong>Amigos</strong> → <strong>Agregar amigo</strong>.</li>
+      <li class="glass-panel rounded-2xl p-4"><strong class="block text-amber-400 text-xs uppercase tracking-wider mb-1">Paso 3</strong>Pega el código y envía la solicitud.</li>
+    </ol>
+
+    <!-- Buscador -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+      <label for="buscar-amigo" class="sr-only">Buscar entrenador</label>
+      <input
+        id="buscar-amigo"
+        type="search"
+        placeholder="Buscar por nombre o ciudad"
+        class="w-full sm:max-w-sm rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 outline-none px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500"
+      />
+      <p id="amigos-total" class="text-sm font-semibold text-zinc-400" aria-live="polite"></p>
+    </div>
+
+    <!-- Lista -->
+    <p id="amigos-cargando" class="text-center py-16 text-zinc-400">Cargando entrenadores…</p>
+    <p id="amigos-error" class="hidden text-center py-16 text-zinc-400">No pudimos cargar la lista en este momento. Vuelve a intentarlo en unos minutos.</p>
+    <p id="amigos-vacio" class="hidden text-center py-16 text-zinc-400">Todavía no hay entrenadores en la lista. ¡Sé el primero!</p>
+    <ul id="amigos-lista" class="grid grid-cols-1 md:grid-cols-2 gap-4"></ul>
+
+    <!-- Invitación -->
+    <div class="mt-12 p-6 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <p class="text-lg font-black text-zinc-100">¿Quieres que te agreguen a ti?</p>
+        <p class="text-sm text-zinc-300 mt-1">Regístrate en la comunidad y tu código aparecerá en esta lista.</p>
+      </div>
+      <a href="/unirse" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 text-sm font-black uppercase tracking-wider text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-xl shadow-emerald-glow whitespace-nowrap">
+        Quiero ser parte de la comunidad
+      </a>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  interface Amigo {
+    entrenador: string;
+    codigo: string;
+    ciudad: string;
+  }
+
+  const $ = (id: string) => document.getElementById(id)!;
+  let amigos: Amigo[] = [];
+
+  const formatCode = (code: string) => code.replace(/(\d{4})(?=\d)/g, '$1 ');
+
+  async function copy(code: string, button: HTMLButtonElement) {
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch {
+      // Respaldo para navegadores sin acceso al portapapeles
+      const field = document.createElement('textarea');
+      field.value = code;
+      document.body.append(field);
+      field.select();
+      document.execCommand('copy');
+      field.remove();
+    }
+    button.textContent = '¡Copiado!';
+    button.dataset.copiado = 'true';
+    setTimeout(() => {
+      button.textContent = 'Copiar';
+      button.dataset.copiado = 'false';
+    }, 2000);
+  }
+
+  function render() {
+    const query = ($('buscar-amigo') as HTMLInputElement).value.trim().toLowerCase();
+    const shown = amigos.filter((a) => !query || `${a.entrenador} ${a.ciudad}`.toLowerCase().includes(query));
+    const list = $('amigos-lista');
+    list.replaceChildren();
+
+    for (const amigo of shown) {
+      const item = document.createElement('li');
+      item.className = 'glass-card rounded-2xl p-5 flex items-center gap-4';
+
+      const avatar = document.createElement('span');
+      avatar.className = 'w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg font-black text-emerald-300 flex-shrink-0';
+      avatar.textContent = amigo.entrenador.charAt(0).toUpperCase();
+
+      const info = document.createElement('div');
+      info.className = 'min-w-0 flex-1';
+      const name = document.createElement('p');
+      name.className = 'font-bold text-zinc-100 truncate';
+      name.textContent = amigo.entrenador;
+      const code = document.createElement('p');
+      code.className = 'font-mono text-base tracking-widest text-amber-400';
+      code.textContent = formatCode(amigo.codigo);
+      const city = document.createElement('p');
+      city.className = 'text-xs text-zinc-400 truncate';
+      city.textContent = amigo.ciudad;
+      info.append(name, code, city);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'copiar px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors flex-shrink-0';
+      button.textContent = 'Copiar';
+      button.setAttribute('aria-label', `Copiar el código de ${amigo.entrenador}`);
+      button.addEventListener('click', () => copy(amigo.codigo, button));
+
+      item.append(avatar, info, button);
+      list.append(item);
+    }
+
+    $('amigos-total').textContent = amigos.length
+      ? `${shown.length} de ${amigos.length} entrenador${amigos.length === 1 ? '' : 'es'}`
+      : '';
+    $('amigos-vacio').classList.toggle('hidden', amigos.length > 0);
+  }
+
+  async function load() {
+    try {
+      const res = await fetch('/api/amigos');
+      if (!res.ok) throw new Error(String(res.status));
+      amigos = (await res.json()).amigos ?? [];
+      render();
+    } catch {
+      $('amigos-error').classList.remove('hidden');
+    } finally {
+      $('amigos-cargando').classList.add('hidden');
+    }
+  }
+
+  $('buscar-amigo').addEventListener('input', render);
+  load();
+</script>
+
+<style is:global>
+  .copiar {
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.4);
+  }
+  .copiar:hover {
+    background: rgba(16, 185, 129, 0.12);
+  }
+  .copiar[data-copiado='true'] {
+    color: #022c22;
+    background: #34d399;
+    border-color: #34d399;
+  }
+</style>

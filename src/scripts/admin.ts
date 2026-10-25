@@ -13,10 +13,10 @@ import {
   type Evento,
 } from '../utils/eventos';
 import { drawWeeklyFlyer, weeklyText } from './weeklyFlyer';
+import { compressImage } from './images';
+import { drawWelcomeFlyer, welcomeText, type NuevoEntrenador } from './welcomeFlyer';
 
 const PIN_KEY = 'emerald-admin-pin';
-const MAX_SIDE = 1600;
-const MAX_UPLOAD_BYTES = 2.8 * 1024 * 1024;
 
 type EventInput = Omit<Evento, 'id' | 'flyer'>;
 
@@ -72,27 +72,6 @@ function showStatus(message: string, kind: 'ok' | 'error' | 'info' = 'info') {
         ? 'bg-red-500/10 border-red-500/40 text-red-300'
         : 'bg-zinc-900/90 border-zinc-700 text-zinc-300'
   }`;
-}
-
-/** Reduce la imagen a 1600 px y la convierte a JPEG para que suba rápido */
-async function compressImage(file: File): Promise<{ base64: string; dataUrl: string }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-
-  for (const quality of [0.88, 0.8, 0.7, 0.6, 0.5]) {
-    const dataUrl = canvas.toDataURL('image/jpeg', quality);
-    const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
-    if (base64.length * 0.75 <= MAX_UPLOAD_BYTES) return { base64, dataUrl };
-  }
-  throw new Error('La imagen es demasiado pesada. Prueba con una más pequeña.');
 }
 
 function flyerUrl(evento: Evento): string {
@@ -350,15 +329,152 @@ function setWeek(start: string) {
   renderFlyer();
 }
 
+// ---------- Bienvenidas ----------
+
+interface Bienvenida extends NuevoEntrenador {
+  id: string;
+  fecha: string;
+  nombre: string;
+}
+
+let welcomes: Bienvenida[] = [];
+let selectedWelcome: Bienvenida | null = null;
+let welcomesLoaded = false;
+
+function renderWelcomeList() {
+  const list = $('welcome-list');
+  list.replaceChildren();
+  $('welcome-empty').classList.toggle('hidden', welcomes.length > 0);
+  const count = $('welcome-count');
+  count.textContent = String(welcomes.length);
+  count.classList.toggle('hidden', welcomes.length === 0);
+
+  for (const welcome of welcomes) {
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    const active = selectedWelcome?.id === welcome.id;
+    button.className = `w-full text-left glass-panel rounded-2xl p-4 border transition-colors ${active ? 'border-emerald-400' : 'border-transparent hover:border-emerald-500/40'}`;
+    const name = document.createElement('p');
+    name.className = 'font-bold text-zinc-100';
+    name.textContent = welcome.entrenador;
+    const detail = document.createElement('p');
+    detail.className = 'text-xs text-zinc-400';
+    detail.textContent = `${welcome.nombre} · ${welcome.ciudad} · ${new Date(welcome.fecha).toLocaleDateString('es-VE')}`;
+    button.append(name, detail);
+    button.addEventListener('click', () => selectWelcome(welcome));
+    item.append(button);
+    list.append(item);
+  }
+}
+
+/** `quiet`: al entrar al panel solo se actualiza el contador, sin mostrar errores */
+async function loadWelcomes(quiet = false) {
+  const button = $<HTMLButtonElement>('welcome-refresh');
+  button.disabled = true;
+  try {
+    welcomes = (await api<{ bienvenidas: Bienvenida[] }>('bienvenidas')).bienvenidas;
+    welcomesLoaded = true;
+    if (selectedWelcome && !welcomes.some((w) => w.id === selectedWelcome!.id)) clearWelcome();
+    renderWelcomeList();
+  } catch (err) {
+    if (!quiet) showStatus((err as Error).message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function clearWelcome() {
+  selectedWelcome = null;
+  $('welcome-preview').classList.add('hidden');
+  $('welcome-placeholder').classList.remove('hidden');
+}
+
+async function selectWelcome(welcome: Bienvenida) {
+  selectedWelcome = welcome;
+  renderWelcomeList();
+  showStatus(`Preparando la bienvenida de ${welcome.entrenador}…`);
+  try {
+    const { tipo, base64 } = await api<{ tipo: string; base64: string }>('captura', { id: welcome.id });
+    if (selectedWelcome?.id !== welcome.id) return;
+    await drawWelcomeFlyer($<HTMLCanvasElement>('welcome-canvas'), welcome, `data:${tipo};base64,${base64}`);
+    $('welcome-placeholder').classList.add('hidden');
+    $('welcome-preview').classList.remove('hidden');
+    $('status').classList.add('hidden');
+  } catch (err) {
+    showStatus((err as Error).message, 'error');
+  }
+}
+
+function welcomeFile(): Promise<File> {
+  return new Promise((resolve, reject) =>
+    $<HTMLCanvasElement>('welcome-canvas').toBlob((blob) => {
+      if (!blob || !selectedWelcome) return reject(new Error('No se pudo crear la imagen.'));
+      resolve(new File([blob], `bienvenida-${selectedWelcome.entrenador}.png`, { type: 'image/png' }));
+    }, 'image/png'),
+  );
+}
+
+async function onWelcomeShare() {
+  if (!selectedWelcome) return;
+  try {
+    await navigator.share({ files: [await welcomeFile()], text: welcomeText(selectedWelcome) });
+  } catch (err) {
+    if ((err as Error).name !== 'AbortError') showStatus('No se pudo abrir el menú de compartir. Descarga la imagen y envíala manualmente.', 'error');
+  }
+}
+
+async function onWelcomeDownload() {
+  const file = await welcomeFile();
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function onWelcomeCopy() {
+  if (!selectedWelcome) return;
+  try {
+    await navigator.clipboard.writeText(welcomeText(selectedWelcome));
+    showStatus('Mensaje copiado. Pégalo en el grupo junto con la imagen.', 'ok');
+  } catch {
+    showStatus('No se pudo copiar automáticamente.', 'error');
+  }
+}
+
+async function onWelcomeDone() {
+  if (!selectedWelcome) return;
+  const welcome = selectedWelcome;
+  const button = $<HTMLButtonElement>('welcome-done');
+  button.disabled = true;
+  try {
+    await api('marcarBienvenida', { id: welcome.id });
+    welcomes = welcomes.filter((w) => w.id !== welcome.id);
+    clearWelcome();
+    renderWelcomeList();
+    showStatus(`Bienvenida de ${welcome.entrenador} marcada como enviada.`, 'ok');
+  } catch (err) {
+    showStatus((err as Error).message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
 // ---------- Navegación y acceso ----------
 
-function selectTab(tab: 'eventos' | 'flyer') {
+type Tab = 'eventos' | 'flyer' | 'bienvenidas';
+
+function selectTab(tab: Tab) {
   for (const button of document.querySelectorAll<HTMLButtonElement>('.tab-button')) {
     button.setAttribute('aria-selected', String(button.dataset.tab === tab));
   }
   $('tab-eventos').classList.toggle('hidden', tab !== 'eventos');
   $('tab-flyer').classList.toggle('hidden', tab !== 'flyer');
+  $('tab-bienvenidas').classList.toggle('hidden', tab !== 'bienvenidas');
   if (tab === 'flyer') renderFlyer();
+  if (tab === 'bienvenidas' && !welcomesLoaded) loadWelcomes();
 }
 
 function showPanel() {
@@ -366,6 +482,7 @@ function showPanel() {
   $('admin-panel').classList.remove('hidden');
   selectTab('eventos');
   loadEvents();
+  loadWelcomes(true);
 }
 
 function logout(message = '') {
@@ -402,7 +519,7 @@ export function initAdmin() {
   $('cancel-edit').addEventListener('click', resetForm);
   $('refresh').addEventListener('click', loadEvents);
   for (const button of document.querySelectorAll<HTMLButtonElement>('.tab-button')) {
-    button.addEventListener('click', () => selectTab(button.dataset.tab as 'eventos' | 'flyer'));
+    button.addEventListener('click', () => selectTab(button.dataset.tab as Tab));
   }
 
   $('week-prev').addEventListener('click', () => setWeek(addDays(weekStart, -7)));
@@ -411,11 +528,17 @@ export function initAdmin() {
   $('flyer-download').addEventListener('click', onDownload);
   $('flyer-copy').addEventListener('click', onCopyText);
 
-  const share = $('flyer-share');
+  $('welcome-refresh').addEventListener('click', () => loadWelcomes());
+  $('welcome-download').addEventListener('click', onWelcomeDownload);
+  $('welcome-copy').addEventListener('click', onWelcomeCopy);
+  $('welcome-done').addEventListener('click', onWelcomeDone);
+
   const probe = new File([''], 'probe.png', { type: 'image/png' });
   if (navigator.canShare?.({ files: [probe] })) {
-    share.classList.remove('hidden');
-    share.addEventListener('click', onShare);
+    $('flyer-share').classList.remove('hidden');
+    $('flyer-share').addEventListener('click', onShare);
+    $('welcome-share').classList.remove('hidden');
+    $('welcome-share').addEventListener('click', onWelcomeShare);
   }
 
   const stored = readStoredPin();

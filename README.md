@@ -64,6 +64,10 @@ Cada evento lleva un flyer generado con la temática de Emerald City y la ilustr
 
 Para ejecutarlo a mano: `npm run sync-eventos`, o en GitHub → **Actions → Sincronizar eventos → Run workflow**.
 
+### Registro de entrenadores y "Haz amigos"
+
+El formulario de `/unirse` guarda cada registro en la hoja de Google de la comunidad, la página `/amigos` muestra los códigos de amistad de quienes aceptaron aparecer, y el panel tiene la pestaña **Bienvenidas** para crear el flyer de bienvenida de cada entrenador nuevo. Todo pasa por un script de Google Apps Script: los pasos para instalarlo y las variables `APPS_SCRIPT_URL` y `APPS_SCRIPT_SECRET` están en [`apps-script/README.md`](apps-script/README.md).
+
 ## 6) Levantar servidor de desarrollo
 
 ```bash

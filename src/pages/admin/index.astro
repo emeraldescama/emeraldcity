@@ -39,9 +39,10 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <h1 class="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight">Panel de Administración</h1>
           <p class="text-sm text-zinc-400 mt-1">Lo que publiques aparece en la web en 1–2 minutos.</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button type="button" data-tab="eventos" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Eventos</button>
           <button type="button" data-tab="flyer" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Flyer semanal</button>
+          <button type="button" data-tab="bienvenidas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Bienvenidas <span id="welcome-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button id="logout" type="button" class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 rounded-xl border border-zinc-800">Salir</button>
         </div>
       </div>
@@ -135,6 +136,32 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
 
         <div class="lg:col-span-3">
           <canvas id="flyer-canvas" class="w-full max-w-xl mx-auto rounded-2xl border border-emerald-500/30 shadow-emerald-glow"></canvas>
+        </div>
+      </div>
+
+      <!-- Pestaña: Bienvenidas (registros nuevos de /unirse) -->
+      <div id="tab-bienvenidas" class="hidden grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div class="lg:col-span-2 space-y-4 self-start">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-black text-zinc-100">Bienvenidas pendientes</h2>
+            <button id="welcome-refresh" type="button" class={ghostButton}>Actualizar</button>
+          </div>
+          <p class="text-sm text-zinc-400">Entrenadores que se registraron en la web y todavía no recibieron su bienvenida en el grupo.</p>
+          <ul id="welcome-list" class="space-y-3"></ul>
+          <p id="welcome-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">No hay bienvenidas pendientes.</p>
+        </div>
+
+        <div class="lg:col-span-3">
+          <p id="welcome-placeholder" class="glass-panel rounded-2xl p-10 text-center text-sm text-zinc-400">Elige un entrenador de la lista para crear su flyer de bienvenida.</p>
+          <div id="welcome-preview" class="hidden space-y-4">
+            <canvas id="welcome-canvas" class="w-full max-w-xl mx-auto rounded-2xl border border-emerald-500/30 shadow-emerald-glow"></canvas>
+            <div class="max-w-xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button id="welcome-share" type="button" class={`${primaryButton} w-full hidden`}>Compartir en WhatsApp</button>
+              <button id="welcome-download" type="button" class={`${ghostButton} w-full`}>Descargar imagen</button>
+              <button id="welcome-copy" type="button" class={`${ghostButton} w-full`}>Copiar mensaje</button>
+              <button id="welcome-done" type="button" class={`${ghostButton} w-full`}>Marcar como enviada</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>

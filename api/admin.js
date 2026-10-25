@@ -9,8 +9,10 @@
  *   GITHUB_TOKEN   Token de GitHub con permiso "Contents: Read and write" sobre el repositorio
  *   GITHUB_REPO    Opcional, por defecto "emeraldescama/emeraldcity"
  *   GITHUB_BRANCH  Opcional, por defecto "main"
+ *   APPS_SCRIPT_URL / APPS_SCRIPT_SECRET  Hoja de registros, para las bienvenidas (ver apps-script/README.md)
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { AppsScriptError, callAppsScript } from './_apps-script.js';
 
 const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'];
 const EVENTS_DIR = 'src/content/eventos';
@@ -227,11 +229,18 @@ export default async function handler(req, res) {
         return res.status(200).json({ event: await saveEvent(body) });
       case 'delete':
         return res.status(200).json(await deleteEvent(body));
+      // Bienvenidas: registros nuevos de /unirse guardados en la hoja de Google
+      case 'bienvenidas':
+        return res.status(200).json(await callAppsScript('bienvenidas'));
+      case 'captura':
+        return res.status(200).json(await callAppsScript('captura', { id: String(body.id ?? '') }));
+      case 'marcarBienvenida':
+        return res.status(200).json(await callAppsScript('marcarBienvenida', { id: String(body.id ?? '') }));
       default:
         return res.status(400).json({ error: 'Acción desconocida.' });
     }
   } catch (err) {
-    const status = err instanceof HttpError ? err.status : 500;
+    const status = err instanceof HttpError || err instanceof AppsScriptError ? err.status : 500;
     return res.status(status).json({ error: err.message || 'Error inesperado.' });
   }
 }
