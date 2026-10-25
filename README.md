@@ -71,8 +71,8 @@ El formulario de `/unirse` guarda a cada miembro en la base de datos de la pági
 **Conectar la base de datos (una sola vez):**
 
 1. En Vercel, entra al proyecto → pestaña **Storage** → **Create Database**.
-2. Elige **Upstash** → **Redis** (plan gratuito) → **Continue** → ponle un nombre (por ejemplo `emerald-miembros`) → **Create**.
-3. Cuando pregunte, conéctala al proyecto de la página (**Connect**). Vercel agrega solo las variables `KV_REST_API_URL` y `KV_REST_API_TOKEN`.
+2. Elige **Neon** (Serverless Postgres) → plan **Free** → ponle un nombre (por ejemplo `emerald-miembros`) → **Create**.
+3. Cuando pregunte, conéctala al proyecto de la página (**Connect**). Vercel agrega sola la variable `DATABASE_URL`, y la tabla de miembros se crea sola la primera vez.
 4. Ve a **Deployments** → **⋯** del último → **Redeploy**.
 
 **Traer a los miembros que ya estaban en la hoja de Google:** en la hoja, *Archivo → Descargar → Valores separados por comas (.csv)*; luego en el panel, pestaña **Miembros → Importar hoja anterior**. La página reconoce las columnas por su título, muestra qué encontró antes de importar y no duplica códigos que ya existan.

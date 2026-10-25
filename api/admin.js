@@ -9,7 +9,7 @@
  *   GITHUB_TOKEN   Token de GitHub con permiso "Contents: Read and write" sobre el repositorio
  *   GITHUB_REPO    Opcional, por defecto "emeraldescama/emeraldcity"
  *   GITHUB_BRANCH  Opcional, por defecto "main"
- *   KV_REST_API_URL / KV_REST_API_TOKEN  Base de datos de miembros (Vercel → Storage → Upstash Redis)
+ *   DATABASE_URL   Base de datos de miembros (Vercel → Storage → Neon); la crea Vercel al conectarla
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { DbError, deleteMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
