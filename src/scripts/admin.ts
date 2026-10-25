@@ -250,10 +250,14 @@ async function loadEvents() {
   try {
     const data = await api<{ events: Evento[] }>('list');
     events = sortByStart(data.events);
+    $('event-list-empty').textContent = 'Todavía no hay eventos. Publica el primero con el formulario.';
     renderEventList();
     renderFlyer();
   } catch (err) {
-    showStatus((err as Error).message, 'error');
+    // Se muestra dentro de la pestaña Eventos para no tapar el resto del panel
+    const empty = $('event-list-empty');
+    empty.textContent = (err as Error).message;
+    empty.classList.remove('hidden');
   } finally {
     button.disabled = false;
   }

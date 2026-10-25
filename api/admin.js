@@ -39,7 +39,7 @@ function pinMatches(pin) {
 }
 
 async function github(path, options = {}) {
-  if (!process.env.GITHUB_TOKEN) throw new HttpError(500, 'Para publicar eventos falta GITHUB_TOKEN en Vercel.');
+  if (!process.env.GITHUB_TOKEN) throw new HttpError(500, 'Para ver y publicar eventos desde el panel falta la variable GITHUB_TOKEN en Vercel. Los eventos automáticos siguen publicándose solos.');
   const res = await fetch(`https://api.github.com/repos/${REPO}${path}`, {
     ...options,
     headers: {
