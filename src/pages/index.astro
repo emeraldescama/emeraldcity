@@ -1,385 +1,72 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import AboutCommunity from '../components/AboutCommunity.astro';
 import Countdown from '../components/Countdown.astro';
 import WeeklyEvents from '../components/WeeklyEvents.astro';
-import AboutCommunity from '../components/AboutCommunity.astro';
-import NewsCard from '../components/NewsCard.astro';
-import ProductCard from '../components/ProductCard.astro';
-import GimmiPassCard from '../components/GimmiPassCard.astro';
-import WhatsAppButton from '../components/WhatsAppButton.astro';
-import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
-import { getCollection } from 'astro:content';
 import { getEventos } from '../utils/getEventos';
 
-// Obtener noticias ordenadas por fecha descendente
-const allNews = await getCollection('noticias');
-const sortedNews = allNews.sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
-const latestNews = sortedNews.slice(0, 2);
-
-// Eventos cargados desde el panel (para la cuenta regresiva)
+// Eventos cargados desde el panel y la sincronización automática
 const eventos = await getEventos();
 
-// Obtener items del Bazar
-const allBazar = await getCollection('bazar');
-const sortedBazar = allBazar.sort((a, b) => {
-  if (a.id.includes('rayquaza')) return -1;
-  if (b.id.includes('rayquaza')) return 1;
-  if (a.id.includes('zacian')) return -1;
-  if (b.id.includes('zacian')) return 1;
-  return 0;
-});
-const featuredBazar = sortedBazar;
-
-// Obtener Gimmi Pass
-const allGimmiPass = await getCollection('gimmi-pass');
-const sortedGimmiPass = allGimmiPass.sort((a, b) => (b.data.featured ? 1 : 0) - (a.data.featured ? 1 : 0));
-
-const joinWhatsAppUrl = getGeneralContactWhatsAppUrl('¡Hola Emerald City! Me gustaría unirme a los grupos y quedadas de Pokémon GO en Caracas.');
+const shortcuts = [
+  {
+    href: '/amigos',
+    title: 'Haz amigos',
+    text: 'Copia los códigos de amistad de la comunidad y agrégalos en Pokémon GO.',
+    action: 'Ver códigos',
+    image: '/images/branding/logo-emerald-city.png',
+  },
+  {
+    href: '/bazar',
+    title: 'Bazar Emerald',
+    text: 'Figuras y accesorios Pokémon impresos en 3D en Caracas.',
+    action: 'Ver catálogo',
+    image: '/images/branding/logo-bazar-emerald.jpg',
+  },
+  {
+    href: '/gimmi-pass',
+    title: 'Gimmi Pass',
+    text: 'Pases de incursión y paquetes para la comunidad.',
+    action: 'Ver paquetes',
+    image: '/images/branding/logo-gimmi-pass.jpg',
+  },
+];
 ---
 
 <Layout
   title="Emerald City | Comunidad Pokémon GO Caracas (@emeraldcityccs)"
-  description="Portal oficial de la comunidad de Pokémon GO de Caracas. Quedadas, Community Days, incursiones legendarias, Bazar 3D y Gimmi Pass."
+  description="Emerald City es la comunidad de Pokémon GO de Caracas: Días de la Comunidad en el Parque del Este, incursiones en Plaza Los Palos Grandes y mucho más."
 >
-  <!-- Eventos de la semana: lo primero que ve quien entra -->
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14">
-    <WeeklyEvents eventos={eventos} />
-  </div>
-
-  <!-- Hero Section -->
-  <section class="relative pt-12 pb-20 sm:pt-20 sm:pb-28 overflow-hidden">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        
-        <!-- Hero Text & CTAs -->
-        <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
-          
-          <!-- Badges -->
-          <div class="flex flex-wrap items-center justify-center lg:justify-start gap-2.5">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300">
-              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              Comunidad Oficial • Caracas
-            </span>
-            <a
-              href="https://instagram.com/emeraldcityccs"
-              target="_blank"
-              class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-zinc-900 border border-zinc-800 text-amber-400 hover:border-amber-500/40 transition-colors"
-            >
-              @emeraldcityccs
-            </a>
-          </div>
-
-          <!-- Main Title -->
-          <h1 class="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1]">
-            El cielo es nuestro campo de <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-300 to-amber-300">batalla</span>.
-          </h1>
-
-          <!-- Subtitle -->
-          <p class="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-            Bienvenido a <strong class="text-emerald-400 font-bold">Emerald City</strong>, el punto de encuentro de los entrenadores de Pokémon GO en Caracas. Organizamos quedadas masivas, horas de incursiones legendarias, catálogo 3D personalizado y pases de batalla.
-          </p>
-
-          <!-- CTAs -->
-          <div class="pt-3 flex flex-wrap items-center justify-center lg:justify-start gap-4">
-            <a
-              href="/unirse"
-              class="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl text-base font-bold text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 shadow-emerald-glow hover:shadow-emerald-glow-lg transition-all duration-300 transform active:scale-95"
-            >
-              <svg class="w-5 h-5 flex-shrink-0 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-              <span>Unirse a la Comunidad</span>
-            </a>
-            <a
-              href="/noticias"
-              class="px-6 py-3.5 rounded-xl text-base font-bold text-zinc-200 bg-zinc-900/80 hover:bg-zinc-800 border border-emerald-500/30 hover:border-emerald-400 transition-all flex items-center gap-2"
-            >
-              Ver Quedadas
-              <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </a>
-          </div>
-
-          <!-- Quick Stats / Community Highlights -->
-          <div class="pt-6 grid grid-cols-3 gap-4 border-t border-zinc-800/80 max-w-lg mx-auto lg:mx-0">
-            <div>
-              <span class="block text-2xl sm:text-3xl font-black text-emerald-400 font-mono">+500</span>
-              <span class="text-xs text-zinc-400 uppercase font-semibold">Entrenadores</span>
-            </div>
-            <div>
-              <span class="block text-2xl sm:text-3xl font-black text-amber-400 font-mono">100%</span>
-              <span class="text-xs text-zinc-400 uppercase font-semibold">Caracas Activa</span>
-            </div>
-            <div>
-              <span class="block text-2xl sm:text-3xl font-black text-emerald-400 font-mono">24/7</span>
-              <span class="text-xs text-zinc-400 uppercase font-semibold">Coordinación</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Hero Graphic (Rayquaza Oficial Logo & Energy Aura) -->
-        <div class="lg:col-span-5 flex justify-center relative">
-          <div class="relative w-full max-w-md aspect-square rounded-3xl p-6 glass-card border-2 border-emerald-500/40 flex items-center justify-center overflow-hidden shadow-emerald-glow-lg group">
-            
-            <!-- Animated Background Aura -->
-            <div class="absolute inset-0 bg-gradient-to-br from-emerald-600/20 via-transparent to-amber-500/15 pointer-events-none"></div>
-            <div class="absolute -top-12 -right-12 w-48 h-48 bg-emerald-400/20 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-700"></div>
-            <div class="absolute -bottom-10 -left-10 w-44 h-44 bg-amber-400/15 rounded-full blur-2xl group-hover:scale-110 transition-transform duration-700"></div>
-
-            <!-- Central Graphic with Official Rayquaza Logo -->
-            <div class="relative z-10 text-center space-y-4 flex flex-col items-center">
-              <div class="relative w-52 sm:w-60 h-52 sm:h-60 flex items-center justify-center">
-                <img
-                  src="/images/branding/logo-emerald-city.png"
-                  alt="Rayquaza Emerald City Oficial"
-                  class="w-full h-full object-contain filter drop-shadow-[0_10px_25px_rgba(16,185,129,0.45)] animate-float"
-                />
-              </div>
-
-              <div>
-                <span class="inline-block px-3 py-1 rounded-full text-[11px] font-bold tracking-widest text-amber-300 bg-amber-500/20 border border-amber-500/40 uppercase">
-                  Protector de los Cielos de Caracas
-                </span>
-                <h2 class="text-2xl font-black text-zinc-100 tracking-tight mt-1">
-                  Comunidad Emerald City
-                </h2>
-                <p class="text-xs text-zinc-400 max-w-xs mx-auto mt-1">
-                  Inspiración de la comunidad de Pokémon GO Caracas. Resistencia, poder y sincronía en cada incursión.
-                </p>
-              </div>
-
-              <!-- Quick action in card -->
-              <div class="pt-1">
-                <a
-                  href="/bazar"
-                  class="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 uppercase tracking-wider"
-                >
-                  Ver Figuras 3D en el Bazar
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- Countdown Section -->
-  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-10 mb-20 relative z-20">
-    <Countdown eventos={eventos} />
-  </section>
-
-  <!-- ¿Qué es Emerald City? -->
+  <!-- 1. Quiénes somos y botón para unirse -->
   <AboutCommunity />
 
-  <!-- Quick Access: The 3 Main Pillars of Emerald City -->
-  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-    <div class="text-center max-w-2xl mx-auto mb-12">
-      <h2 class="text-xs font-bold tracking-widest text-emerald-400 uppercase">
-        Ecosistema Emerald
-      </h2>
-      <p class="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight mt-1">
-        Todo lo que necesitas para tu aventura
-      </p>
+  <!-- 2. Noticias y quedadas (se actualizan solas) -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="mb-10">
+      <Countdown eventos={eventos} />
     </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-      
-      <!-- Pillar 1: Noticias y Quedadas -->
-      <a
-        href="/noticias"
-        class="glass-card rounded-2xl p-8 border border-emerald-500/20 hover:border-emerald-400/60 group block relative overflow-hidden"
-      >
-        <div class="w-14 h-14 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 group-hover:shadow-emerald-glow transition-all duration-300">
-          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-          </svg>
-        </div>
-        <h3 class="text-2xl font-bold text-zinc-100 group-hover:text-emerald-400 transition-colors">
-          Noticias & Quedadas
-        </h3>
-        <p class="text-sm text-zinc-400 mt-3 leading-relaxed">
-          Calendario de Community Days e incursiones en Parque del Este, flyers de cada quedada y noticias del meta PvP.
-        </p>
-        <div class="mt-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 group-hover:translate-x-1.5 transition-transform">
-          Explorar Eventos
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </div>
+    <WeeklyEvents eventos={eventos} invitacion={false} />
+    <div class="-mt-12 mb-20 text-center">
+      <a href="/noticias" class="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300">
+        Ver todas las noticias y quedadas
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" /></svg>
       </a>
-
-      <!-- Pillar 2: Bazar Emerald -->
-      <a
-        href="/bazar"
-        class="glass-card rounded-2xl p-8 border border-emerald-500/20 hover:border-emerald-400/60 group block relative overflow-hidden"
-      >
-        <div class="w-16 h-16 rounded-xl overflow-hidden border border-amber-500/40 shadow-amber-glow group-hover:scale-110 transition-all duration-300 mb-6 bg-zinc-900 flex items-center justify-center p-1">
-          <img
-            src="/images/branding/logo-bazar-emerald.jpg"
-            alt="Bazar Emerald"
-            class="w-full h-full object-cover rounded-lg"
-          />
-        </div>
-        <h3 class="text-2xl font-bold text-zinc-100 group-hover:text-amber-400 transition-colors">
-          Bazar Emerald (3D)
-        </h3>
-        <p class="text-sm text-zinc-400 mt-3 leading-relaxed">
-          Figuras articuladas de Rayquaza, accesorios Pokéball Plus+ y estuches de medallas impresos con precisión en Caracas.
-        </p>
-        <div class="mt-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400 group-hover:translate-x-1.5 transition-transform">
-          Ver Catálogo 3D
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </div>
-      </a>
-
-      <!-- Pillar 3: Gimmi Pass -->
-      <a
-        href="/gimmi-pass"
-        class="glass-card rounded-2xl p-8 border border-emerald-500/20 hover:border-emerald-400/60 group block relative overflow-hidden"
-      >
-        <div class="w-16 h-16 rounded-xl overflow-hidden border border-emerald-500/40 shadow-emerald-glow group-hover:scale-110 transition-all duration-300 mb-6 bg-white flex items-center justify-center p-1">
-          <img
-            src="/images/branding/logo-gimmi-pass.jpg"
-            alt="Gimmi Pass"
-            class="w-full h-full object-contain rounded-lg"
-          />
-        </div>
-        <h3 class="text-2xl font-bold text-zinc-100 group-hover:text-emerald-400 transition-colors">
-          Gimmi Pass
-        </h3>
-        <p class="text-sm text-zinc-400 mt-3 leading-relaxed">
-          Pases de incursión remotos y presenciales, lotes de Pokémonedas y kits de objetos coordinados para la comunidad local.
-        </p>
-        <div class="mt-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 group-hover:translate-x-1.5 transition-transform">
-          Consultar Paquetes
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </div>
-      </a>
-
     </div>
   </section>
 
-  <!-- Latest News Preview -->
+  <!-- 3. Accesos rápidos -->
   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
-      <div>
-        <span class="text-xs font-bold tracking-widest text-emerald-400 uppercase">
-          Actualidad
-        </span>
-        <h2 class="text-3xl font-black text-zinc-100 tracking-tight mt-1">
-          Últimas Noticias y Quedadas
-        </h2>
-      </div>
-      <a
-        href="/noticias"
-        class="inline-flex items-center gap-2 text-sm font-bold text-emerald-400 hover:text-emerald-300 uppercase tracking-wider"
-      >
-        Ver Todas
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </a>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      {latestNews.map((news) => (
-        <NewsCard
-          slug={news.slug}
-          title={news.data.title}
-          date={news.data.date}
-          category={news.data.category}
-          description={news.data.description}
-          image={news.data.image}
-          author={news.data.author}
-        />
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {shortcuts.map((s) => (
+        <a href={s.href} class="glass-card rounded-2xl p-6 flex items-start gap-4 group">
+          <img src={s.image} alt="" class="w-14 h-14 rounded-xl object-contain bg-zinc-900 border border-emerald-500/30 p-1 flex-shrink-0" />
+          <div>
+            <h2 class="text-xl font-black text-zinc-100 group-hover:text-emerald-400 transition-colors">{s.title}</h2>
+            <p class="text-sm text-zinc-400 mt-1">{s.text}</p>
+            <span class="inline-block mt-3 text-xs font-bold uppercase tracking-wider text-emerald-400">{s.action} →</span>
+          </div>
+        </a>
       ))}
-    </div>
-  </section>
-
-  <!-- Featured 3D Items Preview -->
-  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
-      <div>
-        <span class="text-xs font-bold tracking-widest text-amber-400 uppercase">
-          Manufactura Local
-        </span>
-        <h2 class="text-3xl font-black text-zinc-100 tracking-tight mt-1">
-          Bazar Emerald: Impresiones 3D
-        </h2>
-      </div>
-      <a
-        href="/bazar"
-        class="inline-flex items-center gap-2 text-sm font-bold text-amber-400 hover:text-amber-300 uppercase tracking-wider"
-      >
-        Catálogo Completo
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </a>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {featuredBazar.map((item) => (
-        <ProductCard
-          name={item.data.name}
-          category={item.data.category}
-          description={item.data.description}
-          material={item.data.material}
-          dimensions={item.data.dimensions}
-          image={item.data.image}
-          available={item.data.available}
-        />
-      ))}
-    </div>
-  </section>
-
-  <!-- WhatsApp & Community Banner -->
-  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-    <div class="rounded-3xl p-8 sm:p-12 relative overflow-hidden bg-gradient-to-r from-emerald-950 via-zinc-900 to-zinc-950 border border-emerald-500/40 shadow-emerald-glow">
-      <!-- Glow decoration -->
-      <div class="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-      <div class="max-w-2xl relative z-10 space-y-4">
-        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
-          Comunidad Activa Caracas
-        </span>
-        <h2 class="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight">
-          ¿Listo para conquistar las incursiones de Caracas?
-        </h2>
-        <p class="text-sm sm:text-base text-zinc-300 leading-relaxed">
-          Únete a nuestro grupo de WhatsApp para enterarte de llamados de raids legendarias en tiempo real, intercambios con suerte (Lucky Trades) y rutas seguras de juego.
-        </p>
-        <div class="pt-4 flex flex-wrap gap-4">
-          <a
-            href="/unirse"
-            class="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl text-base font-bold text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 shadow-emerald-glow transition-all duration-300 transform active:scale-95"
-          >
-            <span>Ver Requisitos de Admisión</span>
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </a>
-          <a
-            href="https://instagram.com/emeraldcityccs"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="px-6 py-3.5 rounded-xl text-base font-bold text-zinc-200 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 hover:border-pink-500/40 transition-all flex items-center gap-2"
-          >
-            Instagram @emeraldcityccs
-          </a>
-        </div>
-      </div>
     </div>
   </section>
 </Layout>

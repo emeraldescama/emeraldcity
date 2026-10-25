@@ -9,18 +9,24 @@ const PHOTO = '/images/comunidad/foto-grupal.jpg';
 const hasPhoto = existsSync(join(process.cwd(), 'public', PHOTO));
 
 const infoUrl = getGeneralContactWhatsAppUrl();
+
+const meetups = [
+  { what: 'Días de la Comunidad', where: 'Parque del Este' },
+  { what: 'Días de incursiones', where: 'Plaza Los Palos Grandes' },
+  { what: 'GO Tour, GO Fest y Wild Area', where: 'Desde las 10:00 AM' },
+];
 ---
 
-<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24" id="que-es-emerald-city">
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+<!-- Lo primero que ve quien entra: qué es Emerald City y cómo unirse -->
+<section id="comunidad" class="scroll-mt-36 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14 pb-16 sm:pb-20">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center">
     <!-- Foto -->
-    <div class="relative">
-      <div class="absolute -inset-3 bg-emerald-500/10 rounded-3xl blur-2xl pointer-events-none"></div>
+    <div class="relative order-1 lg:order-2">
+      <div class="absolute -inset-3 bg-emerald-500/15 rounded-3xl blur-2xl pointer-events-none"></div>
       {hasPhoto ? (
         <img
           src={PHOTO}
           alt="Entrenadores de Emerald City reunidos en el Pokémon GO Fest 2026"
-          loading="lazy"
           class="relative w-full aspect-[4/3] object-cover rounded-3xl border border-emerald-500/30 shadow-emerald-glow-lg"
         />
       ) : (
@@ -30,27 +36,41 @@ const infoUrl = getGeneralContactWhatsAppUrl();
       )}
     </div>
 
-    <!-- Descripción -->
-    <div class="space-y-5">
-      <h2 class="text-xs font-bold tracking-widest text-amber-400 uppercase">Nuestra comunidad</h2>
-      <p class="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight">¿Qué es Emerald City?</p>
-      <p class="text-base text-zinc-300 leading-relaxed">
-        Emerald City es la comunidad de entrenadores de <strong class="text-emerald-400">Pokémon GO en Caracas</strong>. Nos une algo simple: el juego es mejor en grupo.
+    <!-- Descripción y botón para unirse -->
+    <div class="order-2 lg:order-1 space-y-5">
+      <p class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 uppercase tracking-wider">
+        Comunidad de Pokémon GO · Caracas
       </p>
-      <p class="text-base text-zinc-300 leading-relaxed">
-        Cada Día de la Comunidad nos encontramos en el <strong class="text-zinc-100">Parque del Este</strong>, armamos equipos para los días de incursiones en la <strong class="text-zinc-100">Plaza Los Palos Grandes</strong> y vivimos juntos los GO Tour, GO Fest y Wild Area. Aquí caben todos los equipos y todos los niveles: desde quien acaba de empezar hasta quien busca su próximo Hundo.
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black text-zinc-100 tracking-tight leading-[1.05]">
+        Somos <span class="text-emerald-400">Emerald City</span>
+      </h1>
+      <p class="text-lg text-zinc-300 leading-relaxed">
+        La comunidad de entrenadores de Pokémon GO en Caracas. Nos une algo simple: <strong class="text-zinc-100">el juego es mejor en grupo.</strong>
       </p>
-      <p class="text-base text-zinc-300 leading-relaxed">
-        Inspirados en Rayquaza, el guardián de los cielos, compartimos intercambios, consejos, incursiones y sobre todo amistad.
+      <p class="text-base text-zinc-400 leading-relaxed">
+        Aquí caben todos los equipos y todos los niveles, desde quien acaba de empezar hasta quien busca su próximo Hundo. Inspirados en Rayquaza, compartimos intercambios, consejos, incursiones y sobre todo amistad.
       </p>
+
+      <ul class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {meetups.map((m) => (
+          <li class="rounded-xl bg-zinc-900/70 border border-zinc-800 p-3">
+            <p class="text-xs font-bold uppercase tracking-wider text-amber-400">{m.what}</p>
+            <p class="text-sm font-semibold text-zinc-200 mt-0.5">{m.where}</p>
+          </li>
+        ))}
+      </ul>
+
       <div class="flex flex-col sm:flex-row gap-3 pt-2">
         <a
           href="/unirse"
-          class="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 rounded-xl shadow-emerald-glow transition-all"
+          class="inline-flex items-center justify-center gap-2 px-7 py-4 text-base font-black uppercase tracking-wider text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 rounded-xl shadow-emerald-glow-lg transition-all hover:scale-[1.02]"
         >
-          Quiero ser parte de la comunidad
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+          Quiero ser parte
         </a>
-        <WhatsAppButton href={infoUrl} label="Más información" variant="secondary" size="md" />
+        <WhatsAppButton href={infoUrl} label="Más información" variant="secondary" size="lg" />
       </div>
     </div>
   </div>

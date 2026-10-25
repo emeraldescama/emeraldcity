@@ -3,6 +3,7 @@
  * envía el registro a /api/registro, que lo guarda en la hoja de Google.
  */
 import { compressImage } from './images';
+import { BAZAR_WHATSAPP_PHONE } from '../utils/whatsapp';
 
 const MIN_AGE = 16;
 const TOTAL_STEPS = 4;
@@ -117,7 +118,10 @@ async function submit() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'No se pudo enviar tu registro. Inténtalo de nuevo.');
 
-    $('listo-entrenador').textContent = $<HTMLInputElement>('entrenador').value.trim();
+    const trainer = $<HTMLInputElement>('entrenador').value.trim();
+    $('listo-entrenador').textContent = trainer;
+    const message = `¡Hola! Soy ${trainer} y ya llené el formulario para ser parte de la comunidad Emerald City.`;
+    $<HTMLAnchorElement>('listo-whatsapp').href = `https://wa.me/${BAZAR_WHATSAPP_PHONE}?text=${encodeURIComponent(message)}`;
     $('registro').classList.add('hidden');
     $('progreso').classList.add('hidden');
     $('registro-listo').classList.remove('hidden');

@@ -4,9 +4,11 @@ import { caracasToday, flyerWeek, formatWeekRange, type Evento } from '../utils/
 
 interface Props {
   eventos: Evento[];
+  /** Muestra el recuadro "Quiero ser parte de la comunidad" (la portada ya lo tiene arriba) */
+  invitacion?: boolean;
 }
 
-const { eventos } = Astro.props;
+const { eventos, invitacion = true } = Astro.props;
 
 // Ubicación inicial calculada al compilar; el script la corrige con la fecha real del visitante.
 // Los domingos la sección principal ya muestra la semana que empieza el lunes.
@@ -45,7 +47,7 @@ const later = upcoming.filter((e) => e.date > week.end);
   </div>
 
   <!-- Invitación a unirse -->
-  <div class="mb-8 p-5 sm:p-6 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+  {invitacion && <div class="mb-8 p-5 sm:p-6 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
     <div>
       <p class="text-lg sm:text-xl font-black text-zinc-100 tracking-tight">¿Juegas Pokémon GO en Caracas?</p>
       <p class="text-sm text-zinc-300 mt-1">Regístrate en minutos y te sumamos a las quedadas, incursiones y Días de la Comunidad.</p>
@@ -59,7 +61,7 @@ const later = upcoming.filter((e) => e.date > week.end);
       </svg>
       Quiero ser parte de la comunidad
     </a>
-  </div>
+  </div>}
 
   <div id="eventos-semana" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
     {thisWeek.map((evento) => <EventCard evento={evento} />)}

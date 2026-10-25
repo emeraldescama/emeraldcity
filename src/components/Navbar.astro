@@ -3,168 +3,85 @@ const pathname = Astro.url.pathname;
 
 const navLinks = [
   { name: 'Inicio', href: '/' },
-  { name: 'Noticias & Quedadas', href: '/noticias' },
+  { name: 'Conoce a la comunidad', href: '/#comunidad' },
+  { name: 'Quiero ser parte', href: '/unirse', highlight: true },
   { name: 'Haz amigos', href: '/amigos' },
   { name: 'Bazar Emerald', href: '/bazar' },
   { name: 'Gimmi Pass', href: '/gimmi-pass' },
 ];
 
 const isActive = (href: string) => {
-  if (href === '/' && pathname === '/') return true;
-  if (href !== '/' && pathname.startsWith(href)) return true;
-  return false;
+  if (href === '/') return pathname === '/';
+  if (href.startsWith('/#')) return false;
+  return pathname.startsWith(href);
 };
 ---
 
 <header class="sticky top-0 z-50 w-full glass-panel border-b border-emerald-500/20">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between h-20">
-      
+    <div class="flex items-center justify-between h-16 sm:h-20">
+
       <!-- Brand Logo -->
-      <a href="/" class="flex items-center gap-3.5 group" aria-label="Emerald City Inicio">
-        <div class="relative w-12 h-12 flex items-center justify-center rounded-xl bg-zinc-900/80 border border-emerald-500/40 group-hover:border-emerald-400 group-hover:shadow-emerald-glow transition-all duration-300 p-1">
+      <a href="/" class="flex items-center gap-3 group" aria-label="Emerald City Inicio">
+        <div class="relative w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl bg-zinc-900/80 border border-emerald-500/40 group-hover:border-emerald-400 group-hover:shadow-emerald-glow transition-all duration-300 p-1">
           <img
             src="/images/branding/logo-emerald-city.png"
             alt="Emerald City Logo Oficial"
             class="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(16,185,129,0.3)] transition-transform duration-300 group-hover:scale-110"
           />
         </div>
-        
         <div>
-          <span class="block font-black text-xl tracking-wider text-zinc-100 uppercase group-hover:text-emerald-400 transition-colors">
+          <span class="block font-black text-lg sm:text-xl tracking-wider text-zinc-100 uppercase group-hover:text-emerald-400 transition-colors">
             Emerald<span class="text-emerald-400">City</span>
           </span>
-          <span class="block text-[11px] font-semibold text-amber-400/90 tracking-widest uppercase">
+          <span class="block text-[10px] sm:text-[11px] font-semibold text-amber-400/90 tracking-widest uppercase">
             Caracas • Pokémon GO
           </span>
         </div>
       </a>
 
-      <!-- Desktop Nav Links -->
-      <nav class="hidden md:flex items-center gap-1.5" aria-label="Navegación principal">
-        {navLinks.map((link) => {
-          const active = isActive(link.href);
-          return (
+      <a
+        href="https://instagram.com/emeraldcityccs"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 p-2.5 text-zinc-400 hover:text-pink-400 hover:bg-zinc-800/80 rounded-lg transition-colors border border-transparent hover:border-pink-500/20"
+        title="Instagram @emeraldcityccs"
+        aria-label="Instagram oficial"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+        </svg>
+        <span class="hidden sm:inline text-sm font-semibold">@emeraldcityccs</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Menú: siempre visible; en el celular se desliza hacia los lados -->
+  <nav class="border-t border-emerald-500/10" aria-label="Navegación principal">
+    <ul class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1.5 overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {navLinks.map((link) => {
+        const active = isActive(link.href);
+        return (
+          <li class="flex-shrink-0">
             <a
               href={link.href}
-              class={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 relative ${
-                active
-                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 shadow-emerald-glow'
-                  : 'text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/60'
-              }`}
+              aria-current={active ? 'page' : undefined}
+              class:list={[
+                'block px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors',
+                link.highlight
+                  ? 'text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 shadow-emerald-glow'
+                  : active
+                    ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30'
+                    : 'text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/60 border border-transparent',
+              ]}
             >
               {link.name}
-              {active && (
-                <span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-emerald-400 rounded-full"></span>
-              )}
             </a>
-          );
-        })}
-      </nav>
-
-      <!-- Right Action & Social -->
-      <div class="hidden lg:flex items-center gap-3">
-        <a
-          href="https://instagram.com/emeraldcityccs"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="p-2.5 text-zinc-400 hover:text-pink-400 hover:bg-zinc-800/80 rounded-lg transition-colors border border-transparent hover:border-pink-500/20"
-          title="Instagram @emeraldcityccs"
-          aria-label="Instagram oficial"
-        >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-          </svg>
-        </a>
-
-        <a
-          href="/admin/"
-          class="text-xs font-semibold px-3 py-2 text-zinc-400 hover:text-emerald-400 rounded-lg transition-colors border border-zinc-800 hover:border-emerald-500/30"
-          title="Panel de Administración"
-        >
-          Admin
-        </a>
-
-        <a
-          href="/unirse"
-          class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-black bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 rounded-lg shadow-emerald-glow transition-all hover:scale-105"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-          </svg>
-          Unirse
-        </a>
-      </div>
-
-      <!-- Mobile Hamburger Button -->
-      <div class="flex items-center md:hidden gap-2">
-        <button
-          id="mobile-menu-btn"
-          type="button"
-          class="p-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 focus:outline-none border border-emerald-500/20"
-          aria-label="Abrir menú"
-          aria-expanded="false"
-        >
-          <svg id="icon-menu" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-          <svg id="icon-close" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Mobile Menu Drawer -->
-  <div id="mobile-menu" class="hidden md:hidden border-t border-emerald-500/20 bg-zinc-950/95 backdrop-blur-xl px-4 pt-3 pb-6 space-y-2">
-    {navLinks.map((link) => {
-      const active = isActive(link.href);
-      return (
-        <a
-          href={link.href}
-          class={`block px-4 py-3 rounded-lg text-base font-semibold ${
-            active
-              ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30'
-              : 'text-zinc-300 hover:text-white hover:bg-zinc-800/60'
-          }`}
-        >
-          {link.name}
-        </a>
-      );
-    })}
-
-    <div class="pt-4 border-t border-zinc-800 flex flex-col gap-3">
-      <a
-        href="/unirse"
-        class="w-full flex items-center justify-center gap-2 py-3 text-sm font-bold uppercase tracking-wider text-black bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-lg shadow-emerald-glow"
-      >
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-        </svg>
-        Unirse a la Comunidad
-      </a>
-      <div class="flex items-center justify-between text-xs text-zinc-400 px-2 pt-1">
-        <a href="https://instagram.com/emeraldcityccs" target="_blank" class="hover:text-pink-400">@emeraldcityccs</a>
-        <a href="/admin/" class="hover:text-emerald-400">Panel Admin</a>
-      </div>
-    </div>
-  </div>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
 </header>
-
-<script>
-  const menuBtn = document.getElementById('mobile-menu-btn');
-  const mobileMenu = document.getElementById('mobile-menu');
-  const iconMenu = document.getElementById('icon-menu');
-  const iconClose = document.getElementById('icon-close');
-
-  menuBtn?.addEventListener('click', () => {
-    const isExpanded = menuBtn.getAttribute('aria-expanded') === 'true';
-    menuBtn.setAttribute('aria-expanded', String(!isExpanded));
-    mobileMenu?.classList.toggle('hidden');
-    iconMenu?.classList.toggle('hidden');
-    iconClose?.classList.toggle('hidden');
-  });
-</script>

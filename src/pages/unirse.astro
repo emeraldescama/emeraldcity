@@ -1,6 +1,5 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import WhatsAppButton from '../components/WhatsAppButton.astro';
 import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
 
 const infoUrl = getGeneralContactWhatsAppUrl();
@@ -199,12 +198,21 @@ const tipClass = 'rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 t
         <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" /></svg>
       </div>
       <h2 class="text-3xl font-black text-zinc-100 tracking-tight">¡Listo, <span id="listo-entrenador" class="text-emerald-400"></span>!</h2>
-      <p class="text-base text-zinc-300 mt-3">Recibimos tu registro. Los organizadores revisarán tus datos y te contactarán para darte la bienvenida a la comunidad.</p>
-      <div class="flex flex-col sm:flex-row justify-center gap-3 mt-8">
-        <a href="/amigos" class="inline-flex items-center justify-center px-6 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-xl shadow-emerald-glow">
-          Haz amigos en la comunidad
+      <p class="text-base text-zinc-300 mt-3">Recibimos tu registro. Último paso: avísanos por WhatsApp para darte la bienvenida a la comunidad.</p>
+      <div class="flex flex-col items-center gap-3 mt-8">
+        <a
+          id="listo-whatsapp"
+          href={infoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-black text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 rounded-xl shadow-emerald-glow-lg transition-all"
+        >
+          <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+            <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z" />
+          </svg>
+          Avisar por WhatsApp
         </a>
-        <WhatsAppButton href={infoUrl} label="Más información" variant="secondary" size="md" />
+        <a href="/amigos" class="text-sm font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300 mt-2">Mientras tanto, haz amigos en la comunidad →</a>
       </div>
     </section>
   </div>
