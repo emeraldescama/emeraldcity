@@ -4,7 +4,7 @@
  * con "_" no se publican como rutas.
  *
  * Variable de entorno (la crea Vercel solo al conectar la base de datos):
- *   DATABASE_URL  (o POSTGRES_URL)
+ *   DATABASE_URL  (o POSTGRES_URL, o la misma con un prefijo, como STORAGE_DATABASE_URL)
  *
  * La tabla "miembros" se crea sola la primera vez que se usa.
  */
@@ -20,7 +20,18 @@ export class DbError extends Error {
   }
 }
 
-const databaseUrl = () => process.env.DATABASE_URL || process.env.POSTGRES_URL;
+/**
+ * Vercel nombra la variable DATABASE_URL, pero si al conectar Neon se elige un prefijo
+ * queda, por ejemplo, STORAGE_DATABASE_URL: se acepta cualquiera de esas.
+ */
+function databaseUrl() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  if (process.env.POSTGRES_URL) return process.env.POSTGRES_URL;
+  const key = Object.keys(process.env).find(
+    (name) => /(DATABASE_URL|POSTGRES_URL)$/.test(name) && /^postgres(ql)?:\/\//.test(process.env[name] ?? ''),
+  );
+  return key ? process.env[key] : undefined;
+}
 
 export function dbConfigured() {
   return Boolean(databaseUrl());
