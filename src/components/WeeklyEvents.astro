@@ -6,9 +6,11 @@ interface Props {
   eventos: Evento[];
   /** Muestra el recuadro "Quiero ser parte de la comunidad" (la portada ya lo tiene arriba) */
   invitacion?: boolean;
+  /** Cuántos eventos de "Próximamente" se muestran; el resto queda en /noticias */
+  maxProximos?: number;
 }
 
-const { eventos, invitacion = true } = Astro.props;
+const { eventos, invitacion = true, maxProximos } = Astro.props;
 
 // Ubicación inicial calculada al compilar; el script la corrige con la fecha real del visitante.
 // Los domingos la sección principal ya muestra la semana que empieza el lunes.
@@ -19,7 +21,7 @@ const thisWeek = upcoming.filter((e) => e.date <= week.end);
 const later = upcoming.filter((e) => e.date > week.end);
 ---
 
-<section class="mb-20" id="eventos">
+<section class="mb-20" id="eventos" data-max-proximos={maxProximos}>
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-8">
     <div>
       <h2 class="text-xs font-bold tracking-widest text-amber-400 uppercase">Agenda Emerald</h2>
@@ -78,8 +80,14 @@ const later = upcoming.filter((e) => e.date > week.end);
   <div id="eventos-proximos-bloque" class:list={['mt-16', { hidden: later.length === 0 }]}>
     <h3 class="text-2xl font-black text-zinc-100 tracking-tight mb-8">Próximamente</h3>
     <div id="eventos-proximos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {later.map((evento) => <EventCard evento={evento} />)}
+      {later.map((evento, i) => <EventCard evento={evento} hidden={maxProximos !== undefined && i >= maxProximos} />)}
     </div>
+    {maxProximos !== undefined && (
+      <a id="eventos-ver-todos" href="/noticias#eventos" class="hidden mt-8 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300">
+        Ver todos los próximos eventos
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" /></svg>
+      </a>
+    )}
   </div>
 </section>
 
@@ -104,6 +112,13 @@ const later = upcoming.filter((e) => e.date > week.end);
       if ((card.dataset.end ?? date) < today) card.remove();
       else if (date <= week.end) thisWeekGrid.appendChild(card);
       else laterGrid.appendChild(card);
+    }
+
+    // En la portada solo se ven los primeros de "Próximamente" (las imágenes ocultas no se descargan)
+    const limit = Number(document.getElementById('eventos')?.dataset.maxProximos ?? NaN);
+    if (Number.isFinite(limit)) {
+      Array.from(laterGrid.children).forEach((card, i) => card.classList.toggle('hidden', i >= limit));
+      document.getElementById('eventos-ver-todos')?.classList.toggle('hidden', laterGrid.children.length <= limit);
     }
 
     const title = document.getElementById('eventos-semana-titulo');

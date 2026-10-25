@@ -109,23 +109,23 @@ async function drawHeader(ctx: CanvasRenderingContext2D, logoUrl: string, weekSt
   }
 
   ctx.textBaseline = 'alphabetic';
-  ctx.font = '900 44px Outfit, Inter, sans-serif';
+  ctx.font = '900 44px Outfit, sans-serif';
   ctx.fillStyle = COLORS.text;
   ctx.fillText('EMERALD', 188, 108);
   ctx.fillStyle = COLORS.emerald;
   ctx.fillText('CITY', 188 + ctx.measureText('EMERALD').width + 4, 108);
-  ctx.font = '700 22px Outfit, Inter, sans-serif';
+  ctx.font = '700 22px Outfit, sans-serif';
   ctx.fillStyle = COLORS.amber;
   ctx.fillText('COMUNIDAD POKÉMON GO · CARACAS', 190, 144);
 
-  ctx.font = '900 92px Outfit, Inter, sans-serif';
+  ctx.font = '900 92px Outfit, sans-serif';
   ctx.fillStyle = COLORS.text;
   ctx.fillText('EVENTOS DE', 60, 290);
   ctx.fillStyle = COLORS.emerald;
   ctx.fillText('ESTA SEMANA', 60, 384);
 
   const range = formatWeekRange(weekStart, weekEnd).toUpperCase();
-  ctx.font = '800 28px Outfit, Inter, sans-serif';
+  ctx.font = '800 28px Outfit, sans-serif';
   const pillW = ctx.measureText(range).width + 48;
   roundRect(ctx, 60, 414, pillW, 52, 26);
   ctx.fillStyle = 'rgba(245, 158, 11, 0.16)';
@@ -187,18 +187,18 @@ async function drawEventRow(
   const titleSize = Math.round(Math.min(40, rowH * 0.24));
   const placeSize = Math.round(Math.min(25, rowH * 0.15));
 
-  ctx.font = `800 ${titleSize}px Outfit, Inter, sans-serif`;
+  ctx.font = `800 ${titleSize}px Outfit, sans-serif`;
   const titleLines = wrapText(ctx, evento.title, textW, rowH > 170 ? 2 : 1);
 
   const blockH = labelSize + 14 + titleLines.length * titleSize * 1.12 + 12 + placeSize;
   let cursor = y + (rowH - blockH) / 2 + labelSize;
 
-  ctx.font = `800 ${labelSize}px Outfit, Inter, sans-serif`;
+  ctx.font = `800 ${labelSize}px Outfit, sans-serif`;
   ctx.fillStyle = COLORS.amber;
   ctx.fillText(rowDateLabel(evento, weekStart), textX, cursor);
 
   cursor += 14;
-  ctx.font = `800 ${titleSize}px Outfit, Inter, sans-serif`;
+  ctx.font = `800 ${titleSize}px Outfit, sans-serif`;
   ctx.fillStyle = COLORS.text;
   for (const line of titleLines) {
     cursor += titleSize * 1.12;
@@ -211,7 +211,7 @@ async function drawEventRow(
   ctx.beginPath();
   ctx.arc(textX + placeSize * 0.3, cursor - placeSize * 0.35, placeSize * 0.22, 0, Math.PI * 2);
   ctx.fill();
-  ctx.font = `500 ${placeSize}px Inter, Outfit, sans-serif`;
+  ctx.font = `500 ${placeSize}px Outfit, sans-serif`;
   ctx.fillStyle = COLORS.muted;
   ctx.fillText(wrapText(ctx, evento.location, textW - placeSize, 1)[0] ?? '', textX + placeSize * 0.9, cursor);
 }
@@ -219,7 +219,7 @@ async function drawEventRow(
 function drawFooter(ctx: CanvasRenderingContext2D, extra: number) {
   const height = ctx.canvas.height;
   if (extra > 0) {
-    ctx.font = '700 26px Outfit, Inter, sans-serif';
+    ctx.font = '700 26px Outfit, sans-serif';
     ctx.fillStyle = COLORS.emerald;
     ctx.textAlign = 'center';
     ctx.fillText(`+${extra} evento${extra === 1 ? '' : 's'} más en la web`, FLYER_WIDTH / 2, height - 112);
@@ -233,7 +233,7 @@ function drawFooter(ctx: CanvasRenderingContext2D, extra: number) {
   ctx.lineTo(FLYER_WIDTH - 60, height - 88);
   ctx.stroke();
 
-  ctx.font = '700 26px Outfit, Inter, sans-serif';
+  ctx.font = '700 26px Outfit, sans-serif';
   ctx.fillStyle = COLORS.text;
   ctx.fillText('Más información: WhatsApp +58 422 2292700', 60, height - 42);
   ctx.textAlign = 'right';
@@ -256,7 +256,7 @@ export async function drawWeeklyFlyer(
   if (!ctx) return;
 
   await Promise.all(
-    ['900 40px Outfit', '800 40px Outfit', '700 40px Outfit', '500 20px Inter'].map((font) =>
+    ['900 40px Outfit', '800 40px Outfit', '700 40px Outfit', '500 20px Outfit'].map((font) =>
       document.fonts.load(font).catch(() => undefined),
     ),
   );
@@ -268,7 +268,7 @@ export async function drawWeeklyFlyer(
   const bottom = canvas.height - (eventos.length > shown.length ? 150 : 128);
 
   if (shown.length === 0) {
-    ctx.font = '800 40px Outfit, Inter, sans-serif';
+    ctx.font = '800 40px Outfit, sans-serif';
     ctx.fillStyle = COLORS.muted;
     ctx.textAlign = 'center';
     ctx.fillText('Pronto anunciaremos las quedadas', FLYER_WIDTH / 2, (top + bottom) / 2);

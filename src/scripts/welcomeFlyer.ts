@@ -22,10 +22,10 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 /** Ajusta el tamaño de letra para que el texto quepa en el ancho dado */
 function fitText(ctx: CanvasRenderingContext2D, text: string, weight: number, maxSize: number, maxWidth: number): number {
   let size = maxSize;
-  ctx.font = `${weight} ${size}px Outfit, Inter, sans-serif`;
+  ctx.font = `${weight} ${size}px Outfit, sans-serif`;
   while (size > 28 && ctx.measureText(text).width > maxWidth) {
     size -= 4;
-    ctx.font = `${weight} ${size}px Outfit, Inter, sans-serif`;
+    ctx.font = `${weight} ${size}px Outfit, sans-serif`;
   }
   return size;
 }
@@ -73,17 +73,17 @@ export async function drawWelcomeFlyer(canvas: HTMLCanvasElement, nuevo: NuevoEn
     const w = (logo.width / logo.height) * h;
     ctx.drawImage(logo, 60, 50, w, h);
   }
-  ctx.font = '900 44px Outfit, Inter, sans-serif';
+  ctx.font = '900 44px Outfit, sans-serif';
   ctx.fillStyle = '#f4f4f5';
   ctx.fillText('EMERALD', 190, 110);
   ctx.fillStyle = '#34d399';
   ctx.fillText('CITY', 190 + ctx.measureText('EMERALD').width + 4, 110);
-  ctx.font = '700 22px Outfit, Inter, sans-serif';
+  ctx.font = '700 22px Outfit, sans-serif';
   ctx.fillStyle = '#fbbf24';
   ctx.fillText('COMUNIDAD POKÉMON GO · CARACAS', 192, 146);
 
   // Título
-  ctx.font = '900 84px Outfit, Inter, sans-serif';
+  ctx.font = '900 84px Outfit, sans-serif';
   ctx.fillStyle = '#f4f4f5';
   ctx.fillText('¡TE DAMOS LA', 60, 300);
   ctx.fillStyle = '#34d399';
@@ -113,7 +113,7 @@ export async function drawWelcomeFlyer(canvas: HTMLCanvasElement, nuevo: NuevoEn
   // Datos del entrenador
   const textX = 510;
   const textW = WIDTH - textX - 60;
-  ctx.font = '800 28px Outfit, Inter, sans-serif';
+  ctx.font = '800 28px Outfit, sans-serif';
   ctx.fillStyle = '#fbbf24';
   ctx.fillText('NUEVO ENTRENADOR', textX, 560);
   const nameSize = fitText(ctx, nuevo.entrenador, 900, 88, textW);
@@ -132,7 +132,7 @@ export async function drawWelcomeFlyer(canvas: HTMLCanvasElement, nuevo: NuevoEn
     y += 90;
   }
 
-  ctx.font = '700 32px Outfit, Inter, sans-serif';
+  ctx.font = '700 32px Outfit, sans-serif';
   ctx.fillStyle = '#d4d4d8';
   for (const line of ['Ya eres parte de', 'Emerald City.', 'Nos vemos en la', 'próxima quedada.']) {
     ctx.fillText(line, textX, y);
@@ -146,7 +146,7 @@ export async function drawWelcomeFlyer(canvas: HTMLCanvasElement, nuevo: NuevoEn
   ctx.moveTo(60, 1262);
   ctx.lineTo(WIDTH - 60, 1262);
   ctx.stroke();
-  ctx.font = '700 26px Outfit, Inter, sans-serif';
+  ctx.font = '700 26px Outfit, sans-serif';
   ctx.fillStyle = '#f4f4f5';
   ctx.fillText('Más información: WhatsApp +58 422 2292700', 60, 1308);
   ctx.textAlign = 'right';

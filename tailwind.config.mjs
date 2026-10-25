@@ -31,7 +31,7 @@ export default {
         'amber-glow': '0 0 25px -5px rgba(251, 191, 36, 0.3)',
       },
       fontFamily: {
-        sans: ['Outfit', 'Inter', 'sans-serif'],
+        sans: ['Outfit', 'system-ui', 'sans-serif'],
       },
       animation: {
         'pulse-subtle': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

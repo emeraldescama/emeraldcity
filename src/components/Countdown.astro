@@ -20,8 +20,8 @@ const next = schedule.find((e) => e.start > Date.now());
 
 <div class="glass-card rounded-2xl p-6 sm:p-8 border border-emerald-500/30 relative overflow-hidden">
   <!-- Glowing ambient accent -->
-  <div class="absolute -right-16 -top-16 w-44 h-44 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
-  <div class="absolute -left-16 -bottom-16 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="hidden lg:block absolute -right-16 -top-16 w-44 h-44 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="hidden lg:block absolute -left-16 -bottom-16 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
   <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
     <!-- Event Details -->

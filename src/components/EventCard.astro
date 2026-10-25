@@ -5,9 +5,11 @@ import { eventEnd, eventStart, formatDateRange, formatLongDate, formatTime, hasM
 
 interface Props {
   evento: Evento;
+  /** Oculta la tarjeta desde el principio (la agenda decide luego en el navegador) */
+  hidden?: boolean;
 }
 
-const { evento } = Astro.props;
+const { evento, hidden = false } = Astro.props;
 const meetup = hasMeetup(evento);
 const multiDay = eventEnd(evento) !== evento.date;
 const dateLabel = multiDay ? formatDateRange(evento) : formatLongDate(evento.date);
@@ -17,7 +19,7 @@ const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`
 ---
 
 <article
-  class="evento-card glass-card rounded-2xl overflow-hidden flex flex-col group h-full"
+  class:list={['evento-card glass-card rounded-2xl overflow-hidden flex flex-col group h-full', { hidden }]}
   data-date={evento.date}
   data-end={eventEnd(evento)}
   data-start={eventStart(evento)}
