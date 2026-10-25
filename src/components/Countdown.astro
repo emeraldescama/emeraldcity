@@ -1,0 +1,104 @@
+---
+interface Props {
+  targetDate?: string;
+  eventName?: string;
+  location?: string;
+}
+
+const {
+  targetDate = "2026-03-22T14:00:00",
+  eventName = "Día de la Comunidad Clásico en Caracas",
+  location = "Paseo Los Próceres, Caracas",
+} = Astro.props;
+---
+
+<div class="glass-card rounded-2xl p-6 sm:p-8 border border-emerald-500/30 relative overflow-hidden">
+  <!-- Glowing ambient accent -->
+  <div class="absolute -right-16 -top-16 w-44 h-44 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute -left-16 -bottom-16 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+    <!-- Event Details -->
+    <div>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wider uppercase mb-3">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        Próxima Quedada Oficial
+      </div>
+      <h3 class="text-xl sm:text-2xl font-black text-zinc-100 tracking-tight">
+        {eventName}
+      </h3>
+      <p class="text-sm text-zinc-400 mt-1 flex items-center gap-2">
+        <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+        <span>{location}</span>
+      </p>
+    </div>
+
+    <!-- Countdown Timer Units -->
+    <div id="countdown-container" data-target={targetDate} class="grid grid-cols-4 gap-2.5 sm:gap-3 text-center">
+      <div class="bg-zinc-900/90 border border-emerald-500/20 rounded-xl p-3 min-w-[64px] sm:min-w-[76px]">
+        <span id="cd-days" class="block text-2xl sm:text-3xl font-black text-emerald-400 font-mono">00</span>
+        <span class="text-[10px] sm:text-xs uppercase font-bold text-zinc-400 tracking-wider">Días</span>
+      </div>
+      <div class="bg-zinc-900/90 border border-emerald-500/20 rounded-xl p-3 min-w-[64px] sm:min-w-[76px]">
+        <span id="cd-hours" class="block text-2xl sm:text-3xl font-black text-emerald-400 font-mono">00</span>
+        <span class="text-[10px] sm:text-xs uppercase font-bold text-zinc-400 tracking-wider">Horas</span>
+      </div>
+      <div class="bg-zinc-900/90 border border-emerald-500/20 rounded-xl p-3 min-w-[64px] sm:min-w-[76px]">
+        <span id="cd-minutes" class="block text-2xl sm:text-3xl font-black text-emerald-400 font-mono">00</span>
+        <span class="text-[10px] sm:text-xs uppercase font-bold text-zinc-400 tracking-wider">Min</span>
+      </div>
+      <div class="bg-zinc-900/90 border border-emerald-500/20 rounded-xl p-3 min-w-[64px] sm:min-w-[76px]">
+        <span id="cd-seconds" class="block text-2xl sm:text-3xl font-black text-amber-400 font-mono">00</span>
+        <span class="text-[10px] sm:text-xs uppercase font-bold text-zinc-400 tracking-wider">Seg</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function initCountdown() {
+    const container = document.getElementById('countdown-container');
+    if (!container) return;
+
+    const targetDateStr = container.getAttribute('data-target');
+    if (!targetDateStr) return;
+
+    const targetTime = new Date(targetDateStr).getTime();
+
+    const daysEl = document.getElementById('cd-days');
+    const hoursEl = document.getElementById('cd-hours');
+    const minEl = document.getElementById('cd-minutes');
+    const secEl = document.getElementById('cd-seconds');
+
+    function update() {
+      const now = new Date().getTime();
+      const distance = targetTime - now;
+
+      if (distance <= 0) {
+        if (daysEl) daysEl.innerText = '00';
+        if (hoursEl) hoursEl.innerText = '00';
+        if (minEl) minEl.innerText = '00';
+        if (secEl) secEl.innerText = '00';
+        return;
+      }
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      if (daysEl) daysEl.innerText = String(days).padStart(2, '0');
+      if (hoursEl) hoursEl.innerText = String(hours).padStart(2, '0');
+      if (minEl) minEl.innerText = String(minutes).padStart(2, '0');
+      if (secEl) secEl.innerText = String(seconds).padStart(2, '0');
+    }
+
+    update();
+    setInterval(update, 1000);
+  }
+
+  initCountdown();
+</script>

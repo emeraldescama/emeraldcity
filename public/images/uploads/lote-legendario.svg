@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgLeg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14532d" />
+      <stop offset="60%" stop-color="#022c22" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#fbbf24" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="400" height="300" rx="16" fill="url(#bgLeg)" />
+  <circle cx="200" cy="150" r="110" fill="url(#starGlow)" />
+  <!-- Remote Raid Pass (Blue) & Premium Raid Pass (Green) & Lucky Egg -->
+  <g transform="translate(130, 90)">
+    <rect x="0" y="0" width="60" height="95" rx="8" fill="#0284c7" stroke="#38bdf8" stroke-width="3" transform="rotate(-15 30 50)" />
+    <circle cx="25" cy="50" r="12" fill="#0369a1" />
+  </g>
+  <g transform="translate(180, 85)">
+    <rect x="0" y="0" width="60" height="95" rx="8" fill="#059669" stroke="#34d399" stroke-width="3" transform="rotate(10 30 50)" />
+    <circle cx="30" cy="50" r="12" fill="#047857" />
+  </g>
+  <!-- Lucky Egg -->
+  <ellipse cx="275" cy="155" rx="28" ry="38" fill="#f43f5e" stroke="#fda4af" stroke-width="3" transform="rotate(10 275 155)" />
+  <circle cx="270" cy="140" r="7" fill="#fff" opacity="0.6" />
+</svg>

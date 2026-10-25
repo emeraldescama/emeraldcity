@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgPe" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="60%" stop-color="#022c22" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <linearGradient id="rayqG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bgPe)" />
+  <!-- Trees / Greenery abstract for Parque del Este / Lago de la Corbeta -->
+  <circle cx="200" cy="380" r="140" fill="#022c22" opacity="0.6" />
+  <circle cx="600" cy="380" r="160" fill="#022c22" opacity="0.6" />
+  <!-- Rayquaza Silhouette swooping down for Raid Hour -->
+  <path d="M 100 200 Q 300 80 500 180 T 750 140" fill="none" stroke="url(#rayqG)" stroke-width="18" stroke-linecap="round" />
+  <circle cx="320" cy="140" r="16" stroke="#fbbf24" stroke-width="4" fill="none" />
+  <circle cx="480" cy="180" r="16" stroke="#fbbf24" stroke-width="4" fill="none" />
+  <polygon points="750,140 790,115 770,155" fill="#34d399" />
+  <polygon points="750,140 785,175 765,160" fill="#34d399" />
+  <!-- Raid Egg / Gym Pillar -->
+  <rect x="360" y="240" width="80" height="180" rx="10" fill="#0b1319" stroke="#10b981" stroke-width="3" />
+  <circle cx="400" cy="270" r="24" fill="#fbbf24" opacity="0.85" />
+  <!-- Banner -->
+  <rect x="50" y="50" width="460" height="60" rx="10" fill="#030712" fill-opacity="0.85" stroke="#fbbf24" stroke-width="2" />
+  <text x="70" y="88" fill="#fbbf24" font-family="Outfit, Inter, sans-serif" font-weight="900" font-size="24">RAID HOUR: RAYQUAZA</text>
+  <text x="70" y="103" fill="#34d399" font-family="Outfit, Inter, sans-serif" font-weight="bold" font-size="12">PARQUE DEL ESTE • QUEDADA CARACAS</text>
+</svg>

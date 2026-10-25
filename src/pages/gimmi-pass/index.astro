@@ -1,0 +1,162 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import GimmiPassCard from '../../components/GimmiPassCard.astro';
+import WhatsAppButton from '../../components/WhatsAppButton.astro';
+import { getGeneralContactWhatsAppUrl, GIMMI_PASS_WHATSAPP_PHONE } from '../../utils/whatsapp';
+import { getCollection } from 'astro:content';
+
+const packs = await getCollection('gimmi-pass');
+const sortedPacks = packs.sort((a, b) => (b.data.featured ? 1 : 0) - (a.data.featured ? 1 : 0));
+
+const helpWhatsAppUrl = getGeneralContactWhatsAppUrl(
+  '¡Hola! Vengo desde la página web oficial y tengo una consulta sobre los paquetes de Gimmi Pass.',
+  GIMMI_PASS_WHATSAPP_PHONE
+);
+---
+
+<Layout
+  title="Gimmi Pass | Pases de Incursión y Pokémonedas en Caracas"
+  description="Catálogo de paquetes de Pokémonedas y pases de incursión (remoto y presencial) para la comunidad de Pokémon GO en Caracas. Coordinación rápida vía WhatsApp."
+>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24">
+    
+    <!-- Page Header -->
+    <div class="max-w-3xl mb-12">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 uppercase tracking-wider mb-4">
+        Servicios Comunitarios
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-black text-zinc-100 tracking-tight">
+        Gimmi <span class="text-emerald-400">Pass</span>
+      </h1>
+      <p class="text-base sm:text-lg text-zinc-400 mt-4 leading-relaxed">
+        Paquetes de apoyo para entrenadores locales de Caracas. Pases de incursión remotos y presenciales, Pokémonedas para ampliar espacio y kits de objetos para eventos oficiales.
+      </p>
+    </div>
+
+    <!-- Security & Process Badges -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+      <div class="glass-card rounded-2xl p-5 border border-emerald-500/20 flex items-start gap-4">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-zinc-100">Sin Pasarelas Externas</h4>
+          <p class="text-xs text-zinc-400 mt-1">Trato directo persona a persona mediante WhatsApp con el equipo de confianza de la comunidad.</p>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5 border border-emerald-500/20 flex items-start gap-4">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <line x1="12" y1="8" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-zinc-100">Múltiples Métodos Locales</h4>
+          <p class="text-xs text-zinc-400 mt-1">Pago Móvil (tasa BCV), Binance Pay (USDT), Zelle o efectivo en mano durante las quedadas.</p>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5 border border-emerald-500/20 flex items-start gap-4">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-zinc-100">Entrega Rápida</h4>
+          <p class="text-xs text-zinc-400 mt-1">Acreditación antes de que inicien las horas de raids o el Community Day para que no te pierdas nada.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Packs Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20 items-stretch">
+      {sortedPacks.map((pack) => (
+        <GimmiPassCard
+          name={pack.data.name}
+          description={pack.data.description}
+          items_included={pack.data.items_included}
+          price_ref={pack.data.price_ref}
+          image={pack.data.image}
+          featured={pack.data.featured}
+        />
+      ))}
+    </div>
+
+    <!-- Step-by-Step Explanation -->
+    <div class="glass-card rounded-3xl p-8 sm:p-12 border border-emerald-500/30 mb-20">
+      <div class="max-w-2xl mx-auto text-center mb-10">
+        <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">
+          Paso a Paso
+        </span>
+        <h3 class="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight mt-1">
+          ¿Cómo funciona la adquisición de Gimmi Pass?
+        </h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+        <div class="text-center space-y-3">
+          <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold text-lg flex items-center justify-center mx-auto border border-emerald-500/40">
+            1
+          </div>
+          <h4 class="font-bold text-zinc-100">Elige tu Paquete</h4>
+          <p class="text-xs text-zinc-400 leading-relaxed">
+            Revisa los items incluidos y presiona el botón "Adquirir vía WhatsApp".
+          </p>
+        </div>
+
+        <div class="text-center space-y-3">
+          <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold text-lg flex items-center justify-center mx-auto border border-emerald-500/40">
+            2
+          </div>
+          <h4 class="font-bold text-zinc-100">Confirma en el Chat</h4>
+          <p class="text-xs text-zinc-400 leading-relaxed">
+            El enlace abrirá una conversación con el mensaje prellenado del paquete. Te enviaremos los datos de pago al instante.
+          </p>
+        </div>
+
+        <div class="text-center space-y-3">
+          <div class="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 font-mono font-bold text-lg flex items-center justify-center mx-auto border border-amber-500/40">
+            3
+          </div>
+          <h4 class="font-bold text-zinc-100">Recibe y Juega</h4>
+          <p class="text-xs text-zinc-400 leading-relaxed">
+            Verificamos tu comprobante y acreditamos los pases o monedas en tu cuenta de manera limpia y segura.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Banner -->
+    <div class="p-8 rounded-2xl glass-card border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+      <div class="flex flex-col sm:flex-row items-center gap-4">
+        <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white p-1.5 flex-shrink-0 shadow-emerald-glow">
+          <img
+            src="/images/branding/logo-gimmi-pass.jpg"
+            alt="Gimmi Pass"
+            class="w-full h-full object-contain"
+          />
+        </div>
+        <div>
+          <h4 class="text-lg font-bold text-zinc-100">¿Tienes un requerimiento especial o preguntas?</h4>
+          <p class="text-sm text-zinc-400 mt-1">
+            Canal oficial: <strong class="text-emerald-400 font-semibold">+58 422-4050411</strong>. Un moderador de la comunidad te atenderá al instante.
+          </p>
+        </div>
+      </div>
+      <WhatsAppButton
+        href={helpWhatsAppUrl}
+        label="Consultar Dudas"
+        variant="secondary"
+        size="md"
+      />
+    </div>
+
+  </div>
+</Layout>

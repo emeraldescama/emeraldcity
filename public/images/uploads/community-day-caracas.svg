@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgCd" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#022c22" />
+      <stop offset="50%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bgCd)" />
+  <!-- Caracas Skyline Abstract & Los Próceres obelisk silhouette -->
+  <path d="M 0 420 L 150 420 L 150 340 L 220 340 L 220 420 L 380 420 L 400 200 L 420 420 L 580 420 L 580 320 L 640 320 L 640 420 L 800 420 L 800 500 L 0 500 Z" fill="#021f18" opacity="0.7" />
+  <!-- Ávila Mountain Silhouette in background -->
+  <path d="M 0 320 Q 250 180 450 240 T 800 220 L 800 420 L 0 420 Z" fill="#043828" opacity="0.5" />
+  <!-- Glowing Pokémon GO style icon / Pokeball beacon -->
+  <circle cx="400" cy="180" r="70" fill="#059669" opacity="0.3" filter="blur(20px)" />
+  <circle cx="400" cy="180" r="50" fill="#10b981" stroke="#34d399" stroke-width="4" />
+  <circle cx="400" cy="180" r="20" fill="#ffffff" />
+  <circle cx="400" cy="180" r="8" fill="#10b981" />
+  <!-- Title banner -->
+  <rect x="50" y="50" width="420" height="60" rx="10" fill="#030712" fill-opacity="0.85" stroke="#10b981" stroke-width="2" />
+  <text x="70" y="88" fill="#34d399" font-family="Outfit, Inter, sans-serif" font-weight="900" font-size="24">COMMUNITY DAY CARACAS</text>
+  <text x="70" y="103" fill="#fbbf24" font-family="Outfit, Inter, sans-serif" font-weight="bold" font-size="12">LOS PRÓCERES • EMERALD CITY</text>
+</svg>

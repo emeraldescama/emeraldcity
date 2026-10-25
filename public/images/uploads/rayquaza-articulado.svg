@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#022c22" />
+      <stop offset="50%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <linearGradient id="emG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  <rect width="600" height="400" fill="url(#bgG)" />
+  <g opacity="0.15">
+    <circle cx="300" cy="200" r="160" stroke="#10b981" stroke-width="4" fill="none" />
+    <circle cx="300" cy="200" r="120" stroke="#fbbf24" stroke-width="2" stroke-dasharray="10 10" fill="none" />
+  </g>
+  <!-- Dragon Rayquaza Silhouette / Graphic -->
+  <path d="M 120 280 C 180 180, 240 320, 320 200 C 380 100, 480 160, 500 240" fill="none" stroke="url(#emG)" stroke-width="24" stroke-linecap="round" />
+  <!-- Rings -->
+  <circle cx="210" cy="220" r="22" stroke="#fbbf24" stroke-width="6" fill="none" />
+  <circle cx="330" cy="190" r="22" stroke="#fbbf24" stroke-width="6" fill="none" />
+  <circle cx="430" cy="160" r="22" stroke="#fbbf24" stroke-width="6" fill="none" />
+  <!-- Horns & Head -->
+  <polygon points="500,240 540,210 515,250" fill="#34d399" />
+  <polygon points="500,240 535,275 510,255" fill="#34d399" />
+  <circle cx="510" cy="245" r="4" fill="#fbbf24" />
+  <!-- Text Label -->
+  <rect x="30" y="325" width="260" height="45" rx="8" fill="#030712" fill-opacity="0.8" stroke="#10b981" stroke-width="1.5" />
+  <text x="45" y="354" fill="#34d399" font-family="Outfit, Inter, sans-serif" font-weight="bold" font-size="16">RAYQUAZA ARTICULADO 3D</text>
+</svg>

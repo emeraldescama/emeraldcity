@@ -1,0 +1,184 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import WhatsAppButton from '../../components/WhatsAppButton.astro';
+import { getBazarWhatsAppUrl, getBazarCatalogUrl, BAZAR_WHATSAPP_PHONE } from '../../utils/whatsapp';
+import { getCollection } from 'astro:content';
+
+const products = await getCollection('bazar');
+const sortedProducts = products.sort((a, b) => {
+  if (a.id.includes('rayquaza')) return -1;
+  if (b.id.includes('rayquaza')) return 1;
+  if (a.id.includes('zacian')) return -1;
+  if (b.id.includes('zacian')) return 1;
+  return 0;
+});
+const custom3DWhatsAppUrl = getBazarWhatsAppUrl('Proyecto Personalizado / STL a Medida');
+const catalogUrl = getBazarCatalogUrl();
+---
+
+<Layout
+  title="Bazar Emerald 3D | Figuras y Accesorios Pokémon GO Caracas"
+  description="Catálogo de impresiones 3D personalizadas para entrenadores de Pokémon GO en Caracas. Figuras de Rayquaza, soportes Pokéball Plus+ y estuches de medallas."
+>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-24">
+    
+    <!-- Page Header with Brand Logo -->
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12 pb-8 border-b border-zinc-800/80">
+      <div class="flex items-start sm:items-center gap-5">
+        <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-amber-500/50 shadow-amber-glow flex-shrink-0 bg-zinc-900 p-1">
+          <img
+            src="/images/branding/logo-bazar-emerald.jpg"
+            alt="Bazar Emerald Logo"
+            class="w-full h-full object-cover rounded-xl"
+          />
+        </div>
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider mb-2">
+            Manufactura & Creación 3D • Caracas
+          </div>
+          <h1 class="text-3xl sm:text-5xl font-black text-zinc-100 tracking-tight">
+            Bazar <span class="text-amber-400">Emerald</span>
+          </h1>
+          <p class="text-xs sm:text-sm text-zinc-400 mt-1">
+            Contacto oficial: <strong class="text-zinc-200">+58 422-2292700</strong>
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Catalog Action -->
+      <div class="flex flex-wrap gap-3">
+        <a
+          href={catalogUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider text-black bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-amber-glow transition-all hover:scale-105"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"/>
+          </svg>
+          Ver Catálogo en WhatsApp
+        </a>
+      </div>
+    </div>
+
+    <!-- Description & Intro banner -->
+    <div class="max-w-3xl mb-10">
+      <p class="text-base sm:text-lg text-zinc-300 leading-relaxed">
+        Coleccionables, figuras articuladas y utilidades ergonómicas para jugadores de Pokémon GO en Caracas. Impresos en filamentos de alta resistencia y acabados metalizados o seda.
+      </p>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="flex flex-wrap items-center gap-2.5 mb-10 pb-4 border-b border-zinc-800" id="filter-container">
+      <button
+        type="button"
+        class="filter-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 bg-emerald-500 text-zinc-950 shadow-emerald-glow"
+        data-filter="all"
+      >
+        Todos los Modelos ({products.length})
+      </button>
+      <button
+        type="button"
+        class="filter-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 bg-zinc-900 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-800"
+        data-filter="Miniaturas"
+      >
+        Miniaturas
+      </button>
+      <button
+        type="button"
+        class="filter-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 bg-zinc-900 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-800"
+        data-filter="Útiles"
+      >
+        Útiles
+      </button>
+      <button
+        type="button"
+        class="filter-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 bg-zinc-900 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-800"
+        data-filter="Cosplay/Accesorios"
+      >
+        Cosplay / Accesorios
+      </button>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" id="products-grid">
+      {sortedProducts.map((item) => (
+        <div class="product-item transition-all duration-300" data-cat={item.data.category}>
+          <ProductCard
+            name={item.data.name}
+            category={item.data.category}
+            description={item.data.description}
+            material={item.data.material}
+            dimensions={item.data.dimensions}
+            image={item.data.image}
+            available={item.data.available}
+          />
+        </div>
+      ))}
+    </div>
+
+    <!-- Custom 3D Orders Banner -->
+    <div class="mt-20 rounded-3xl p-8 sm:p-10 glass-card border border-amber-500/30 relative overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-60 h-60 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+        <div class="lg:col-span-8 space-y-3">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 uppercase tracking-wider">
+            ¿Tienes un modelo 3D en mente?
+          </div>
+          <h3 class="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight">
+            Imprimimos tus archivos STL personalizados
+          </h3>
+          <p class="text-sm text-zinc-300 leading-relaxed max-w-2xl">
+            Si buscas un Pokémon específico, medalla de otra región, trofeo de torneo PvP o repuesto de accesorios, envíanos el archivo o la idea por WhatsApp para cotizar material, color y tiempo de impresión. Entregas en Caracas.
+          </p>
+        </div>
+
+        <div class="lg:col-span-4 flex lg:justify-end">
+          <WhatsAppButton
+            href={custom3DWhatsAppUrl}
+            label="Cotizar Proyecto 3D"
+            variant="amber"
+            size="lg"
+          />
+        </div>
+      </div>
+    </div>
+
+  </div>
+</Layout>
+
+<script>
+  function setupFilters() {
+    const buttons = document.querySelectorAll<HTMLButtonElement>('.filter-btn');
+    const items = document.querySelectorAll<HTMLElement>('.product-item');
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const filter = btn.getAttribute('data-filter');
+
+        // Update active class
+        buttons.forEach((b) => {
+          b.classList.remove('bg-emerald-500', 'text-zinc-950', 'shadow-emerald-glow', 'active');
+          b.classList.add('bg-zinc-900', 'text-zinc-400', 'border', 'border-zinc-800');
+        });
+
+        btn.classList.add('bg-emerald-500', 'text-zinc-950', 'shadow-emerald-glow', 'active');
+        btn.classList.remove('bg-zinc-900', 'text-zinc-400', 'border-zinc-800');
+
+        // Filter items
+        items.forEach((item) => {
+          const itemCat = item.getAttribute('data-cat');
+          if (filter === 'all' || itemCat === filter) {
+            item.style.display = 'block';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      });
+    });
+  }
+
+  setupFilters();
+</script>

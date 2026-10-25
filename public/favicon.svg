@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <!-- Background Circle -->
+  <circle cx="50" cy="50" r="46" fill="#030712" stroke="url(#emeraldGrad)" stroke-width="4" filter="url(#glow)"/>
+  <!-- Rayquaza Ring Amber Glow -->
+  <circle cx="50" cy="50" r="30" stroke="#fbbf24" stroke-width="3.5" stroke-dasharray="8 6" fill="none" opacity="0.9"/>
+  <!-- Emerald Gem Center -->
+  <polygon points="50,22 72,50 50,78 28,50" fill="url(#emeraldGrad)" />
+  <polygon points="50,30 64,50 50,70 36,50" fill="#064e3b" />
+  <!-- Center Highlight -->
+  <circle cx="50" cy="50" r="5" fill="#fef08a" />
+</svg>

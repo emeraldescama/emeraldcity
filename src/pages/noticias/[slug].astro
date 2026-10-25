@@ -1,0 +1,108 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import WhatsAppButton from '../../components/WhatsAppButton.astro';
+import { getGeneralContactWhatsAppUrl } from '../../utils/whatsapp';
+import { getCollection, type CollectionEntry } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('noticias');
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<'noticias'>;
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+
+const formattedDate = new Intl.DateTimeFormat('es-VE', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+}).format(new Date(post.data.date));
+
+const shareWhatsAppUrl = getGeneralContactWhatsAppUrl(
+  `¡Hola! Estoy leyendo sobre "${post.data.title}" en la web de Emerald City y me gustaría unirme a esta quedada.`
+);
+---
+
+<Layout
+  title={`${post.data.title} | Emerald City`}
+  description={post.data.description}
+  image={post.data.image}
+>
+  <article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24">
+    
+    <!-- Back to News -->
+    <a
+      href="/noticias"
+      class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition-colors mb-8"
+    >
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+      Volver a Noticias y Quedadas
+    </a>
+
+    <!-- Post Header -->
+    <header class="space-y-6 mb-10">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${
+          post.data.category === 'Quedada'
+            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+        }`}>
+          {post.data.category}
+        </span>
+        <span class="text-xs text-zinc-400">
+          Publicado el {formattedDate}
+        </span>
+        <span class="text-zinc-600">•</span>
+        <span class="text-xs text-zinc-400">
+          Por <strong class="text-zinc-200">{post.data.author}</strong>
+        </span>
+      </div>
+
+      <h1 class="text-3xl sm:text-5xl font-black text-zinc-100 tracking-tight leading-tight">
+        {post.data.title}
+      </h1>
+
+      <p class="text-lg text-zinc-300 leading-relaxed font-medium">
+        {post.data.description}
+      </p>
+
+      <!-- Featured Image Banner -->
+      <div class="rounded-2xl overflow-hidden border border-emerald-500/30 aspect-[16/9] shadow-emerald-glow bg-zinc-900">
+        <img
+          src={post.data.image}
+          alt={post.data.title}
+          class="w-full h-full object-cover"
+        />
+      </div>
+    </header>
+
+    <!-- Markdown Article Body -->
+    <div class="prose prose-invert prose-emerald max-w-none prose-headings:font-black prose-headings:tracking-tight prose-h2:text-2xl prose-h3:text-xl prose-p:text-zinc-300 prose-p:leading-relaxed prose-a:text-emerald-400 prose-blockquote:border-l-emerald-500 prose-blockquote:bg-zinc-900/50 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg">
+      <Content />
+    </div>
+
+    <!-- Bottom Actions & WhatsApp Community Invite -->
+    <div class="mt-16 pt-8 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div>
+        <h4 class="text-base font-bold text-zinc-100">¿Asistirás a este evento en Caracas?</h4>
+        <p class="text-xs text-zinc-400 mt-1">Coordina con otros entrenadores en nuestro chat comunitario de WhatsApp.</p>
+      </div>
+      <WhatsAppButton
+        href={shareWhatsAppUrl}
+        label="Coordinar en WhatsApp"
+        variant="primary"
+        size="md"
+      />
+    </div>
+
+  </article>
+</Layout>

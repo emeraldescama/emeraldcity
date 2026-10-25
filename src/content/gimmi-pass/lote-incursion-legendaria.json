@@ -1,0 +1,13 @@
+{
+  "name": "Lote Incursión Legendaria",
+  "description": "El paquete estrella para las horas de incursión comunitarias. Maximiza tus oportunidades de conseguir Pokémon Legendarios y Shiny.",
+  "items_included": [
+    "3 Pases de Incursión Remota oficiales",
+    "5 Pases de Batalla Premium para incursiones presenciales",
+    "2 Huevos de la Suerte (Doble PX por raid)",
+    "2 Trozos Estrella adicionales"
+  ],
+  "price_ref": 5.00,
+  "image": "/images/uploads/lote-legendario.svg",
+  "featured": true
+}
