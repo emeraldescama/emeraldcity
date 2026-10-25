@@ -58,6 +58,8 @@ const SCHEMA = [
   )`,
   `ALTER TABLE miembros ADD COLUMN IF NOT EXISTS telefono text NOT NULL DEFAULT ''`,
   `ALTER TABLE miembros ADD COLUMN IF NOT EXISTS contacto boolean NOT NULL DEFAULT false`,
+  // Limpia ciudades que en realidad eran el enlace de Drive de la captura (importaciones viejas)
+  `UPDATE miembros SET ciudad = '' WHERE ciudad ~* '^https?://'`,
   `CREATE TABLE IF NOT EXISTS recomendaciones (
     codigo text NOT NULL,
     votante text NOT NULL,
@@ -283,10 +285,25 @@ export async function toggleRecommendation(codigo, votante) {
   return { recomendaciones: rows[0].total, recomendado: rows[0].recomendado };
 }
 
-/** Teléfono para "Tengo intercambio con suerte", solo si el miembro lo aceptó */
-export async function contactPhone(codigo) {
+/**
+ * Datos para "Tengo intercambio con suerte". El teléfono solo se entrega si el miembro
+ * aceptó recibir mensajes; si no, el pedido se envía a la comunidad.
+ */
+export async function contactInfo(codigo) {
   const rows = await run((sql) =>
-    sql.query(`SELECT entrenador, telefono FROM miembros WHERE codigo = $1 AND mostrar AND contacto AND telefono <> ''`, [codigo]),
+    sql.query(
+      `SELECT entrenador, CASE WHEN contacto AND telefono <> '' THEN telefono ELSE '' END AS telefono
+       FROM miembros WHERE codigo = $1 AND mostrar`,
+      [codigo],
+    ),
   );
   return rows[0] ?? null;
+}
+
+/** Da permiso de mensajes a los miembros importados que tienen teléfono. Devuelve cuántos cambió */
+export async function allowImportedContact() {
+  const rows = await run((sql) =>
+    sql.query(`UPDATE miembros SET contacto = true WHERE origen = 'importado' AND telefono <> '' AND NOT contacto RETURNING id`),
+  );
+  return rows.length;
 }

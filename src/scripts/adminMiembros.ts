@@ -199,6 +199,22 @@ async function removeMember(member: Miembro, button: HTMLButtonElement) {
   }
 }
 
+async function allowImportedContact(button: HTMLButtonElement) {
+  if (!confirmed(button, 'Permitir WhatsApp a importados')) return;
+  button.disabled = true;
+  try {
+    const { cambiados } = await api<{ cambiados: number }>('contactoImportados');
+    await loadMembers();
+    showStatus(cambiados ? `Listo: ${cambiados} miembro${cambiados === 1 ? '' : 's'} importado${cambiados === 1 ? '' : 's'} ya recibe${cambiados === 1 ? '' : 'n'} mensajes de intercambio.` : 'No hay miembros importados con teléfono pendientes de permiso.', 'ok');
+  } catch (err) {
+    showStatus((err as Error).message, 'error');
+  } finally {
+    button.disabled = false;
+    button.dataset.confirm = 'false';
+    button.textContent = 'Permitir WhatsApp a importados';
+  }
+}
+
 function downloadExcel() {
   const headers = ['Fecha', 'Nombre de entrenador', 'Nombre y apellido', 'Ciudad o país', 'Código de amistad', 'WhatsApp', 'Acepta mensajes de intercambio', '¿Tiene Campfire?', 'Nombre en Campfire', 'Edad', 'Aparece en Haz amigos', 'Bienvenida', 'Origen'];
   const rows = members.map((m) => [
@@ -384,6 +400,8 @@ export function initMembers(options: { api: Api; showStatus: ShowStatus; canShar
   $('member-refresh').addEventListener('click', () => loadMembers());
   $('member-search').addEventListener('input', renderMembers);
   $('member-excel').addEventListener('click', downloadExcel);
+  const allowButton = $<HTMLButtonElement>('member-allow-contact');
+  allowButton.addEventListener('click', () => allowImportedContact(allowButton));
   $('member-import-file').addEventListener('change', onImportFile);
   $('import-confirm').addEventListener('click', confirmImport);
   $('import-cancel').addEventListener('click', cancelImport);

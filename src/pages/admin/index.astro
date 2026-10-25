@@ -152,6 +152,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
             <label for="member-import-file" class={`${ghostButton} cursor-pointer`}>Importar hoja anterior</label>
             <input id="member-import-file" type="file" accept=".xlsx,.csv,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="sr-only" />
             <button id="member-refresh" type="button" class={ghostButton}>Actualizar</button>
+            <button id="member-allow-contact" type="button" class={ghostButton} title="Da permiso de WhatsApp a los miembros importados que tienen teléfono">Permitir WhatsApp a importados</button>
           </div>
         </div>
 
@@ -177,9 +178,9 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           </ol>
         </div>
 
-        <div id="member-table-wrap" class="hidden overflow-x-auto rounded-2xl border border-zinc-800">
+        <div id="member-table-wrap" class="hidden overflow-auto max-h-[70vh] rounded-2xl border border-zinc-800">
           <table class="w-full text-sm text-zinc-300">
-            <thead class="bg-zinc-900/90 text-xs uppercase tracking-wider text-zinc-400 text-left">
+            <thead class="sticky top-0 z-10 bg-zinc-900 text-xs uppercase tracking-wider text-zinc-400 text-left">
               <tr>
                 <th class="px-3 py-3">Entrenador</th>
                 <th class="px-3 py-3">Código</th>

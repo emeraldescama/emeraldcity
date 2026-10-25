@@ -31,10 +31,10 @@ import Layout from '../layouts/Layout.astro';
     <!-- Recomendar e intercambios -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-sm text-zinc-300">
       <p class="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
-        <strong class="text-amber-300">¿Te envía regalos todos los días?</strong> Toca la manito para recomendarlo. Los más recomendados salen con la marca "Envía regalos".
+        <strong class="text-amber-300">Dale un like si el entrenador envía regalos seguido</strong> y así queda recomendado. Con 3 likes o más sale con la marca "Envía regalos".
       </p>
       <p class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-        <strong class="text-emerald-300">¿Tienen un intercambio con suerte?</strong> Toca "Tengo intercambio con suerte" y se abre un chat de WhatsApp con ese entrenador.
+        <strong class="text-emerald-300">¿Tienen un intercambio con suerte?</strong> Toca "Tengo intercambio con suerte" y se abre WhatsApp para coordinarlo con ese entrenador (o con la comunidad, que te ayuda a contactarlo).
       </p>
     </div>
 
@@ -217,21 +217,20 @@ import Layout from '../layouts/Layout.astro';
     like.className = `recomendar inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg border transition-colors`;
     like.dataset.activo = String(voted);
     like.setAttribute('aria-pressed', String(voted));
-    like.setAttribute('aria-label', `${voted ? 'Quitar recomendación a' : 'Recomendar a'} ${amigo.entrenador}: envía regalos`);
+    like.setAttribute('aria-label', `${voted ? 'Quitar like a' : 'Dar like a'} ${amigo.entrenador}: envía regalos`);
     like.innerHTML = `${THUMB}<span>${amigo.recomendaciones}</span>`;
-    like.title = voted ? 'Ya lo recomendaste. Toca para quitar tu voto.' : 'Recomiéndalo si te envía regalos';
+    like.title = voted ? 'Ya le diste like. Toca para quitarlo.' : 'Dale like si te envía regalos seguido';
     like.addEventListener('click', () => recommend(amigo, like));
     bottom.append(like);
 
-    if (amigo.contacto) {
-      const trade = document.createElement('a');
-      trade.href = `/api/contacto?codigo=${amigo.codigo}`;
-      trade.target = '_blank';
-      trade.rel = 'noopener';
-      trade.className = 'inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400';
-      trade.textContent = 'Tengo intercambio con suerte';
-      bottom.append(trade);
-    }
+    // Si el entrenador no recibe mensajes, el enlace escribe a la comunidad para coordinarlo
+    const trade = document.createElement('a');
+    trade.href = `/api/contacto?codigo=${amigo.codigo}`;
+    trade.target = '_blank';
+    trade.rel = 'noopener';
+    trade.className = 'inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg text-zinc-950 bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400';
+    trade.textContent = 'Tengo intercambio con suerte';
+    bottom.append(trade);
 
     item.append(top, bottom);
     return item;
