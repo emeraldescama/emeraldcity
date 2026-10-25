@@ -80,7 +80,8 @@ async function onScreenshot() {
   error.classList.add('hidden');
   if (!file) return;
   try {
-    const { base64, dataUrl } = await compressImage(file);
+    // Más liviana que un flyer: se guarda en la base de datos y solo se usa para la bienvenida
+    const { base64, dataUrl } = await compressImage(file, { maxSide: 1100, maxBytes: 450 * 1024 });
     screenshot = base64;
     const preview = $<HTMLImageElement>('captura-vista');
     preview.src = dataUrl;

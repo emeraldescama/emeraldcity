@@ -1,11 +1,11 @@
 /**
- * Recibe el formulario de /unirse y lo guarda en la hoja de registros.
+ * Recibe el formulario de /unirse y guarda al nuevo miembro en la base de datos.
  */
-import { AppsScriptError, callAppsScript } from './_apps-script.js';
+import { DbError, addMember } from './_miembros.js';
 
 const MIN_AGE = 16;
-// Vercel acepta hasta 4.5 MB por petición; la captura llega ya comprimida desde el navegador
-const MAX_SCREENSHOT_BYTES = 3 * 1024 * 1024;
+// La captura llega ya reducida desde el navegador; así cabe de sobra en la base de datos
+const MAX_SCREENSHOT_BYTES = 700 * 1024;
 
 class FormError extends Error {}
 
@@ -56,11 +56,12 @@ export default async function handler(req, res) {
 
   try {
     const registro = validate(body);
-    await callAppsScript('registrar', { registro });
+    const { captura, ...datos } = registro;
+    await addMember(datos, captura);
     return res.status(200).json({ ok: true });
   } catch (err) {
     if (err instanceof FormError) return res.status(400).json({ error: err.message });
-    const status = err instanceof AppsScriptError ? err.status : 500;
+    const status = err instanceof DbError ? err.status : 500;
     return res.status(status).json({ error: err.message || 'No se pudo guardar tu registro.' });
   }
 }

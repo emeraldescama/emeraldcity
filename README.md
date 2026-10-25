@@ -64,9 +64,18 @@ Cada evento lleva un flyer generado con la temática de Emerald City y la ilustr
 
 Para ejecutarlo a mano: `npm run sync-eventos`, o en GitHub → **Actions → Sincronizar eventos → Run workflow**.
 
-### Registro de entrenadores y "Haz amigos"
+### Miembros: registro, "Haz amigos" y bienvenidas
 
-El formulario de `/unirse` guarda cada registro en la hoja de Google de la comunidad, la página `/amigos` muestra los códigos de amistad de quienes aceptaron aparecer, y el panel tiene la pestaña **Bienvenidas** para crear el flyer de bienvenida de cada entrenador nuevo. Todo pasa por un script de Google Apps Script: los pasos para instalarlo y las variables `APPS_SCRIPT_URL` y `APPS_SCRIPT_SECRET` están en [`apps-script/README.md`](apps-script/README.md).
+El formulario de `/unirse` guarda a cada miembro en la base de datos de la página; `/amigos` muestra los códigos de amistad, y el panel tiene las pestañas **Miembros** (tabla, buscador, ocultar de Haz amigos, eliminar, **Descargar Excel**, importar la hoja anterior) y **Bienvenidas** (flyer de bienvenida con la captura del perfil).
+
+**Conectar la base de datos (una sola vez):**
+
+1. En Vercel, entra al proyecto → pestaña **Storage** → **Create Database**.
+2. Elige **Upstash** → **Redis** (plan gratuito) → **Continue** → ponle un nombre (por ejemplo `emerald-miembros`) → **Create**.
+3. Cuando pregunte, conéctala al proyecto de la página (**Connect**). Vercel agrega solo las variables `KV_REST_API_URL` y `KV_REST_API_TOKEN`.
+4. Ve a **Deployments** → **⋯** del último → **Redeploy**.
+
+**Traer a los miembros que ya estaban en la hoja de Google:** en la hoja, *Archivo → Descargar → Valores separados por comas (.csv)*; luego en el panel, pestaña **Miembros → Importar hoja anterior**. La página reconoce las columnas por su título, muestra qué encontró antes de importar y no duplica códigos que ya existan.
 
 ## 6) Levantar servidor de desarrollo
 

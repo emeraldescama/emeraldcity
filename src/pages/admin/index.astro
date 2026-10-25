@@ -42,6 +42,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
         <div class="flex flex-wrap gap-2">
           <button type="button" data-tab="eventos" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Eventos</button>
           <button type="button" data-tab="flyer" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Flyer semanal</button>
+          <button type="button" data-tab="miembros" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Miembros</button>
           <button type="button" data-tab="bienvenidas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Bienvenidas <span id="welcome-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button id="logout" type="button" class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 rounded-xl border border-zinc-800">Salir</button>
         </div>
@@ -139,6 +140,64 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
         </div>
       </div>
 
+      <!-- Pestaña: Miembros (la hoja de registros de la comunidad) -->
+      <div id="tab-miembros" class="hidden space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-black text-zinc-100">Miembros de la comunidad</h2>
+            <p id="member-count" class="text-sm text-zinc-400"></p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="member-excel" type="button" class={primaryButton}>Descargar Excel</button>
+            <label for="member-import-file" class={`${ghostButton} cursor-pointer`}>Importar hoja anterior</label>
+            <input id="member-import-file" type="file" accept=".csv,text/csv" class="sr-only" />
+            <button id="member-refresh" type="button" class={ghostButton}>Actualizar</button>
+          </div>
+        </div>
+
+        <div id="import-preview" class="hidden glass-panel rounded-2xl p-5 space-y-3 border border-amber-500/40">
+          <p class="font-bold text-zinc-100">Revisa antes de importar</p>
+          <p id="import-summary" class="text-sm text-zinc-300"></p>
+          <ul id="import-columns" class="text-xs space-y-1"></ul>
+          <div class="flex gap-2 pt-1">
+            <button id="import-confirm" type="button" class={primaryButton}>Importar miembros</button>
+            <button id="import-cancel" type="button" class={ghostButton}>Cancelar</button>
+          </div>
+        </div>
+
+        <label for="member-search" class="sr-only">Buscar miembro</label>
+        <input id="member-search" type="search" placeholder="Buscar por nombre, ciudad o código" class={`${inputClass} max-w-md`} />
+
+        <div id="member-empty" class="hidden glass-panel rounded-2xl p-6 text-sm text-zinc-300 space-y-2">
+          <p class="font-bold text-zinc-100">Todavía no hay miembros.</p>
+          <p>Los que se registren en la página aparecerán aquí solos. Para traer a los que ya tienes en tu hoja de Google:</p>
+          <ol class="list-decimal pl-5 space-y-1">
+            <li>Abre tu hoja y ve a <strong>Archivo → Descargar → Valores separados por comas (.csv)</strong>.</li>
+            <li>Aquí arriba toca <strong>Importar hoja anterior</strong> y elige ese archivo.</li>
+          </ol>
+        </div>
+
+        <div id="member-table-wrap" class="hidden overflow-x-auto rounded-2xl border border-zinc-800">
+          <table class="w-full text-sm text-zinc-300">
+            <thead class="bg-zinc-900/90 text-xs uppercase tracking-wider text-zinc-400 text-left">
+              <tr>
+                <th class="px-3 py-3">Fecha</th>
+                <th class="px-3 py-3">Entrenador</th>
+                <th class="px-3 py-3">Nombre</th>
+                <th class="px-3 py-3">Ciudad</th>
+                <th class="px-3 py-3">Código</th>
+                <th class="px-3 py-3">Campfire</th>
+                <th class="px-3 py-3">Edad</th>
+                <th class="px-3 py-3">Haz amigos</th>
+                <th class="px-3 py-3">Bienvenida</th>
+                <th class="px-3 py-3"><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody id="member-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Pestaña: Bienvenidas (registros nuevos de /unirse) -->
       <div id="tab-bienvenidas" class="hidden grid grid-cols-1 lg:grid-cols-5 gap-8">
         <div class="lg:col-span-2 space-y-4 self-start">
@@ -146,7 +205,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
             <h2 class="text-xl font-black text-zinc-100">Bienvenidas pendientes</h2>
             <button id="welcome-refresh" type="button" class={ghostButton}>Actualizar</button>
           </div>
-          <p class="text-sm text-zinc-400">Entrenadores que se registraron en la web y todavía no recibieron su bienvenida en el grupo.</p>
+          <p class="text-sm text-zinc-400">Entrenadores que se registraron en la web y todavía no recibieron su bienvenida en el grupo. Al marcarla como enviada se borra la captura del perfil, así que descarga el flyer antes si lo quieres guardar.</p>
           <ul id="welcome-list" class="space-y-3"></ul>
           <p id="welcome-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">No hay bienvenidas pendientes.</p>
         </div>

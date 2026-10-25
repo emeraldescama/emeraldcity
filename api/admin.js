@@ -9,10 +9,10 @@
  *   GITHUB_TOKEN   Token de GitHub con permiso "Contents: Read and write" sobre el repositorio
  *   GITHUB_REPO    Opcional, por defecto "emeraldescama/emeraldcity"
  *   GITHUB_BRANCH  Opcional, por defecto "main"
- *   APPS_SCRIPT_URL / APPS_SCRIPT_SECRET  Hoja de registros, para las bienvenidas (ver apps-script/README.md)
+ *   KV_REST_API_URL / KV_REST_API_TOKEN  Base de datos de miembros (Vercel → Storage → Upstash Redis)
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { AppsScriptError, callAppsScript } from './_apps-script.js';
+import { DbError, deleteMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
 
 const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'];
 const EVENTS_DIR = 'src/content/eventos';
@@ -39,6 +39,7 @@ function pinMatches(pin) {
 }
 
 async function github(path, options = {}) {
+  if (!process.env.GITHUB_TOKEN) throw new HttpError(500, 'Para publicar eventos falta GITHUB_TOKEN en Vercel.');
   const res = await fetch(`https://api.github.com/repos/${REPO}${path}`, {
     ...options,
     headers: {
@@ -202,14 +203,38 @@ async function deleteEvent({ id }) {
   return { id };
 }
 
+/** Miembros leídos del CSV de la hoja anterior (el navegador ya reconoció las columnas) */
+function validateImport(list) {
+  if (!Array.isArray(list) || list.length === 0) throw new HttpError(400, 'No hay miembros para importar.');
+  if (list.length > 3000) throw new HttpError(400, 'Importa como máximo 3000 miembros a la vez.');
+  const short = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
+  return list
+    .map((item) => {
+      const codigo = String(item?.codigo ?? '').replace(/\D/g, '');
+      const edad = Number(item?.edad);
+      const fecha = new Date(item?.fecha);
+      return {
+        entrenador: short(item?.entrenador, 30),
+        nombre: short(item?.nombre, 80),
+        ciudad: short(item?.ciudad, 60),
+        codigo: codigo.length === 12 ? codigo : '',
+        campfire: typeof item?.campfire === 'boolean' ? item.campfire : null,
+        campfireNombre: short(item?.campfireNombre, 30),
+        edad: Number.isInteger(edad) && edad > 0 && edad < 120 ? edad : null,
+        fecha: Number.isNaN(fecha.getTime()) ? '' : fecha.toISOString(),
+      };
+    })
+    .filter((item) => item.entrenador);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Método no permitido.' });
   }
 
-  if (!process.env.ADMIN_PIN || !process.env.GITHUB_TOKEN) {
-    return res.status(500).json({ error: 'El panel no está configurado: faltan ADMIN_PIN o GITHUB_TOKEN en Vercel.' });
+  if (!process.env.ADMIN_PIN) {
+    return res.status(500).json({ error: 'El panel no está configurado: falta ADMIN_PIN en Vercel.' });
   }
 
   const body = req.body || {};
@@ -229,18 +254,24 @@ export default async function handler(req, res) {
         return res.status(200).json({ event: await saveEvent(body) });
       case 'delete':
         return res.status(200).json(await deleteEvent(body));
-      // Bienvenidas: registros nuevos de /unirse guardados en la hoja de Google
-      case 'bienvenidas':
-        return res.status(200).json(await callAppsScript('bienvenidas'));
+      // Miembros registrados en /unirse o importados de la hoja anterior
+      case 'miembros':
+        return res.status(200).json({ miembros: await listMembers() });
+      case 'miembroMostrar':
+        return res.status(200).json({ miembro: await updateMember(String(body.id ?? ''), { mostrar: body.mostrar === true }) });
+      case 'miembroEliminar':
+        return res.status(200).json(await deleteMember(String(body.id ?? '')));
+      case 'importar':
+        return res.status(200).json(await importMembers(validateImport(body.miembros)));
       case 'captura':
-        return res.status(200).json(await callAppsScript('captura', { id: String(body.id ?? '') }));
+        return res.status(200).json(await getScreenshot(String(body.id ?? '')));
       case 'marcarBienvenida':
-        return res.status(200).json(await callAppsScript('marcarBienvenida', { id: String(body.id ?? '') }));
+        return res.status(200).json({ miembro: await markWelcomed(String(body.id ?? '')) });
       default:
         return res.status(400).json({ error: 'Acción desconocida.' });
     }
   } catch (err) {
-    const status = err instanceof HttpError || err instanceof AppsScriptError ? err.status : 500;
+    const status = err instanceof HttpError || err instanceof DbError ? err.status : 500;
     return res.status(status).json({ error: err.message || 'Error inesperado.' });
   }
 }
