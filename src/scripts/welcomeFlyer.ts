@@ -39,7 +39,7 @@ export async function drawWelcomeFlyer(canvas: HTMLCanvasElement, nuevo: NuevoEn
   await Promise.all(
     ['900 40px Outfit', '800 40px Outfit', '700 40px Outfit'].map((font) => document.fonts.load(font).catch(() => undefined)),
   );
-  const [logo, screenshot] = await Promise.all([loadImage('/images/branding/logo-emerald-city.png'), loadImage(screenshotUrl)]);
+  const [logo, screenshot] = await Promise.all([loadImage('/images/branding/logo-emerald-city-256.png'), loadImage(screenshotUrl)]);
 
   // Fondo
   ctx.fillStyle = '#030712';

@@ -26,6 +26,8 @@ const eventosCollection = defineCollection({
     flyer: z.string(),
     image: z.string().optional(),
     link: z.string().url().optional(),
+    reunion: z.boolean().default(true),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   }),
 });
 

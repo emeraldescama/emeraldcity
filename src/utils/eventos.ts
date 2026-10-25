@@ -6,7 +6,19 @@
  * Todas las fechas se interpretan en hora de Caracas (UTC-4, sin horario de verano).
  */
 
-export const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'] as const;
+export const EVENT_TYPES = [
+  'Día de la Comunidad',
+  'Incursiones',
+  'GO Tour',
+  'GO Fest',
+  'Wild Area',
+  'Combates Max',
+  'Hora Destacada',
+  'Evento del juego',
+  'Quedada',
+  'Torneo PvP',
+  'Otro',
+] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
 // Lugar oficial de los Días de la Comunidad
@@ -23,6 +35,18 @@ export interface Evento {
   flyer: string;
   image?: string; // Ilustración del Pokémon principal (eventos automáticos)
   link?: string; // Página oficial del evento (eventos automáticos)
+  reunion?: boolean; // false = evento del juego sin quedada (por defecto hay quedada)
+  endDate?: string; // YYYY-MM-DD, para eventos de varios días
+}
+
+export const hasMeetup = (e: Pick<Evento, 'reunion'>) => e.reunion !== false;
+
+/** Último día del evento */
+export const eventEnd = (e: Pick<Evento, 'date' | 'endDate'>) => e.endDate ?? e.date;
+
+/** ¿El evento ocurre (aunque sea un día) entre `start` y `end`? */
+export function overlaps(e: Pick<Evento, 'date' | 'endDate'>, start: string, end: string): boolean {
+  return e.date <= end && eventEnd(e) >= start;
 }
 
 const CARACAS_OFFSET_MS = -4 * 60 * 60 * 1000;
@@ -106,4 +130,9 @@ export function formatWeekRange(start: string, end: string): string {
 
 export function sortByStart<T extends Pick<Evento, 'date' | 'time'>>(events: T[]): T[] {
   return [...events].sort((a, b) => eventStart(a) - eventStart(b));
+}
+
+/** "31 oct – 2 nov" para eventos de varios días */
+export function formatDateRange(e: Pick<Evento, 'date' | 'endDate'>): string {
+  return e.endDate && e.endDate !== e.date ? `${formatShortDate(e.date)} – ${formatShortDate(e.endDate)}` : formatShortDate(e.date);
 }

@@ -24,12 +24,15 @@ jobs:
         with:
           node-version: 20
 
+      - name: Instalar dependencias
+        run: npm ci
+
       - name: Buscar eventos nuevos
         run: node scripts/sync-eventos.mjs
 
       - name: Publicar cambios
         run: |
-          git add src/content/eventos public/images/eventos
+          git add src/content/eventos public/images/eventos public/images/pokemon
           if git diff --cached --quiet; then
             echo "Sin eventos nuevos."
             exit 0

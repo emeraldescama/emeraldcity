@@ -1,6 +1,6 @@
 ---
 import EventCard from './EventCard.astro';
-import { caracasToday, flyerWeek, formatWeekRange, type Evento } from '../utils/eventos';
+import { caracasToday, eventEnd, flyerWeek, formatWeekRange, type Evento } from '../utils/eventos';
 
 interface Props {
   eventos: Evento[];
@@ -14,7 +14,7 @@ const { eventos, invitacion = true } = Astro.props;
 // Los domingos la sección principal ya muestra la semana que empieza el lunes.
 const today = caracasToday();
 const week = flyerWeek(today);
-const upcoming = eventos.filter((e) => e.date >= today);
+const upcoming = eventos.filter((e) => eventEnd(e) >= today);
 const thisWeek = upcoming.filter((e) => e.date <= week.end);
 const later = upcoming.filter((e) => e.date > week.end);
 ---
@@ -84,7 +84,7 @@ const later = upcoming.filter((e) => e.date > week.end);
 </section>
 
 <script>
-  import { caracasToday, flyerWeek, formatWeekRange, type Evento } from '../utils/eventos';
+  import { caracasToday, flyerWeek, formatWeekRange, overlaps, type Evento } from '../utils/eventos';
   import { drawWeeklyFlyer } from '../scripts/weeklyFlyer';
 
   // Reubica cada evento según la semana actual del visitante (la página solo se recompila al publicar)
@@ -100,7 +100,8 @@ const later = upcoming.filter((e) => e.date > week.end);
 
     for (const card of cards) {
       const date = card.dataset.date ?? '';
-      if (date < today) card.remove();
+      // Un evento de varios días sigue en la agenda hasta su último día
+      if ((card.dataset.end ?? date) < today) card.remove();
       else if (date <= week.end) thisWeekGrid.appendChild(card);
       else laterGrid.appendChild(card);
     }
@@ -117,12 +118,12 @@ const later = upcoming.filter((e) => e.date > week.end);
   async function downloadWeek(button: HTMLButtonElement) {
     // Los domingos se comparte la semana que empieza el lunes siguiente
     const week = flyerWeek(caracasToday());
-    const eventos = allEventos.filter((evento) => evento.date >= week.start && evento.date <= week.end);
+    const eventos = allEventos.filter((evento) => overlaps(evento, week.start, week.end));
     button.disabled = true;
     try {
       const canvas = document.createElement('canvas');
       await drawWeeklyFlyer(canvas, eventos, week.start, week.end, {
-        logoUrl: '/images/branding/logo-emerald-city.png',
+        logoUrl: '/images/branding/logo-emerald-city-256.png',
         flyerUrl: (evento) => evento.flyer,
       });
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));

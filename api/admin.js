@@ -136,6 +136,7 @@ function validateEvent(input) {
     location: cleanText(input.location, 'Lugar', 120),
     type: input.type,
     description: cleanText(input.description, 'Descripción', 600, false),
+    reunion: input.reunion !== false,
   };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(event.date)) throw new HttpError(400, 'La fecha no es válida.');
   if (!/^\d{2}:\d{2}$/.test(event.time)) throw new HttpError(400, 'La hora no es válida.');
@@ -181,6 +182,7 @@ async function saveEvent({ id, event: input, flyer }) {
     flyer: flyerPath,
     ...(existing?.image ? { image: existing.image } : {}),
     ...(existing?.link ? { link: existing.link } : {}),
+    ...(existing?.endDate ? { endDate: existing.endDate } : {}),
   };
   changes.push({ path: `${EVENTS_DIR}/${eventId}.json`, content: `${JSON.stringify(saved, null, 2)}\n` });
 

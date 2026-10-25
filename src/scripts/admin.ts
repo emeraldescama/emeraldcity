@@ -9,6 +9,7 @@ import {
   formatTime,
   flyerWeek,
   formatWeekRange,
+  overlaps,
   sortByStart,
   type Evento,
 } from '../utils/eventos';
@@ -101,6 +102,7 @@ function startEdit(evento: Evento) {
   $<HTMLInputElement>('ev-time').value = evento.time;
   $<HTMLInputElement>('ev-location').value = evento.location;
   $<HTMLTextAreaElement>('ev-description').value = evento.description;
+  $<HTMLInputElement>('ev-reunion').checked = evento.reunion !== false;
   const preview = $<HTMLImageElement>('flyer-preview');
   preview.src = flyerUrl(evento);
   preview.classList.remove('hidden');
@@ -119,6 +121,7 @@ function readForm(): EventInput {
     time: $<HTMLInputElement>('ev-time').value,
     location: $<HTMLInputElement>('ev-location').value,
     description: $<HTMLTextAreaElement>('ev-description').value,
+    reunion: $<HTMLInputElement>('ev-reunion').checked,
   };
 }
 
@@ -269,7 +272,7 @@ let flyerRender = 0;
 
 function weekEvents(): Evento[] {
   const end = addDays(weekStart, 6);
-  return events.filter((e) => e.date >= weekStart && e.date <= end);
+  return events.filter((e) => overlaps(e, weekStart, end));
 }
 
 async function renderFlyer() {
@@ -278,7 +281,7 @@ async function renderFlyer() {
   $('week-label').textContent = formatWeekRange(weekStart, end);
   const canvas = document.createElement('canvas');
   await drawWeeklyFlyer(canvas, weekEvents(), weekStart, end, {
-    logoUrl: '/images/branding/logo-emerald-city.png',
+    logoUrl: '/images/branding/logo-emerald-city-256.png',
     flyerUrl,
   });
   // Solo se muestra el último dibujo si el usuario cambió de semana mientras tanto

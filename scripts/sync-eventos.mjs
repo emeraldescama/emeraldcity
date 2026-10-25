@@ -10,6 +10,9 @@
  *   - Día de Incursiones             → Plaza Los Palos Grandes, 2:00 a 5:00 PM
  *   - Día Dinamax con legendario     → Plaza Los Palos Grandes, 2:00 a 5:00 PM
  *   - GO Tour, GO Fest y Wild Area   → Plaza Los Palos Grandes, desde las 10:00 AM (cada día)
+ *   - Hora Legendaria (miércoles)    → Plaza Los Palos Grandes, 6:00 PM
+ * Eventos del juego sin quedada (igual salen en la agenda y en el flyer semanal):
+ *   - Lunes de Combates Max, Horas Destacadas y los eventos que publica LeekDuck
  *
  * Cada flyer lleva la ilustración oficial de los Pokémon del evento (PokeAPI), guardada en
  * public/images/pokemon/<número de Pokédex>.png.
@@ -22,6 +25,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FEED_URL = 'https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/events.min.json';
@@ -55,6 +59,10 @@ function translateNames(text) {
   return text
     .replace(/\bShadow (\S+)/g, '$1 Oscuro')
     .replace(/\bSuper Mega\b/g, 'Súper Mega')
+    .replace(/\(Origin Forme\)/g, '(Forma Origen)')
+    .replace(/\(Altered Forme\)/g, '(Forma Modificada)')
+    .replace(/\bFormes\b/g, 'Formas')
+    .replace(/\bForme\b/g, 'Forma')
     .replace(/,? and /g, ' y ')
     .trim();
 }
@@ -66,10 +74,21 @@ function isGlobal(name) {
 /** Nombres (en inglés) de los Pokémon que aparecen en el nombre del evento */
 function pokemonInName(text) {
   return text
-    .replace(/Community Day( Classic)?|Raid Day|Max Battle Day|Super Mega|\b(Mega|Dynamax|Gigantamax|Shadow)\b|\(.*?\)/gi, ' ')
+    .replace(/Community Day( Classic)?|Raid Day|Raid Hour|Max Battle Day|during Max Monday|Max Monday|Spotlight Hour|Super Mega|\b(Mega|Dynamax|Gigantamax|Shadow)\b|\(.*?\)/gi, ' ')
     .split(/,|\band\b/)
     .map((name) => name.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
+}
+
+const NO_MEETUP = 'Sin quedada · juega desde donde estés';
+
+/** "2026-10-27T18:00:00.000" → "18:00" */
+const timeOf = (iso) => iso.slice(11, 16);
+
+/** "18:00" → "6:00 PM" */
+function formatHour(time) {
+  const [h, m] = time.split(':').map(Number);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 }
 
 /** Días (YYYY-MM-DD) que abarca un evento según su hora local */
@@ -152,6 +171,60 @@ function toMeetups(source) {
     }));
   }
 
+  if (eventType === 'raid-hour') {
+    const subject = translateNames(name.replace(/Raid Hour/i, ''));
+    return [{
+      pokemon: pokemonInName(name),
+      id: `auto-${eventID}`,
+      link,
+      type: 'Incursiones',
+      title: subject ? `Hora Legendaria: ${subject}` : 'Hora Legendaria',
+      flyerLabel: 'Hora legendaria',
+      date: start.slice(0, 10),
+      time: '18:00',
+      hours: '6:00 – 7:00 PM',
+      location: PALOS_GRANDES,
+      description: 'Hora de incursiones de los miércoles. Nos reunimos en la Plaza Los Palos Grandes a las 6:00 PM.',
+    }];
+  }
+
+  // Eventos del juego sin quedada: igual se anuncian en la agenda y el flyer semanal
+  const gameEvents = {
+    'max-mondays': (n) => {
+      // "Max Monday: Pokémon to be announced" mientras no anuncian el Pokémon
+      const subject = /to be announced/i.test(n)
+        ? ''
+        : translateNames(n.replace(/during Max Monday|Max Monday/i, '').replace(/\b(Dynamax|Gigantamax) /g, ''));
+      return ['Combates Max', subject ? `Lunes de Combates Max: ${subject}` : 'Lunes de Combates Max'];
+    },
+    'pokemon-spotlight-hour': (n) => {
+      const subject = translateNames(n.replace(/Spotlight Hour/i, ''));
+      return ['Hora Destacada', subject ? `Hora Destacada: ${subject}` : 'Hora Destacada'];
+    },
+    event: (n) => ['Evento del juego', n],
+  };
+  // Las horas con "Z" son de un evento presencial en otra ciudad (por ejemplo, Pokémon Night Out)
+  if (gameEvents[eventType] && !start.endsWith('Z')) {
+    const [type, title] = gameEvents[eventType](name);
+    const date = start.slice(0, 10);
+    const endDate = end.slice(0, 10);
+    const multiDay = endDate > date;
+    return [{
+      pokemon: /to be announced/i.test(name) ? [] : pokemonInName(name),
+      id: `auto-${eventID}`,
+      link,
+      type,
+      title,
+      date,
+      endDate: multiDay ? endDate : undefined,
+      time: timeOf(start),
+      hours: multiDay ? `Desde las ${formatHour(timeOf(start))}` : `${formatHour(timeOf(start))} – ${formatHour(timeOf(end))}`,
+      location: NO_MEETUP,
+      reunion: false,
+      description: 'Evento del juego, sin quedada de la comunidad.',
+    }];
+  }
+
   return [];
 }
 
@@ -198,7 +271,9 @@ async function pokemonArt(names, dex) {
       const res = await fetch(artworkUrl(number));
       if (!res.ok) continue;
       mkdirSync(POKEMON_DIR, { recursive: true });
-      writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+      // 320 px y paleta de colores: ~30 KB en vez de ~170 KB, para que los flyers carguen rápido
+      const small = await sharp(Buffer.from(await res.arrayBuffer())).resize(320).png({ palette: true, quality: 80 }).toBuffer();
+      writeFileSync(file, small);
     }
     art.push({ number, path: `/images/pokemon/${number}.png`, base64: readFileSync(file).toString('base64') });
     if (art.length === 3) break;
@@ -244,8 +319,12 @@ function wrapTitle(title, width = 960, maxLines = 3) {
 
 function flyerSvg(meetup, art = []) {
   assets ??= { logo: asset('logo-200.png'), black: asset('outfit-900.woff2'), bold: asset('outfit-700.woff2') };
-  const d = new Date(`${meetup.date}T12:00:00Z`);
-  const dateLabel = `${DAY_NAMES[d.getUTCDay()]} ${d.getUTCDate()} DE ${MONTH_NAMES[d.getUTCMonth()]}`;
+  const dayLabel = (date) => {
+    const x = new Date(`${date}T12:00:00Z`);
+    return `${DAY_NAMES[x.getUTCDay()]} ${x.getUTCDate()} DE ${MONTH_NAMES[x.getUTCMonth()]}`;
+  };
+  const dateLabel = meetup.endDate ? `${dayLabel(meetup.date)} AL ${dayLabel(meetup.endDate)}` : dayLabel(meetup.date);
+  const dateSize = dateLabel.length > 24 ? 30 : 40;
   const accent = meetup.type === 'Día de la Comunidad' ? '#fbbf24' : '#34d399';
   // Con ilustración, el título va en la columna izquierda y el Pokémon a la derecha
   const { size, lines } = art.length ? wrapTitle(meetup.flyerTitle ?? meetup.title, 430, 5) : wrapTitle(meetup.flyerTitle ?? meetup.title);
@@ -254,9 +333,9 @@ function flyerSvg(meetup, art = []) {
     .map((line, i) => `<text x="60" y="${titleTop + i * size * 1.08}" class="black" font-size="${size}" fill="#f4f4f5">${escapeXml(line)}</text>`)
     .join('');
   const typeLabel = escapeXml((meetup.flyerLabel ?? meetup.type).toUpperCase());
-  const pillWidth = Math.round(typeLabel.length * 18.5 + 64);
+  const pillWidth = Math.round(typeLabel.length * 20.5 + 64);
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1080" height="1350" viewBox="0 0 1080 1350">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
 <defs>
 <style>
 @font-face{font-family:'OutfitFlyer';font-weight:900;src:url(data:font/woff2;base64,${assets.black}) format('woff2')}
@@ -273,16 +352,16 @@ text{font-family:'OutfitFlyer','Arial Black',Arial,sans-serif}
 <rect width="1080" height="1350" fill="url(#glowA)"/>
 <rect width="1080" height="1350" fill="url(#glowB)"/>
 ${art.length ? artSvg(art, accent) : pokeballSvg(accent)}
-<image x="56" y="52" width="110" height="130" preserveAspectRatio="xMidYMid meet" xlink:href="data:image/png;base64,${assets.logo}" href="data:image/png;base64,${assets.logo}"/>
+<image x="56" y="52" width="110" height="130" preserveAspectRatio="xMidYMid meet" href="data:image/png;base64,${assets.logo}"/>
 <text x="186" y="112" class="black" font-size="46" fill="#f4f4f5">EMERALD<tspan fill="#34d399">CITY</tspan></text>
 <text x="188" y="150" class="bold" font-size="22" fill="#fbbf24" letter-spacing="1.5">COMUNIDAD POKÉMON GO · CARACAS</text>
 <rect x="60" y="300" width="${pillWidth}" height="58" rx="29" fill="${accent}" fill-opacity="0.14" stroke="${accent}" stroke-opacity="0.6" stroke-width="2"/>
 <text x="92" y="339" class="black" font-size="28" fill="${accent}" letter-spacing="2">${typeLabel}</text>
 ${titleText}
 <rect x="60" y="890" width="960" height="250" rx="32" fill="#0f172a" fill-opacity="0.9" stroke="#10b981" stroke-opacity="0.35" stroke-width="2"/>
-<text x="104" y="960" class="black" font-size="40" fill="#fbbf24" letter-spacing="1">${escapeXml(dateLabel)}</text>
+<text x="104" y="960" class="black" font-size="${dateSize}" fill="#fbbf24" letter-spacing="1">${escapeXml(dateLabel)}</text>
 <text x="104" y="1032" class="black" font-size="54" fill="#f4f4f5">${escapeXml(meetup.hours)}</text>
-<circle cx="117" cy="1090" r="11" fill="#34d399"/>
+<circle cx="117" cy="1090" r="11" fill="${meetup.reunion === false ? '#71717a' : '#34d399'}"/>
 <text x="142" y="1101" class="bold" font-size="32" fill="#d4d4d8">${escapeXml(meetup.location)}</text>
 <path d="M60 1240H1020" stroke="#10b981" stroke-opacity="0.4" stroke-width="2"/>
 <text x="60" y="1296" class="bold" font-size="28" fill="#f4f4f5">Más información: WhatsApp +58 422 2292700</text>
@@ -303,7 +382,7 @@ function artSvg(art, accent) {
   const images = ART_LAYOUTS[art.length]
     .map(({ x, y, size }, i) => {
       const href = `data:image/png;base64,${art[i].base64}`;
-      return `<image x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet" xlink:href="${href}" href="${href}"/>`;
+      return `<image x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet" href="${href}"/>`;
     })
     .join('\n');
   return `${halo}\n${images}`;
@@ -330,14 +409,16 @@ async function main() {
     for (const meetup of toMeetups(source)) {
       const id = meetup.id.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 80);
       const jsonPath = join(EVENTS_DIR, `${id}.json`);
-      if (meetup.date < today || meetup.date > limit || discarded.has(id) || existsSync(jsonPath)) continue;
+      // Los eventos de varios días que ya empezaron siguen contando hasta su último día
+      if ((meetup.endDate ?? meetup.date) < today || meetup.date > limit || discarded.has(id) || existsSync(jsonPath)) continue;
 
       const art = await pokemonArt(meetup.pokemon, dex);
       const flyer = `/images/eventos/${id}.svg`;
       writeFileSync(join(FLYERS_DIR, `${id}.svg`), flyerSvg(meetup, art));
-      const { title, date, time, location, type, description, link } = meetup;
+      const { title, date, endDate, time, location, type, description, link, reunion } = meetup;
       const image = art[0]?.path;
-      writeFileSync(jsonPath, `${JSON.stringify({ title, date, time, location, type, description, flyer, image, link }, null, 2)}\n`);
+      const data = { title, date, endDate, time, location, type, description, flyer, image, link, reunion };
+      writeFileSync(jsonPath, `${JSON.stringify(data, null, 2)}\n`);
       created.push(`${date} ${time}  ${title}  (${location})`);
     }
   }

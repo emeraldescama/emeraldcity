@@ -1,15 +1,17 @@
 ---
 import WhatsAppButton from './WhatsAppButton.astro';
 import { getEventWhatsAppUrl } from '../utils/whatsapp';
-import { eventStart, formatLongDate, formatTime, type Evento } from '../utils/eventos';
+import { eventEnd, eventStart, formatDateRange, formatLongDate, formatTime, hasMeetup, type Evento } from '../utils/eventos';
 
 interface Props {
   evento: Evento;
 }
 
 const { evento } = Astro.props;
-const dateLabel = formatLongDate(evento.date);
-const timeLabel = formatTime(evento.time);
+const meetup = hasMeetup(evento);
+const multiDay = eventEnd(evento) !== evento.date;
+const dateLabel = multiDay ? formatDateRange(evento) : formatLongDate(evento.date);
+const timeLabel = multiDay ? `desde las ${formatTime(evento.time)}` : formatTime(evento.time);
 const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`);
 
 ---
@@ -17,6 +19,7 @@ const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`
 <article
   class="evento-card glass-card rounded-2xl overflow-hidden flex flex-col group h-full"
   data-date={evento.date}
+  data-end={eventEnd(evento)}
   data-start={eventStart(evento)}
   data-evento={JSON.stringify(evento)}
 >
@@ -45,6 +48,11 @@ const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`
       <h3 class="text-lg sm:text-xl font-bold text-zinc-100 tracking-tight leading-snug">
         {evento.title}
       </h3>
+      {!meetup && (
+        <p class="inline-flex mt-2 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-zinc-800 text-zinc-300 border border-zinc-700">
+          Evento del juego · sin quedada
+        </p>
+      )}
       <p class="text-sm text-zinc-400 mt-2 flex items-center gap-2">
         <svg class="w-4 h-4 text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
@@ -67,6 +75,6 @@ const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`
       )}
     </div>
 
-    <WhatsAppButton href={attendUrl} label="Quiero asistir" variant="primary" size="md" fullWidth />
+    {meetup && <WhatsAppButton href={attendUrl} label="Quiero asistir" variant="primary" size="md" fullWidth />}
   </div>
 </article>

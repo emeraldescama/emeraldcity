@@ -13,7 +13,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
 
     <!-- Acceso con PIN -->
     <section id="pin-screen" class="max-w-sm mx-auto glass-panel rounded-2xl p-8 text-center">
-      <img src="/images/branding/logo-emerald-city.png" alt="" class="w-16 h-16 mx-auto rounded-xl mb-5" />
+      <img src="/images/branding/logo-emerald-city-256.png" alt="" class="w-16 h-16 mx-auto rounded-xl mb-5" />
       <h1 class="text-2xl font-black text-zinc-100 tracking-tight">Panel de Administración</h1>
       <p class="text-sm text-zinc-400 mt-2">Ingresa el PIN del equipo organizador.</p>
       <form id="pin-form" class="mt-6 space-y-3">
@@ -94,6 +94,11 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
             <label for="ev-location" class={labelClass}>Lugar</label>
             <input id="ev-location" type="text" maxlength="120" required value={DEFAULT_EVENT_LOCATION} class={inputClass} />
           </div>
+
+          <label class="flex items-start gap-3 cursor-pointer text-sm text-zinc-300">
+            <input id="ev-reunion" type="checkbox" checked class="mt-0.5 w-5 h-5 accent-emerald-500 flex-shrink-0" />
+            <span><strong class="text-zinc-100">Hay quedada de la comunidad</strong><br />Desmárcalo para eventos del juego sin reunión (Combates Max, Horas Destacadas…).</span>
+          </label>
 
           <div>
             <label for="ev-description" class={labelClass}>Descripción (opcional)</label>

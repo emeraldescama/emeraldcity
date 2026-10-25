@@ -1,5 +1,5 @@
 ---
-import { eventStart, formatLongDate, formatTime, type Evento } from '../utils/eventos';
+import { eventStart, formatLongDate, formatTime, hasMeetup, type Evento } from '../utils/eventos';
 
 interface Props {
   eventos: Evento[];
@@ -8,7 +8,8 @@ interface Props {
 const { eventos } = Astro.props;
 
 // Datos mínimos para que el script elija el próximo evento con la hora real del visitante
-const schedule = eventos.map((e) => ({
+// Solo cuentan los eventos con quedada de la comunidad
+const schedule = eventos.filter(hasMeetup).map((e) => ({
   start: eventStart(e),
   title: e.title,
   location: e.location,

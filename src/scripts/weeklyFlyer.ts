@@ -1,12 +1,15 @@
 /**
  * Dibuja el flyer "Eventos de esta semana" (1080x1350) para compartir en el grupo de WhatsApp.
  */
-import { dayName, formatShortDate, formatTime, formatWeekRange, type Evento } from '../utils/eventos';
+import { dayName, eventEnd, formatShortDate, formatTime, formatWeekRange, hasMeetup, type Evento } from '../utils/eventos';
 
 export const FLYER_WIDTH = 1080;
 export const FLYER_HEIGHT = 1350;
+// Con muchos eventos el flyer pasa a formato vertical de historia (9:16) para que todo se lea
+const TALL_HEIGHT = 1920;
+const TALL_FROM = 6;
 
-const MAX_ROWS = 6;
+const MAX_ROWS = 10;
 const COLORS = {
   bg: '#030712',
   card: 'rgba(15, 23, 42, 0.88)',
@@ -65,28 +68,29 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number,
 }
 
 function drawBackground(ctx: CanvasRenderingContext2D) {
+  const height = ctx.canvas.height;
   ctx.fillStyle = COLORS.bg;
-  ctx.fillRect(0, 0, FLYER_WIDTH, FLYER_HEIGHT);
+  ctx.fillRect(0, 0, FLYER_WIDTH, height);
 
   const glow = (x: number, y: number, r: number, color: string) => {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, color);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, FLYER_WIDTH, FLYER_HEIGHT);
+    ctx.fillRect(0, 0, FLYER_WIDTH, height);
   };
   glow(120, 120, 700, 'rgba(16, 185, 129, 0.28)');
-  glow(FLYER_WIDTH, FLYER_HEIGHT, 650, 'rgba(245, 158, 11, 0.14)');
+  glow(FLYER_WIDTH, height, 650, 'rgba(245, 158, 11, 0.14)');
 
   ctx.strokeStyle = 'rgba(16, 185, 129, 0.06)';
   ctx.lineWidth = 1;
   for (let x = 0; x <= FLYER_WIDTH; x += 60) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, FLYER_HEIGHT);
+    ctx.lineTo(x, height);
     ctx.stroke();
   }
-  for (let y = 0; y <= FLYER_HEIGHT; y += 60) {
+  for (let y = 0; y <= height; y += 60) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(FLYER_WIDTH, y);
@@ -133,12 +137,23 @@ async function drawHeader(ctx: CanvasRenderingContext2D, logoUrl: string, weekSt
   ctx.fillText(range, 84, 450);
 }
 
+const dayAndDate = (date: string) => `${dayName(date)} ${formatShortDate(date)}`.toUpperCase();
+
+/** "MIÉRCOLES 28 OCT · 6:00 PM", "MAR 27 OCT – DOMINGO 1 NOV" o "HASTA DOMINGO 1 NOV" */
+function rowDateLabel(evento: Evento, weekStart: string): string {
+  const end = eventEnd(evento);
+  if (end === evento.date) return `${dayAndDate(evento.date)} · ${formatTime(evento.time)}`;
+  if (evento.date < weekStart) return `HASTA EL ${dayAndDate(end)}`;
+  return `${dayAndDate(evento.date)} – ${dayAndDate(end)}`;
+}
+
 async function drawEventRow(
   ctx: CanvasRenderingContext2D,
   evento: Evento,
   flyerUrl: string,
   y: number,
   rowH: number,
+  weekStart: string,
 ) {
   const x = 60;
   const w = FLYER_WIDTH - 120;
@@ -165,12 +180,12 @@ async function drawEventRow(
   } else if (flyer) drawCover(ctx, flyer, x + pad, y + pad, thumb, thumb);
   ctx.restore();
 
-  const scale = Math.max(0.62, Math.min(1, rowH / 230));
+  // El texto crece con la fila, con tope en el tamaño de las filas grandes
   const textX = x + pad + thumb + 32;
   const textW = x + w - textX - 28;
-  const labelSize = Math.round(26 * scale);
-  const titleSize = Math.round(40 * scale);
-  const placeSize = Math.round(25 * scale);
+  const labelSize = Math.round(Math.min(26, rowH * 0.17));
+  const titleSize = Math.round(Math.min(40, rowH * 0.24));
+  const placeSize = Math.round(Math.min(25, rowH * 0.15));
 
   ctx.font = `800 ${titleSize}px Outfit, Inter, sans-serif`;
   const titleLines = wrapText(ctx, evento.title, textW, rowH > 170 ? 2 : 1);
@@ -180,7 +195,7 @@ async function drawEventRow(
 
   ctx.font = `800 ${labelSize}px Outfit, Inter, sans-serif`;
   ctx.fillStyle = COLORS.amber;
-  ctx.fillText(`${dayName(evento.date).toUpperCase()} ${formatShortDate(evento.date).toUpperCase()} · ${formatTime(evento.time)}`, textX, cursor);
+  ctx.fillText(rowDateLabel(evento, weekStart), textX, cursor);
 
   cursor += 14;
   ctx.font = `800 ${titleSize}px Outfit, Inter, sans-serif`;
@@ -191,7 +206,8 @@ async function drawEventRow(
   }
 
   cursor += 12 + placeSize;
-  ctx.fillStyle = COLORS.emerald;
+  // Punto verde: hay quedada; gris: evento del juego sin quedada
+  ctx.fillStyle = hasMeetup(evento) ? COLORS.emerald : '#71717a';
   ctx.beginPath();
   ctx.arc(textX + placeSize * 0.3, cursor - placeSize * 0.35, placeSize * 0.22, 0, Math.PI * 2);
   ctx.fill();
@@ -201,27 +217,28 @@ async function drawEventRow(
 }
 
 function drawFooter(ctx: CanvasRenderingContext2D, extra: number) {
+  const height = ctx.canvas.height;
   if (extra > 0) {
     ctx.font = '700 26px Outfit, Inter, sans-serif';
     ctx.fillStyle = COLORS.emerald;
     ctx.textAlign = 'center';
-    ctx.fillText(`+${extra} evento${extra === 1 ? '' : 's'} más en la web`, FLYER_WIDTH / 2, 1238);
+    ctx.fillText(`+${extra} evento${extra === 1 ? '' : 's'} más en la web`, FLYER_WIDTH / 2, height - 112);
     ctx.textAlign = 'left';
   }
 
   ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(60, 1262);
-  ctx.lineTo(FLYER_WIDTH - 60, 1262);
+  ctx.moveTo(60, height - 88);
+  ctx.lineTo(FLYER_WIDTH - 60, height - 88);
   ctx.stroke();
 
   ctx.font = '700 26px Outfit, Inter, sans-serif';
   ctx.fillStyle = COLORS.text;
-  ctx.fillText('Más información: WhatsApp +58 422 2292700', 60, 1308);
+  ctx.fillText('Más información: WhatsApp +58 422 2292700', 60, height - 42);
   ctx.textAlign = 'right';
   ctx.fillStyle = COLORS.amber;
-  ctx.fillText('@emeraldcityccs', FLYER_WIDTH - 60, 1308);
+  ctx.fillText('@emeraldcityccs', FLYER_WIDTH - 60, height - 42);
   ctx.textAlign = 'left';
 }
 
@@ -232,8 +249,9 @@ export async function drawWeeklyFlyer(
   weekEnd: string,
   options: { logoUrl: string; flyerUrl: (evento: Evento) => string },
 ) {
+  const shown = eventos.slice(0, MAX_ROWS);
   canvas.width = FLYER_WIDTH;
-  canvas.height = FLYER_HEIGHT;
+  canvas.height = shown.length >= TALL_FROM ? TALL_HEIGHT : FLYER_HEIGHT;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
@@ -247,8 +265,7 @@ export async function drawWeeklyFlyer(
   await drawHeader(ctx, options.logoUrl, weekStart, weekEnd);
 
   const top = 506;
-  const bottom = 1210;
-  const shown = eventos.slice(0, MAX_ROWS);
+  const bottom = canvas.height - (eventos.length > shown.length ? 150 : 128);
 
   if (shown.length === 0) {
     ctx.font = '800 40px Outfit, Inter, sans-serif';
@@ -257,12 +274,12 @@ export async function drawWeeklyFlyer(
     ctx.fillText('Pronto anunciaremos las quedadas', FLYER_WIDTH / 2, (top + bottom) / 2);
     ctx.textAlign = 'left';
   } else {
-    const gap = 20;
+    const gap = shown.length >= TALL_FROM ? 14 : 20;
     const rowH = Math.min(230, (bottom - top - gap * (shown.length - 1)) / shown.length);
     // Con pocos eventos, el bloque queda centrado en vez de pegado arriba
     const blockTop = top + (bottom - top - (rowH * shown.length + gap * (shown.length - 1))) / 2;
     for (const [i, evento] of shown.entries()) {
-      await drawEventRow(ctx, evento, options.flyerUrl(evento), blockTop + i * (rowH + gap), rowH);
+      await drawEventRow(ctx, evento, options.flyerUrl(evento), blockTop + i * (rowH + gap), rowH, weekStart);
     }
   }
 
@@ -274,8 +291,9 @@ export function weeklyText(eventos: Evento[], weekStart: string, weekEnd: string
   const lines = [`*EVENTOS DE ESTA SEMANA · Emerald City*`, formatWeekRange(weekStart, weekEnd), ''];
   if (eventos.length === 0) lines.push('Pronto anunciaremos las próximas quedadas.');
   for (const e of eventos) {
-    lines.push(`• *${dayName(e.date)} ${formatShortDate(e.date)}, ${formatTime(e.time)}* · ${e.title}`);
-    lines.push(`  📍 ${e.location}`);
+    const when = eventEnd(e) === e.date ? `${dayName(e.date)} ${formatShortDate(e.date)}, ${formatTime(e.time)}` : `Hasta el ${dayName(eventEnd(e))} ${formatShortDate(eventEnd(e))}`;
+    lines.push(`• *${when}* · ${e.title}`);
+    lines.push(hasMeetup(e) ? `  📍 ${e.location}` : '  🎮 Evento del juego, sin quedada');
   }
   lines.push('', `Más info y flyers: ${siteUrl}/noticias#eventos`);
   return lines.join('\n');
