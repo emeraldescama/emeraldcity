@@ -34,6 +34,8 @@ const FLYERS_DIR = join(ROOT, 'public/images/eventos');
 const DISCARDED_FILE = join(ROOT, 'data/eventos-descartados.json');
 const POKEMON_DIR = join(ROOT, 'public/images/pokemon');
 const SPECIES_CSV = 'https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/pokemon_species.csv';
+// Formas especiales (Giratina Origen, Landorus Tótem…), cada una con su propia ilustración
+const FORMS_CSV = 'https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/pokemon.csv';
 const artworkUrl = (dex) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${dex}.png`;
 const DAYS_AHEAD = 35;
 
@@ -61,6 +63,9 @@ function translateNames(text) {
     .replace(/\bSuper Mega\b/g, 'Súper Mega')
     .replace(/\(Origin Forme\)/g, '(Forma Origen)')
     .replace(/\(Altered Forme\)/g, '(Forma Modificada)')
+    // "(Normal, Defense, Attack, and Speed Formes)" → "(Formas Normal, Defensa, Ataque y Velocidad)"
+    .replace(/\(([^()]+) Formes\)/g, (_, list) =>
+      `(Formas ${list.replace(/\bDefense\b/g, 'Defensa').replace(/\bAttack\b/g, 'Ataque').replace(/\bSpeed\b/g, 'Velocidad')})`)
     .replace(/\bFormes\b/g, 'Formas')
     .replace(/\bForme\b/g, 'Forma')
     .replace(/\bwearing an? witch hat\b/gi, 'con sombrero de bruja')
@@ -75,6 +80,8 @@ function isGlobal(name) {
 /** Nombres (en inglés) de los Pokémon que aparecen en el nombre del evento */
 function pokemonInName(text) {
   return text
+    // "Giratina (Origin Forme)" → "Giratina|Origin", para usar la ilustración de esa forma
+    .replace(/([\w.'-]+) \((\w+) Forme\)/gi, '$1|$2')
     .replace(/Community Day( Classic)?|Raid Day|Raid Hour|Max Battle Day|during Max Monday|Max Monday|Spotlight Hour|wearing an? [a-z ]*hat|Super Mega|\b(Mega|Dynamax|Gigantamax|Shadow)\b|\(.*?\)/gi, ' ')
     .split(/,|\band\b/)
     .map((name) => name.replace(/\s+/g, ' ').trim())
@@ -259,15 +266,17 @@ function toIdentifier(name) {
     .replace(/^-+|-+$/g, '');
 }
 
-/** Mapa identificador → número de Pokédex */
+/** Mapa identificador → número de la ilustración ("giratina" → 487, "giratina-origin" → 10007) */
 async function loadPokedex() {
   try {
-    const res = await fetch(SPECIES_CSV);
-    if (!res.ok) throw new Error(String(res.status));
     const dex = new Map();
-    for (const row of (await res.text()).split('\n').slice(1)) {
-      const [id, identifier] = row.split(',');
-      if (id && identifier) dex.set(identifier, Number(id));
+    for (const url of [SPECIES_CSV, FORMS_CSV]) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      for (const row of (await res.text()).split('\n').slice(1)) {
+        const [id, identifier] = row.split(',');
+        if (id && identifier && !dex.has(identifier)) dex.set(identifier, Number(id));
+      }
     }
     return dex;
   } catch (err) {
@@ -280,7 +289,8 @@ async function loadPokedex() {
 async function pokemonArt(names, dex) {
   const art = [];
   for (const name of names) {
-    const number = dex.get(toIdentifier(name));
+    const [species, form] = name.split('|');
+    const number = (form && dex.get(`${toIdentifier(species)}-${toIdentifier(form)}`)) || dex.get(toIdentifier(species));
     if (!number || art.some((a) => a.number === number)) continue;
     const file = join(POKEMON_DIR, `${number}.png`);
     if (!existsSync(file)) {
