@@ -99,20 +99,51 @@ const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`
       viewer.innerHTML = `
         <img alt="" />
         <div class="flyer-viewer-actions">
-          <a download class="flyer-viewer-btn">Descargar</a>
+          <button type="button" class="flyer-viewer-btn" data-download>Descargar</button>
           <button type="button" class="flyer-viewer-btn" data-close>Cerrar</button>
         </div>`;
       viewer.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target === viewer || target.closest('[data-close]')) viewer!.close();
+        if (target.closest('[data-download]')) downloadPng(viewer!.querySelector('img')!);
       });
       document.body.append(viewer);
     }
     const img = viewer.querySelector('img')!;
     img.src = src;
     img.alt = alt;
-    viewer.querySelector('a')!.href = src;
     viewer.showModal();
+  }
+
+  /** Convierte el flyer (SVG o foto) a PNG para poder compartirlo en WhatsApp */
+  async function downloadPng(img: HTMLImageElement) {
+    const button = viewer!.querySelector<HTMLButtonElement>('[data-download]')!;
+    button.disabled = true;
+    try {
+      const source = new Image();
+      source.src = img.src;
+      await source.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = source.naturalWidth || 1080;
+      canvas.height = source.naturalHeight || 1350;
+      canvas.getContext('2d')!.drawImage(source, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('No se pudo crear la imagen');
+      const name = (new URL(img.src).pathname.split('/').pop() || 'flyer').replace(/\.[a-z0-9]+$/i, '');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${name}.png`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    } catch {
+      // Si el navegador no puede convertirla, se descarga tal cual
+      const link = document.createElement('a');
+      link.href = img.src;
+      link.download = '';
+      link.click();
+    } finally {
+      button.disabled = false;
+    }
   }
 
   document.addEventListener('click', (e) => {
