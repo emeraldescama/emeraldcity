@@ -10,9 +10,14 @@
  *   GITHUB_REPO    Opcional, por defecto "emeraldescama/emeraldcity"
  *   GITHUB_BRANCH  Opcional, por defecto "main"
  *   DATABASE_URL   Base de datos de miembros (Vercel → Storage → Neon); la crea Vercel al conectarla
+ *   SESSION_SECRET Opcional: clave para firmar la cookie de sesión del panel
+ *
+ * El PIN se envía solo al entrar; después el panel usa una cookie de sesión firmada y
+ * HttpOnly (8 horas), que los scripts de la página no pueden leer ni modificar.
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { DbError, allowImportedContact, normalizePhone, deleteMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
+import { endAdminSession, hasAdminSession, sameOrigin, startAdminSession } from './_cookies.js';
+import { DbError, allowImportedContact, normalizePhone, deleteMember, editMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
 
 const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'];
 const EVENTS_DIR = 'src/content/eventos';
@@ -231,6 +236,32 @@ function validateImport(list) {
     .filter((item) => item.entrenador);
 }
 
+/** Datos del miembro corregidos por el administrador */
+function validateMemberEdit(input) {
+  const data = input || {};
+  const codigo = String(data.codigo ?? '').replace(/\D/g, '');
+  const edadText = String(data.edad ?? '').trim();
+  const edad = edadText ? Number(edadText) : null;
+  const telefonoText = String(data.telefono ?? '').trim();
+  const telefono = normalizePhone(telefonoText);
+  const member = {
+    entrenador: cleanText(data.entrenador, 'Nombre de entrenador', 30),
+    nombre: cleanText(data.nombre, 'Nombre y apellido', 80, false),
+    ciudad: cleanText(data.ciudad, 'Ciudad', 60, false),
+    codigo,
+    telefono,
+    campfire: data.campfire === true ? true : data.campfire === false ? false : null,
+    campfireNombre: cleanText(data.campfireNombre, 'Nombre en Campfire', 30, false),
+    edad,
+  };
+  if (codigo && codigo.length !== 12) throw new HttpError(400, 'El código de amistad debe tener 12 números.');
+  if (telefonoText && !telefono) throw new HttpError(400, 'El teléfono no es válido. Escríbelo con el código del país, por ejemplo +58 412 1234567.');
+  if (edad !== null && (!Number.isInteger(edad) || edad < 1 || edad > 119)) throw new HttpError(400, 'La edad no es válida.');
+  if (/^https?:\/\//i.test(member.ciudad)) throw new HttpError(400, 'La ciudad no puede ser un enlace.');
+  if (member.campfire !== true) member.campfireNombre = '';
+  return member;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -242,15 +273,29 @@ export default async function handler(req, res) {
   }
 
   const body = req.body || {};
-  if (!pinMatches(body.pin)) {
-    // Pausa para frenar intentos de adivinar el PIN
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return res.status(401).json({ error: 'PIN incorrecto.' });
+  res.setHeader('Cache-Control', 'no-store');
+  if (!sameOrigin(req)) return res.status(403).json({ error: 'Petición no permitida.' });
+
+  if (body.action === 'login') {
+    if (!pinMatches(body.pin)) {
+      // Pausa para frenar intentos de adivinar el PIN
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return res.status(401).json({ error: 'PIN incorrecto.' });
+    }
+    startAdminSession(res);
+    return res.status(200).json({ ok: true });
+  }
+  if (body.action === 'logout') {
+    endAdminSession(res);
+    return res.status(200).json({ ok: true });
+  }
+  if (!hasAdminSession(req)) {
+    return res.status(401).json({ error: body.action === 'sesion' ? '' : 'La sesión terminó. Vuelve a ingresar el PIN.' });
   }
 
   try {
     switch (body.action) {
-      case 'login':
+      case 'sesion':
         return res.status(200).json({ ok: true });
       case 'list':
         return res.status(200).json({ events: await listEvents() });
@@ -267,6 +312,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ cambiados: await allowImportedContact() });
       case 'miembroContacto':
         return res.status(200).json({ miembro: await updateMember(String(body.id ?? ''), 'contacto', body.contacto === true) });
+      case 'miembroEditar':
+        return res.status(200).json({ miembro: await editMember(String(body.id ?? ''), validateMemberEdit(body.miembro)) });
       case 'miembroEliminar':
         return res.status(200).json(await deleteMember(String(body.id ?? '')));
       case 'importar':

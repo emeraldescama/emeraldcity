@@ -204,6 +204,56 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
             <tbody id="member-rows"></tbody>
           </table>
         </div>
+
+        <!-- Editar los datos de un miembro -->
+        <dialog id="member-edit" class="member-edit m-auto w-[min(36rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] rounded-2xl border border-emerald-500/30 bg-zinc-950 text-zinc-100 p-0">
+          <form id="member-edit-form" method="dialog" class="p-6 space-y-4">
+            <h2 class="text-xl font-black">Editar miembro</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="me-entrenador" class={labelClass}>Nombre de entrenador</label>
+                <input id="me-entrenador" required maxlength="30" class={inputClass} />
+              </div>
+              <div>
+                <label for="me-codigo" class={labelClass}>Código de amistad</label>
+                <input id="me-codigo" inputmode="numeric" maxlength="14" placeholder="1234 5678 9012" class={`${inputClass} font-mono`} />
+              </div>
+              <div>
+                <label for="me-nombre" class={labelClass}>Nombre y apellido</label>
+                <input id="me-nombre" maxlength="80" class={inputClass} />
+              </div>
+              <div>
+                <label for="me-ciudad" class={labelClass}>Ciudad o país</label>
+                <input id="me-ciudad" maxlength="60" class={inputClass} />
+              </div>
+              <div>
+                <label for="me-telefono" class={labelClass}>WhatsApp</label>
+                <input id="me-telefono" type="tel" maxlength="20" placeholder="+58 412 1234567" class={inputClass} />
+              </div>
+              <div>
+                <label for="me-edad" class={labelClass}>Edad</label>
+                <input id="me-edad" type="number" min="1" max="119" class={inputClass} />
+              </div>
+              <div>
+                <label for="me-campfire" class={labelClass}>¿Tiene Campfire?</label>
+                <select id="me-campfire" class={inputClass}>
+                  <option value="">Sin dato</option>
+                  <option value="si">Sí</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+              <div>
+                <label for="me-campfire-nombre" class={labelClass}>Nombre en Campfire</label>
+                <input id="me-campfire-nombre" maxlength="30" class={inputClass} />
+              </div>
+            </div>
+            <p id="member-edit-error" class="text-sm font-semibold text-red-300" role="alert"></p>
+            <div class="flex flex-wrap justify-end gap-3">
+              <button id="member-edit-cancel" type="button" class={ghostButton}>Cancelar</button>
+              <button id="member-edit-save" type="submit" class={primaryButton}>Guardar cambios</button>
+            </div>
+          </form>
+        </dialog>
       </div>
 
       <!-- Pestaña: Bienvenidas (registros nuevos de /unirse) -->
@@ -236,6 +286,9 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
 </Layout>
 
 <style>
+  .member-edit::backdrop {
+    background: rgba(3, 7, 18, 0.8);
+  }
   .tab-button[aria-selected='true'] {
     color: #022c22;
     background: #34d399;

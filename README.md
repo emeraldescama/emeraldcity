@@ -33,6 +33,7 @@ El sitio se compila sin variables. Solo el **panel de administración** (`/admin
 | Variable | Valor |
 | --- | --- |
 | `ADMIN_PIN` | PIN del equipo organizador. Usa **8 dígitos o más**. |
+| `SESSION_SECRET` | Opcional. Texto largo y secreto para firmar las cookies de sesión del panel y de los likes. Si no existe, se usa una clave derivada del PIN y la base de datos. |
 | `GITHUB_TOKEN` | Token de GitHub que puede escribir en el repositorio (ver abajo). |
 | `GITHUB_REPO` | Opcional. Por defecto `emeraldescama/emeraldcity`. |
 | `GITHUB_BRANCH` | Opcional. Por defecto `main`. |

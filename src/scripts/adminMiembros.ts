@@ -117,7 +117,15 @@ function renderMembers() {
     remove.className = 'px-2.5 py-1 text-xs font-bold text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/10 whitespace-nowrap';
     remove.textContent = 'Eliminar';
     remove.addEventListener('click', () => removeMember(member, remove));
-    actions.append(remove);
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'px-2.5 py-1 text-xs font-bold text-emerald-300 border border-emerald-500/30 rounded-lg hover:bg-emerald-500/10 whitespace-nowrap';
+    edit.textContent = 'Editar';
+    edit.addEventListener('click', () => openEditor(member));
+    const group = document.createElement('div');
+    group.className = 'flex gap-2';
+    group.append(edit, remove);
+    actions.append(group);
 
     tr.append(
       cell(member.entrenador, 'font-bold text-zinc-100'),
@@ -180,6 +188,59 @@ async function toggleField(member: Miembro, field: keyof typeof TOGGLES, button:
   } catch (err) {
     button.disabled = false;
     showStatus((err as Error).message, 'error');
+  }
+}
+
+// ---------- Editar ----------
+
+let editing: Miembro | null = null;
+const field = (id: string) => $<HTMLInputElement>(id);
+
+function openEditor(member: Miembro) {
+  editing = member;
+  field('me-entrenador').value = member.entrenador;
+  field('me-codigo').value = member.codigo ? formatCode(member.codigo) : '';
+  field('me-nombre').value = member.nombre;
+  field('me-ciudad').value = member.ciudad;
+  field('me-telefono').value = member.telefono ? `+${member.telefono}` : '';
+  field('me-edad').value = member.edad ? String(member.edad) : '';
+  $<HTMLSelectElement>('me-campfire').value = member.campfire === true ? 'si' : member.campfire === false ? 'no' : '';
+  field('me-campfire-nombre').value = member.campfireNombre;
+  $('member-edit-error').textContent = '';
+  $<HTMLDialogElement>('member-edit').showModal();
+}
+
+async function saveEdit(event: SubmitEvent) {
+  event.preventDefault();
+  if (!editing) return;
+  const button = $<HTMLButtonElement>('member-edit-save');
+  const campfire = $<HTMLSelectElement>('me-campfire').value;
+  button.disabled = true;
+  $('member-edit-error').textContent = '';
+  try {
+    const { miembro } = await api<{ miembro: Miembro }>('miembroEditar', {
+      id: editing.id,
+      miembro: {
+        entrenador: field('me-entrenador').value,
+        codigo: field('me-codigo').value,
+        nombre: field('me-nombre').value,
+        ciudad: field('me-ciudad').value,
+        telefono: field('me-telefono').value,
+        edad: field('me-edad').value,
+        campfire: campfire === 'si' ? true : campfire === 'no' ? false : null,
+        campfireNombre: field('me-campfire-nombre').value,
+      },
+    });
+    members = members.map((m) => (m.id === miembro.id ? miembro : m));
+    if (selectedWelcome?.id === miembro.id) selectedWelcome = miembro;
+    renderMembers();
+    renderWelcomes();
+    $<HTMLDialogElement>('member-edit').close();
+    showStatus(`Se guardaron los datos de ${miembro.entrenador}.`, 'ok');
+  } catch (err) {
+    $('member-edit-error').textContent = (err as Error).message;
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -403,6 +464,8 @@ export function initMembers(options: { api: Api; showStatus: ShowStatus; canShar
   const allowButton = $<HTMLButtonElement>('member-allow-contact');
   allowButton.addEventListener('click', () => allowImportedContact(allowButton));
   $('member-import-file').addEventListener('change', onImportFile);
+  $('member-edit-form').addEventListener('submit', saveEdit);
+  $('member-edit-cancel').addEventListener('click', () => $<HTMLDialogElement>('member-edit').close());
   $('import-confirm').addEventListener('click', confirmImport);
   $('import-cancel').addEventListener('click', cancelImport);
 

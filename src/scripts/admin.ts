@@ -17,13 +17,10 @@ import { drawWeeklyFlyer, weeklyText } from './weeklyFlyer';
 import { compressImage } from './images';
 import { initMembers, loadMembers, onShowTab } from './adminMiembros';
 
-const PIN_KEY = 'emerald-admin-pin';
-
 type EventInput = Omit<Evento, 'id' | 'flyer'>;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-let pin = '';
 let events: Evento[] = [];
 let editingId: string | null = null;
 let pendingFlyer: { base64: string; dataUrl: string } | null = null;
@@ -31,33 +28,21 @@ let weekStart = flyerWeek(caracasToday()).start;
 // Flyers subidos en esta sesión: la web tarda 1–2 min en publicarlos, así que el flyer semanal usa la copia local
 const localFlyers = new Map<string, string>();
 
-function readStoredPin(): string {
-  try {
-    return sessionStorage.getItem(PIN_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function storePin(value: string | null) {
-  try {
-    if (value) sessionStorage.setItem(PIN_KEY, value);
-    else sessionStorage.removeItem(PIN_KEY);
-  } catch {
-    // Sin almacenamiento: el PIN se pedirá de nuevo al recargar
-  }
-}
-
+/**
+ * El PIN viaja solo al entrar; desde ahí el servidor reconoce al administrador por una
+ * cookie de sesión que los scripts de la página no pueden leer.
+ */
 async function api<T>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
   const res = await fetch('/api/admin', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pin, action, ...payload }),
+    credentials: 'same-origin',
+    body: JSON.stringify({ action, ...payload }),
   });
   const data = await res.json().catch(() => ({ error: `El servidor respondió ${res.status}.` }));
-  if (res.status === 401) {
-    logout('El PIN ya no es válido. Vuelve a ingresarlo.');
-    throw new Error(data.error);
+  if (res.status === 401 && action !== 'login') {
+    showPinScreen(data.error || '');
+    throw new Error(data.error || 'La sesión terminó.');
   }
   if (!res.ok) throw new Error(data.error || 'No se pudo completar la acción.');
   return data as T;
@@ -361,9 +346,12 @@ function showPanel() {
   loadMembers(true);
 }
 
-function logout(message = '') {
-  pin = '';
-  storePin(null);
+function logout() {
+  api('logout').catch(() => undefined);
+  showPinScreen();
+}
+
+function showPinScreen(message = '') {
   $('admin-panel').classList.add('hidden');
   $('pin-screen').classList.remove('hidden');
   $('pin-error').textContent = message;
@@ -375,10 +363,10 @@ async function onLogin(event: SubmitEvent) {
   const button = $<HTMLButtonElement>('pin-submit');
   button.disabled = true;
   $('pin-error').textContent = '';
-  pin = $<HTMLInputElement>('pin-input').value.trim();
+  const pin = $<HTMLInputElement>('pin-input').value.trim();
   try {
-    await api('login');
-    storePin(pin);
+    await api('login', { pin });
+    $<HTMLInputElement>('pin-input').value = '';
     showPanel();
   } catch (err) {
     $('pin-error').textContent = (err as Error).message;
@@ -412,9 +400,14 @@ export function initAdmin() {
   }
   initMembers({ api, showStatus, canShareFiles });
 
-  const stored = readStoredPin();
-  if (stored) {
-    pin = stored;
-    showPanel();
+  // La versión anterior guardaba el PIN en el navegador: se borra
+  try {
+    sessionStorage.removeItem('emerald-admin-pin');
+  } catch {
+    // Sin almacenamiento, no hay nada que borrar
   }
+  // Si la sesión sigue abierta (cookie de menos de 8 horas), el panel se abre sin pedir el PIN
+  api('sesion')
+    .then(showPanel)
+    .catch(() => undefined);
 }

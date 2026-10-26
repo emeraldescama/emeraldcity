@@ -88,44 +88,21 @@ import Layout from '../layouts/Layout.astro';
 
   // Desde cuántas recomendaciones se muestra la marca "Envía regalos"
   const RECOMMENDED_FROM = 3;
+  // Identificador que usaba la versión anterior: solo se envía para no perder sus likes
   const DEVICE_KEY = 'emerald-dispositivo';
-  const VOTES_KEY = 'emerald-recomendados';
 
   const $ = (id: string) => document.getElementById(id)!;
   let amigos: Amigo[] = [];
+  // Likes de este visitante, según su cookie (el servidor decide, no el navegador)
+  let votes = new Set<string>();
 
   const formatCode = (code: string) => code.replace(/(\d{4})(?=\d)/g, '$1 ');
 
-  /** Identificador anónimo de este dispositivo, para un voto por entrenador */
-  function deviceId(): string {
+  function legacyDeviceId(): string | undefined {
     try {
-      let id = localStorage.getItem(DEVICE_KEY);
-      if (!id) {
-        id = crypto.randomUUID();
-        localStorage.setItem(DEVICE_KEY, id);
-      }
-      return id;
+      return localStorage.getItem(DEVICE_KEY) ?? undefined;
     } catch {
-      return crypto.randomUUID();
-    }
-  }
-
-  function myVotes(): Set<string> {
-    try {
-      return new Set(JSON.parse(localStorage.getItem(VOTES_KEY) ?? '[]'));
-    } catch {
-      return new Set();
-    }
-  }
-
-  function saveVote(codigo: string, voted: boolean) {
-    const votes = myVotes();
-    if (voted) votes.add(codigo);
-    else votes.delete(codigo);
-    try {
-      localStorage.setItem(VOTES_KEY, JSON.stringify([...votes]));
-    } catch {
-      // Sin almacenamiento: el voto se guarda igual, solo no se marca al recargar
+      return undefined;
     }
   }
 
@@ -155,16 +132,18 @@ import Layout from '../layouts/Layout.astro';
       const res = await fetch('/api/amigos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accion: 'recomendar', codigo: amigo.codigo, dispositivo: deviceId() }),
+        body: JSON.stringify({ accion: 'recomendar', codigo: amigo.codigo, dispositivo: legacyDeviceId() }),
       });
-      if (!res.ok) throw new Error();
-      const { recomendaciones, recomendado } = await res.json();
-      amigo.recomendaciones = recomendaciones;
-      saveVote(amigo.codigo, recomendado);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar. Inténtalo de nuevo.');
+      amigo.recomendaciones = data.recomendaciones;
+      if (data.recomendado) votes.add(amigo.codigo);
+      else votes.delete(amigo.codigo);
       render();
-    } catch {
+    } catch (err) {
       button.disabled = false;
-      button.title = 'No se pudo guardar. Inténtalo de nuevo.';
+      button.title = (err as Error).message;
+      alert((err as Error).message);
     }
   }
 
@@ -239,7 +218,6 @@ import Layout from '../layouts/Layout.astro';
   function render() {
     const query = ($('buscar-amigo') as HTMLInputElement).value.trim().toLowerCase();
     const order = ($('ordenar-amigos') as HTMLSelectElement).value;
-    const votes = myVotes();
     const shown = amigos
       .filter((a) => !query || `${a.entrenador} ${a.ciudad}`.toLowerCase().includes(query))
       // La lista llega de la más reciente a la más antigua; "sort" mantiene ese orden en los empates
@@ -256,7 +234,9 @@ import Layout from '../layouts/Layout.astro';
     try {
       const res = await fetch('/api/amigos');
       if (!res.ok) throw new Error(String(res.status));
-      amigos = (await res.json()).amigos ?? [];
+      const data = await res.json();
+      amigos = data.amigos ?? [];
+      votes = new Set(data.misVotos ?? []);
       render();
     } catch {
       $('amigos-error').classList.remove('hidden');

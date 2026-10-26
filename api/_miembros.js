@@ -66,6 +66,8 @@ const SCHEMA = [
     fecha timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (codigo, votante)
   )`,
+  // Huella de la red desde donde se votó, para limitar los likes repetidos desde un mismo lugar
+  `ALTER TABLE recomendaciones ADD COLUMN IF NOT EXISTS red text NOT NULL DEFAULT ''`,
 ];
 
 let sqlClient;
@@ -231,6 +233,39 @@ export async function updateMember(id, field, value) {
   );
 }
 
+/**
+ * El administrador corrige cualquier dato del miembro. Si cambia el código de amistad,
+ * los likes recibidos pasan al código nuevo.
+ */
+export async function editMember(id, data) {
+  return oneMember(
+    await run(async (sql) => {
+      const current = await sql.query(`SELECT codigo FROM miembros WHERE id = $1`, [id]);
+      if (!current.length) throw new DbError(404, 'Ese miembro ya no existe.');
+      if (data.codigo) {
+        const taken = await sql.query(`SELECT entrenador FROM miembros WHERE codigo = $1 AND id <> $2`, [data.codigo, id]);
+        if (taken.length) throw new DbError(409, `Ese código de amistad ya lo tiene ${taken[0].entrenador}.`);
+      }
+      const rows = await sql.query(
+        `UPDATE miembros SET entrenador = $2, nombre = $3, ciudad = $4, codigo = $5, telefono = $6,
+           contacto = contacto AND $6 <> '', campfire = $7, campfire_nombre = $8, edad = $9
+         WHERE id = $1 RETURNING ${COLUMNS}`,
+        [id, data.entrenador, data.nombre, data.ciudad, data.codigo || null, data.telefono, data.campfire, data.campfireNombre, data.edad],
+      );
+      const oldCode = current[0].codigo;
+      if (oldCode && data.codigo && oldCode !== data.codigo) {
+        await sql.query(
+          `UPDATE recomendaciones SET codigo = $2 WHERE codigo = $1
+             AND NOT EXISTS (SELECT 1 FROM recomendaciones r WHERE r.codigo = $2 AND r.votante = recomendaciones.votante)`,
+          [oldCode, data.codigo],
+        );
+        await sql.query(`DELETE FROM recomendaciones WHERE codigo = $1`, [oldCode]);
+      }
+      return rows;
+    }),
+  );
+}
+
 export async function deleteMember(id) {
   const rows = await run((sql) => sql.query('DELETE FROM miembros WHERE id = $1 RETURNING id', [id]));
   if (!rows.length) throw new DbError(404, 'Ese miembro ya no existe.');
@@ -272,17 +307,35 @@ export async function publicFriends() {
   return rows.map((r) => ({ ...r, recomendaciones: Number(r.recomendaciones) }));
 }
 
+// Likes que se aceptan para un mismo entrenador desde una misma conexión. No es 1 porque en
+// Venezuela muchos celulares de la misma operadora salen a internet con la misma IP
+const VOTES_PER_NETWORK = 10;
+
 /** "Envía regalos": un voto por dispositivo; votar de nuevo lo quita */
-export async function toggleRecommendation(codigo, votante) {
+export async function toggleRecommendation(codigo, votante, red = '') {
   const rows = await run(async (sql) => {
     const exists = await sql.query(`SELECT 1 FROM miembros WHERE codigo = $1 AND mostrar`, [codigo]);
     if (!exists.length) throw new DbError(404, 'Ese entrenador ya no está en la lista.');
     const removed = await sql.query(`DELETE FROM recomendaciones WHERE codigo = $1 AND votante = $2 RETURNING 1`, [codigo, votante]);
-    if (!removed.length) await sql.query(`INSERT INTO recomendaciones (codigo, votante) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [codigo, votante]);
+    if (!removed.length) {
+      if (red) {
+        const fromNetwork = await sql.query(`SELECT count(*)::integer AS total FROM recomendaciones WHERE codigo = $1 AND red = $2`, [codigo, red]);
+        if (Number(fromNetwork[0].total) >= VOTES_PER_NETWORK) {
+          throw new DbError(429, 'Desde esta conexión ya se recomendó a este entrenador varias veces.');
+        }
+      }
+      await sql.query(`INSERT INTO recomendaciones (codigo, votante, red) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [codigo, votante, red]);
+    }
     const count = await sql.query(`SELECT count(*)::integer AS total FROM recomendaciones WHERE codigo = $1`, [codigo]);
     return [{ total: Number(count[0].total), recomendado: !removed.length }];
   });
   return { recomendaciones: rows[0].total, recomendado: rows[0].recomendado };
+}
+
+/** Códigos que este votante ya recomendó (para pintar sus likes al abrir la página) */
+export async function votesOf(votante) {
+  const rows = await run((sql) => sql.query(`SELECT codigo FROM recomendaciones WHERE votante = $1`, [votante]));
+  return rows.map((r) => r.codigo);
 }
 
 /**
