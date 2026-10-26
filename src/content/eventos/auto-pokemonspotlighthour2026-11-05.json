@@ -1,11 +1,13 @@
 {
-  "title": "Hora Destacada: Teddiursa wearing a witch hat",
+  "title": "Hora Destacada: Teddiursa con sombrero de bruja",
   "date": "2026-11-05",
   "time": "18:00",
   "location": "Sin quedada · juega desde donde estés",
   "type": "Hora Destacada",
   "description": "Evento del juego, sin quedada de la comunidad.",
+  "bonus": "Doble experiencia por evolución",
   "flyer": "/images/eventos/auto-pokemonspotlighthour2026-11-05.svg",
+  "image": "/images/pokemon/216.png",
   "link": "https://leekduck.com/events/pokemonspotlighthour2026-11-05/",
   "reunion": false
 }

@@ -37,6 +37,7 @@ export interface Evento {
   link?: string; // Página oficial del evento (eventos automáticos)
   reunion?: boolean; // false = evento del juego sin quedada (por defecto hay quedada)
   endDate?: string; // YYYY-MM-DD, para eventos de varios días
+  bonus?: string; // bonus de la Hora Destacada, p. ej. "Doble experiencia por evolución"
 }
 
 export const hasMeetup = (e: Pick<Evento, 'reunion'>) => e.reunion !== false;

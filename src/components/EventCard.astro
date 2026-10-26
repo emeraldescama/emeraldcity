@@ -55,6 +55,11 @@ const attendUrl = getEventWhatsAppUrl(evento.title, `${dateLabel}, ${timeLabel}`
           Evento del juego · sin quedada
         </p>
       )}
+      {evento.bonus && (
+        <p class="mt-3 px-3 py-2 rounded-lg text-sm font-bold bg-amber-500/10 text-amber-300 border border-amber-500/40">
+          ★ Bonus: {evento.bonus}
+        </p>
+      )}
       <p class="text-sm text-zinc-400 mt-2 flex items-center gap-2">
         <svg class="w-4 h-4 text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />

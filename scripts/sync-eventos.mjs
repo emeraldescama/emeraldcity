@@ -63,6 +63,7 @@ function translateNames(text) {
     .replace(/\(Altered Forme\)/g, '(Forma Modificada)')
     .replace(/\bFormes\b/g, 'Formas')
     .replace(/\bForme\b/g, 'Forma')
+    .replace(/\bwearing an? witch hat\b/gi, 'con sombrero de bruja')
     .replace(/,? and /g, ' y ')
     .trim();
 }
@@ -74,7 +75,7 @@ function isGlobal(name) {
 /** Nombres (en inglés) de los Pokémon que aparecen en el nombre del evento */
 function pokemonInName(text) {
   return text
-    .replace(/Community Day( Classic)?|Raid Day|Raid Hour|Max Battle Day|during Max Monday|Max Monday|Spotlight Hour|Super Mega|\b(Mega|Dynamax|Gigantamax|Shadow)\b|\(.*?\)/gi, ' ')
+    .replace(/Community Day( Classic)?|Raid Day|Raid Hour|Max Battle Day|during Max Monday|Max Monday|Spotlight Hour|wearing an? [a-z ]*hat|Super Mega|\b(Mega|Dynamax|Gigantamax|Shadow)\b|\(.*?\)/gi, ' ')
     .split(/,|\band\b/)
     .map((name) => name.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
@@ -206,6 +207,7 @@ function toMeetups(source) {
   // Las horas con "Z" son de un evento presencial en otra ciudad (por ejemplo, Pokémon Night Out)
   if (gameEvents[eventType] && !start.endsWith('Z')) {
     const [type, title] = gameEvents[eventType](name);
+    const bonus = translateBonus(source.extraData?.spotlight?.bonus);
     const date = start.slice(0, 10);
     const endDate = end.slice(0, 10);
     const multiDay = endDate > date;
@@ -221,11 +223,25 @@ function toMeetups(source) {
       hours: multiDay ? `Desde las ${formatHour(timeOf(start))}` : `${formatHour(timeOf(start))} – ${formatHour(timeOf(end))}`,
       location: NO_MEETUP,
       reunion: false,
+      bonus,
       description: 'Evento del juego, sin quedada de la comunidad.',
     }];
   }
 
   return [];
+}
+
+/** "2× Evolution XP" → "Doble experiencia por evolución" */
+function translateBonus(bonus) {
+  if (!bonus) return undefined;
+  const multipliers = { 2: 'Doble', 3: 'Triple', 4: 'Cuádruple' };
+  const rewards = { xp: 'experiencia', stardust: 'polvos estelares', candy: 'caramelos', 'candy xl': 'caramelos XL' };
+  const actions = { catch: 'por captura', evolution: 'por evolución', evolve: 'por evolución', transfer: 'por transferir', hatch: 'por eclosión' };
+  const m = bonus.trim().match(/^(\d+(?:\.\d+)?)\s*[×x]\s*(catch|evolution|evolve|transfer|hatch)\s+(xp|stardust|candy xl|candy)$/i);
+  if (!m) return bonus.trim();
+  const [, times, action, reward] = m;
+  const amount = multipliers[times] ?? `${times}×`;
+  return `${amount} ${rewards[reward.toLowerCase()]} ${actions[action.toLowerCase()]}`;
 }
 
 // ---------- Ilustraciones de Pokémon ----------
@@ -358,6 +374,7 @@ ${art.length ? artSvg(art, accent) : pokeballSvg(accent)}
 <rect x="60" y="300" width="${pillWidth}" height="58" rx="29" fill="${accent}" fill-opacity="0.14" stroke="${accent}" stroke-opacity="0.6" stroke-width="2"/>
 <text x="92" y="339" class="black" font-size="28" fill="${accent}" letter-spacing="2">${typeLabel}</text>
 ${titleText}
+${meetup.bonus ? bonusSvg(meetup.bonus) : ''}
 <rect x="60" y="890" width="960" height="250" rx="32" fill="#0f172a" fill-opacity="0.9" stroke="#10b981" stroke-opacity="0.35" stroke-width="2"/>
 <text x="104" y="960" class="black" font-size="${dateSize}" fill="#fbbf24" letter-spacing="1">${escapeXml(dateLabel)}</text>
 <text x="104" y="1032" class="black" font-size="54" fill="#f4f4f5">${escapeXml(meetup.hours)}</text>
@@ -368,6 +385,14 @@ ${titleText}
 <text x="1020" y="1296" class="bold" font-size="28" fill="#fbbf24" text-anchor="end">@emeraldcityccs</text>
 </svg>
 `;
+}
+
+/** Franja con el bonus de la Hora Destacada, justo encima del recuadro de la fecha */
+function bonusSvg(bonus) {
+  const text = escapeXml(`BONUS: ${bonus.toUpperCase()}`);
+  const size = text.length > 44 ? 26 : 32;
+  return `<rect x="60" y="780" width="960" height="84" rx="24" fill="#f59e0b" fill-opacity="0.16" stroke="#fbbf24" stroke-opacity="0.7" stroke-width="2"/>
+<text x="540" y="${822 + size * 0.36}" class="black" font-size="${size}" fill="#fbbf24" text-anchor="middle" letter-spacing="1">★ ${text}</text>`;
 }
 
 function pokeballSvg(accent) {
@@ -410,14 +435,26 @@ async function main() {
       const id = meetup.id.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 80);
       const jsonPath = join(EVENTS_DIR, `${id}.json`);
       // Los eventos de varios días que ya empezaron siguen contando hasta su último día
-      if ((meetup.endDate ?? meetup.date) < today || meetup.date > limit || discarded.has(id) || existsSync(jsonPath)) continue;
+      if ((meetup.endDate ?? meetup.date) < today || meetup.date > limit || discarded.has(id)) continue;
+      if (existsSync(jsonPath)) {
+        // Si el bonus de una Hora Destacada se anunció después, se agrega al evento que ya existe
+        const saved = JSON.parse(readFileSync(jsonPath, 'utf8'));
+        if (!meetup.bonus || saved.bonus === meetup.bonus) continue;
+        saved.bonus = meetup.bonus;
+        writeFileSync(jsonPath, `${JSON.stringify(saved, null, 2)}\n`);
+        if (saved.flyer === `/images/eventos/${id}.svg`) {
+          writeFileSync(join(FLYERS_DIR, `${id}.svg`), flyerSvg(meetup, await pokemonArt(meetup.pokemon, dex)));
+        }
+        created.push(`${saved.date} ${saved.time}  ${saved.title}  (bonus: ${meetup.bonus})`);
+        continue;
+      }
 
       const art = await pokemonArt(meetup.pokemon, dex);
       const flyer = `/images/eventos/${id}.svg`;
       writeFileSync(join(FLYERS_DIR, `${id}.svg`), flyerSvg(meetup, art));
-      const { title, date, endDate, time, location, type, description, link, reunion } = meetup;
+      const { title, date, endDate, time, location, type, description, link, reunion, bonus } = meetup;
       const image = art[0]?.path;
-      const data = { title, date, endDate, time, location, type, description, flyer, image, link, reunion };
+      const data = { title, date, endDate, time, location, type, description, bonus, flyer, image, link, reunion };
       writeFileSync(jsonPath, `${JSON.stringify(data, null, 2)}\n`);
       created.push(`${date} ${time}  ${title}  (${location})`);
     }

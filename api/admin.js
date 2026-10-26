@@ -183,6 +183,7 @@ async function saveEvent({ id, event: input, flyer }) {
     ...(existing?.image ? { image: existing.image } : {}),
     ...(existing?.link ? { link: existing.link } : {}),
     ...(existing?.endDate ? { endDate: existing.endDate } : {}),
+    ...(existing?.bonus ? { bonus: existing.bonus } : {}),
   };
   changes.push({ path: `${EVENTS_DIR}/${eventId}.json`, content: `${JSON.stringify(saved, null, 2)}\n` });
 

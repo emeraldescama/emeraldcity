@@ -23,6 +23,8 @@ text{font-family:'OutfitFlyer','Arial Black',Arial,sans-serif}
 <rect x="60" y="300" width="351" height="58" rx="29" fill="#34d399" fill-opacity="0.14" stroke="#34d399" stroke-opacity="0.6" stroke-width="2"/>
 <text x="92" y="339" class="black" font-size="28" fill="#34d399" letter-spacing="2">HORA DESTACADA</text>
 <text x="60" y="440" class="black" font-size="66" fill="#f4f4f5">Hora</text><text x="60" y="511.28" class="black" font-size="66" fill="#f4f4f5">Destacada:</text><text x="60" y="582.56" class="black" font-size="66" fill="#f4f4f5">Gastly</text>
+<rect x="60" y="780" width="960" height="84" rx="24" fill="#f59e0b" fill-opacity="0.16" stroke="#fbbf24" stroke-opacity="0.7" stroke-width="2"/>
+<text x="540" y="833.52" class="black" font-size="32" fill="#fbbf24" text-anchor="middle" letter-spacing="1">★ BONUS: DOBLE EXPERIENCIA POR EVOLUCIÓN</text>
 <rect x="60" y="890" width="960" height="250" rx="32" fill="#0f172a" fill-opacity="0.9" stroke="#10b981" stroke-opacity="0.35" stroke-width="2"/>
 <text x="104" y="960" class="black" font-size="40" fill="#fbbf24" letter-spacing="1">JUEVES 29 DE OCTUBRE</text>
 <text x="104" y="1032" class="black" font-size="54" fill="#f4f4f5">6:00 PM – 7:00 PM</text>

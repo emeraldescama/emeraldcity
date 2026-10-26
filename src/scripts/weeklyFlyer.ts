@@ -206,6 +206,13 @@ async function drawEventRow(
   }
 
   cursor += 12 + placeSize;
+  // En la Hora Destacada, la última línea muestra el bonus en vez del lugar
+  if (evento.bonus) {
+    ctx.font = `800 ${placeSize}px Outfit, sans-serif`;
+    ctx.fillStyle = COLORS.amber;
+    ctx.fillText(wrapText(ctx, `★ Bonus: ${evento.bonus}`, textW, 1)[0] ?? '', textX, cursor);
+    return;
+  }
   // Punto verde: hay quedada; gris: evento del juego sin quedada
   ctx.fillStyle = hasMeetup(evento) ? COLORS.emerald : '#71717a';
   ctx.beginPath();
@@ -294,6 +301,7 @@ export function weeklyText(eventos: Evento[], weekStart: string, weekEnd: string
     const when = eventEnd(e) === e.date ? `${dayName(e.date)} ${formatShortDate(e.date)}, ${formatTime(e.time)}` : `Hasta el ${dayName(eventEnd(e))} ${formatShortDate(eventEnd(e))}`;
     lines.push(`• *${when}* · ${e.title}`);
     lines.push(hasMeetup(e) ? `  📍 ${e.location}` : '  🎮 Evento del juego, sin quedada');
+    if (e.bonus) lines.push(`  ⭐ Bonus: ${e.bonus}`);
   }
   lines.push('', `Más info y flyers: ${siteUrl}/noticias#eventos`);
   return lines.join('\n');
