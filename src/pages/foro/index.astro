@@ -164,6 +164,18 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
       </div>
       <!-- Flyer de cumpleaños (solo en los temas de cumpleaños) -->
       <div id="tema-cumple" class="hidden glass-panel rounded-2xl p-4 space-y-3">
+        <!-- Solo con la sesión del panel abierta -->
+        <div id="cumple-admin" class="hidden max-w-md mx-auto rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+          <p class="text-xs font-bold uppercase tracking-wider text-amber-300">Solo tú lo ves (administrador)</p>
+          <p class="text-sm text-zinc-300">WhatsApp de <strong id="cumple-admin-nombre" class="text-zinc-100"></strong>:</p>
+          <p id="cumple-admin-telefono" class="text-2xl font-black text-emerald-300 font-mono"></p>
+          <div id="cumple-admin-botones" class="flex flex-wrap gap-2">
+            <button id="cumple-admin-copiar" type="button" class={ghostButton}>Copiar número</button>
+            <button id="cumple-admin-mensaje" type="button" class={ghostButton}>Copiar mensaje con @etiqueta</button>
+            <a id="cumple-admin-chat" href="#" target="_blank" rel="noopener" class={`${ghostButton} inline-flex items-center`}>Felicitarlo por privado</a>
+          </div>
+          <p class="text-xs text-zinc-400">Al compartir desde aquí, el mensaje lleva <strong>@su número</strong> para etiquetarlo en el grupo. Si WhatsApp no lo marca en azul, borra esa parte, escribe <strong>@</strong> y elige a la persona.</p>
+        </div>
         <canvas id="cumple-canvas" class="w-full max-w-md mx-auto rounded-xl border border-emerald-500/30"></canvas>
         <div class="flex flex-wrap justify-center gap-2">
           <button id="cumple-compartir" type="button" class={`${primaryButton} hidden`}>Compartir</button>

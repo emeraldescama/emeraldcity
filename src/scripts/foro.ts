@@ -46,7 +46,7 @@ interface Tema {
   titulo: string;
   fijado: boolean;
   mensajes: Mensaje[];
-  cumple: Cumpleanero | null;
+  cumple: (Cumpleanero & { telefono?: string }) | null;
 }
 interface Perfil extends Autor {
   ciudad: string;
@@ -327,9 +327,30 @@ let flyerFor = '';
 /** Dibuja el flyer de cumpleaños del tema (una sola vez por tema) */
 async function renderBirthday(tema: Tema) {
   $('tema-cumple').classList.toggle('hidden', !tema.cumple);
+  renderBirthdayAdmin(tema);
   if (!tema.cumple || flyerFor === tema.id) return;
   flyerFor = tema.id;
   await drawBirthdayFlyer($<HTMLCanvasElement>('cumple-canvas'), tema.cumple);
+}
+
+/** Teléfono de quien cumple años: solo llega al administrador */
+function renderBirthdayAdmin(tema: Tema) {
+  const phone = tema.cumple?.telefono;
+  $('cumple-admin').classList.toggle('hidden', !me.moderador || !tema.cumple);
+  if (!me.moderador || !tema.cumple) return;
+  $('cumple-admin-nombre').textContent = tema.cumple.entrenador;
+  $('cumple-admin-telefono').textContent = phone ? `+${phone}` : 'No tiene teléfono registrado (agrégalo en el panel: Miembros → Editar)';
+  $('cumple-admin-telefono').classList.toggle('text-base', !phone);
+  $('cumple-admin-botones').classList.toggle('hidden', !phone);
+  $<HTMLAnchorElement>('cumple-admin-chat').href = `https://wa.me/${phone}?text=${encodeURIComponent(
+    `🎂 ¡Feliz cumpleaños, ${tema.cumple.entrenador}! Toda la comunidad de Emerald City te desea un día lleno de shinies 💚`,
+  )}`;
+}
+
+async function copyText(text: string, button: HTMLButtonElement, label: string) {
+  await navigator.clipboard?.writeText(text).catch(() => undefined);
+  button.textContent = '¡Copiado!';
+  setTimeout(() => (button.textContent = label), 2000);
 }
 
 async function birthdayFile() {
@@ -544,7 +565,7 @@ export function initForo() {
     $('cumple-compartir').addEventListener('click', async () => {
       if (!currentTopic?.cumple) return;
       const file = await birthdayFile();
-      await navigator.share({ files: [file], text: birthdayMessage(currentTopic.cumple) }).catch(() => undefined);
+      await navigator.share({ files: [file], text: birthdayMessage(currentTopic.cumple, currentTopic.cumple.telefono ?? '') }).catch(() => undefined);
     });
   }
   for (const button of document.querySelectorAll<HTMLButtonElement>('.puerta-tab')) {
@@ -562,6 +583,12 @@ export function initForo() {
     });
   }
   $('pendiente-revisar').addEventListener('click', () => route());
+  $('cumple-admin-copiar').addEventListener('click', (e) => {
+    if (currentTopic?.cumple?.telefono) copyText(`+${currentTopic.cumple.telefono}`, e.currentTarget as HTMLButtonElement, 'Copiar número');
+  });
+  $('cumple-admin-mensaje').addEventListener('click', (e) => {
+    if (currentTopic?.cumple) copyText(birthdayMessage(currentTopic.cumple, currentTopic.cumple.telefono ?? ''), e.currentTarget as HTMLButtonElement, 'Copiar mensaje con @etiqueta');
+  });
   window.addEventListener('hashchange', route);
   showMe();
   route();

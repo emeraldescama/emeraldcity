@@ -402,6 +402,14 @@ export async function pinTopic(id, fijado) {
   return getTopic(id);
 }
 
+/** WhatsApp de quien cumple años en un tema de cumpleaños (solo para el administrador) */
+export async function birthdayPhone(temaId) {
+  const rows = await run((sql) =>
+    sql.query(`SELECT m.telefono FROM foro_temas t JOIN miembros m ON m.id = t.cumple_miembro WHERE t.id = $1`, [temaId]),
+  );
+  return rows[0]?.telefono ?? '';
+}
+
 /** Perfil público de un miembro del foro */
 export async function publicProfile(id) {
   const account = await accountById(id);

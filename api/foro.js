@@ -11,7 +11,7 @@
  *   POST  { accion: 'fijar', tema, fijado }                   solo administrador
  */
 import { hasAdminSession, sameOrigin } from './_cookies.js';
-import { CATEGORIAS, createTopic, deleteMessage, ensureBirthdays, forumSummary, getTopic, listTopics, pinTopic, publicProfile, reply } from './_cuentas.js';
+import { CATEGORIAS, birthdayPhone, createTopic, deleteMessage, ensureBirthdays, forumSummary, getTopic, listTopics, pinTopic, publicProfile, reply } from './_cuentas.js';
 import { currentAccount, fail } from './_sesion.js';
 
 const ID = /^[a-z0-9-]{4,40}$/;
@@ -52,7 +52,12 @@ export default async function handler(req, res) {
       const query = req.query || {};
       // Los temas de cumpleaños del día se abren solos al entrar al foro
       if (!query.tema && !query.perfil) await ensureBirthdays();
-      if (query.tema) return res.status(200).json({ ...me, tema: await getTopic(id(query.tema)) });
+      if (query.tema) {
+        const tema = await getTopic(id(query.tema));
+        // El teléfono de quien cumple años solo lo recibe el administrador, para etiquetarlo en el grupo
+        if (admin && tema.cumple) tema.cumple.telefono = await birthdayPhone(tema.id);
+        return res.status(200).json({ ...me, tema });
+      }
       if (query.perfil) return res.status(200).json({ ...me, perfil: await publicProfile(id(query.perfil)) });
       if (query.categoria) {
         if (!CATEGORIAS[query.categoria]) throw new BadRequest('Esa categoría no existe.');
