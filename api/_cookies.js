@@ -3,6 +3,7 @@
  *   ec_admin    sesión del panel (8 horas). Es HttpOnly: ningún script de la página puede
  *               leerla, y el PIN ya no se guarda en el navegador.
  *   ec_votante  identificador anónimo para los likes de "Haz amigos" (1 año).
+ *   ec_cuenta   sesión de un miembro en su cuenta de la web (30 días).
  *
  * La firma usa SESSION_SECRET si existe en Vercel; si no, una clave derivada del PIN y de la
  * base de datos (al cambiar el PIN se cierran todas las sesiones del panel).
@@ -12,6 +13,8 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 const ADMIN_COOKIE = 'ec_admin';
 const VOTER_COOKIE = 'ec_votante';
 const ADMIN_HOURS = 8;
+const USER_COOKIE = 'ec_cuenta';
+const USER_DAYS = 30;
 
 function secret(purpose) {
   const base = process.env.SESSION_SECRET || `${purpose === 'admin' ? process.env.ADMIN_PIN : ''}|${process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? process.env.ADMIN_PIN ?? ''}`;
@@ -80,6 +83,30 @@ export function sameOrigin(req) {
   } catch {
     return false;
   }
+}
+
+// ---------- Cuentas de miembros ----------
+
+/**
+ * "id:versión:vence". La versión sube al cambiar la contraseña o bloquear la cuenta, y
+ * eso invalida las sesiones abiertas en otros dispositivos.
+ */
+export function startUserSession(res, account) {
+  const value = `${account.id}:${account.sesion}:${Date.now() + USER_DAYS * 86400 * 1000}`;
+  addCookie(res, cookieText(USER_COOKIE, `${value}.${sign(value, 'cuenta')}`, USER_DAYS * 86400, 'Lax'));
+}
+
+export function endUserSession(res) {
+  addCookie(res, cookieText(USER_COOKIE, '', 0, 'Lax'));
+}
+
+/** { id, sesion } de la cookie si es válida y no venció; la versión la compara quien la usa */
+export function userSession(req) {
+  const value = verify(readCookies(req)[USER_COOKIE], 'cuenta');
+  if (!value) return null;
+  const [id, sesion, expires] = value.split(':');
+  if (!id || Number(expires) < Date.now()) return null;
+  return { id, sesion: Number(sesion) };
 }
 
 // ---------- Likes ----------

@@ -1,0 +1,192 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const inputClass = 'w-full rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 outline-none px-4 py-3.5 text-base text-zinc-100 placeholder:text-zinc-500 transition-colors';
+const labelClass = 'block text-sm font-bold text-zinc-100 mb-1.5';
+const helpClass = 'text-xs text-zinc-400 mt-1.5';
+const primaryButton = 'w-full px-5 py-3.5 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 rounded-xl transition-all disabled:opacity-50';
+const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 rounded-xl transition-colors disabled:opacity-40';
+const teams = [
+  { value: '', label: 'Sin equipo', color: '#71717a' },
+  { value: 'instinto', label: 'Instinto', color: '#facc15' },
+  { value: 'sabiduria', label: 'Sabiduría', color: '#3b82f6' },
+  { value: 'valor', label: 'Valor', color: '#ef4444' },
+];
+---
+
+<Layout
+  title="Mi cuenta | Emerald City"
+  description="Entra a tu cuenta de Emerald City para usar el foro de la comunidad y personalizar tu perfil."
+  noindex
+>
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-24">
+    <p id="cuenta-cargando" class="text-center text-zinc-400 py-20">Cargando…</p>
+
+    <!-- Sin sesión: entrar o crear la cuenta -->
+    <section id="acceso" class="hidden">
+      <div class="text-center mb-8">
+        <h1 class="text-4xl sm:text-5xl font-black text-zinc-100 tracking-tight">Tu cuenta de <span class="text-emerald-400">Emerald City</span></h1>
+        <p class="text-base text-zinc-400 mt-3">Con tu cuenta eliges tu Pokémon de perfil y conversas con la comunidad en el foro.</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 mb-5" role="tablist">
+        <button type="button" data-modo="entrar" class="modo-boton px-4 py-3 text-sm font-bold rounded-xl border">Entrar</button>
+        <button type="button" data-modo="crear" class="modo-boton px-4 py-3 text-sm font-bold rounded-xl border">Crear cuenta</button>
+      </div>
+
+      <form id="form-entrar" class="glass-panel rounded-2xl p-6 space-y-5">
+        <div>
+          <label for="entrar-codigo" class={labelClass}>Código de amistad</label>
+          <input id="entrar-codigo" inputmode="numeric" autocomplete="username" required placeholder="1234 5678 9012" class={`${inputClass} font-mono`} />
+        </div>
+        <div>
+          <label for="entrar-clave" class={labelClass}>Contraseña</label>
+          <input id="entrar-clave" type="password" autocomplete="current-password" required class={inputClass} />
+          <p class={helpClass}>¿La olvidaste? Escríbele al equipo por WhatsApp y te dan una temporal.</p>
+        </div>
+        <p id="entrar-error" class="text-sm font-semibold text-red-300" role="alert"></p>
+        <button type="submit" class={primaryButton}>Entrar</button>
+      </form>
+
+      <form id="form-crear" class="hidden glass-panel rounded-2xl p-6 space-y-5">
+        <p class="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 text-sm text-zinc-300">
+          Solo pueden crear cuenta los miembros de la comunidad. ¿Todavía no te registraste?
+          <a href="/unirse" class="font-bold text-emerald-400 underline">Hazlo aquí primero</a>.
+        </p>
+        <div>
+          <label for="crear-codigo" class={labelClass}>Tu código de amistad</label>
+          <input id="crear-codigo" inputmode="numeric" autocomplete="username" required placeholder="1234 5678 9012" class={`${inputClass} font-mono`} />
+          <p class={helpClass}>El mismo con el que te registraste en la comunidad.</p>
+        </div>
+        <div>
+          <label for="crear-telefono" class={labelClass}>Tu WhatsApp</label>
+          <input id="crear-telefono" type="tel" autocomplete="tel" placeholder="0412 1234567" class={inputClass} />
+          <p class={helpClass}>El que diste al registrarte. Sirve para comprobar que el código es tuyo. Si no diste ninguno, déjalo vacío.</p>
+        </div>
+        <div>
+          <label for="crear-clave" class={labelClass}>Elige una contraseña</label>
+          <input id="crear-clave" type="password" autocomplete="new-password" minlength="6" required class={inputClass} />
+          <p class={helpClass}>Mínimo 6 caracteres. No uses la misma de Pokémon GO.</p>
+        </div>
+        <div>
+          <label for="crear-clave2" class={labelClass}>Repite la contraseña</label>
+          <input id="crear-clave2" type="password" autocomplete="new-password" minlength="6" required class={inputClass} />
+        </div>
+        <p id="crear-error" class="text-sm font-semibold text-red-300" role="alert"></p>
+        <button type="submit" class={primaryButton}>Crear mi cuenta</button>
+      </form>
+    </section>
+
+    <!-- Con sesión: perfil -->
+    <section id="perfil" class="hidden space-y-6">
+      <div class="glass-panel rounded-2xl p-6 flex items-center gap-5">
+        <img id="perfil-avatar" src="" alt="" width="96" height="96" class="w-24 h-24 rounded-2xl bg-zinc-900 border-2 border-emerald-500/40 [image-rendering:pixelated]" />
+        <div class="min-w-0">
+          <h1 id="perfil-nombre" class="text-3xl font-black text-zinc-100 tracking-tight break-words"></h1>
+          <p id="perfil-detalle" class="text-sm text-zinc-400 mt-1"></p>
+          <a id="perfil-foro" href="/foro" class="hidden mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-400 hover:text-emerald-300">Ir al foro →</a>
+        </div>
+      </div>
+
+      <p id="perfil-pendiente" class="hidden rounded-2xl bg-amber-500/10 border border-amber-500/40 p-4 text-sm text-amber-200">
+        <strong>Tu cuenta está esperando aprobación.</strong> El equipo la revisa pronto; mientras tanto ya puedes elegir tu Pokémon y tu equipo.
+      </p>
+
+      <form id="form-perfil" class="glass-panel rounded-2xl p-6 space-y-6">
+        <h2 class="text-xl font-black text-zinc-100">Tu perfil</h2>
+
+        <div>
+          <label for="buscar-pokemon" class={labelClass}>Tu Pokémon de perfil</label>
+          <input id="buscar-pokemon" type="search" autocomplete="off" placeholder="Busca por nombre o número: Pikachu, Rayquaza, 448…" class={inputClass} />
+          <ul id="lista-pokemon" class="mt-3 grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-80 overflow-y-auto pr-1" aria-label="Pokémon"></ul>
+          <label class="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-zinc-200 cursor-pointer">
+            <input id="perfil-shiny" type="checkbox" class="w-5 h-5 accent-amber-400" />
+            Versión shiny ✨
+          </label>
+        </div>
+
+        <fieldset>
+          <legend class={labelClass}>Tu equipo</legend>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {teams.map((team) => (
+              <label class="equipo-opcion flex items-center gap-2 px-3 py-3 rounded-xl border border-zinc-700 cursor-pointer text-sm font-bold text-zinc-200">
+                <input type="radio" name="equipo" value={team.value} class="sr-only" />
+                <span class="w-3.5 h-3.5 rounded-full flex-shrink-0" style={`background:${team.color}`}></span>
+                {team.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div>
+          <label for="perfil-bio" class={labelClass}>Sobre ti</label>
+          <textarea id="perfil-bio" maxlength="160" rows="3" placeholder="Nivel, Pokémon favorito, qué buscas para intercambiar…" class={inputClass}></textarea>
+          <p class={helpClass}><span id="bio-cuenta">0</span>/160</p>
+        </div>
+
+        <p id="perfil-mensaje" class="text-sm font-semibold" role="status"></p>
+        <button type="submit" class={primaryButton}>Guardar perfil</button>
+      </form>
+
+      <form id="form-clave" class="glass-panel rounded-2xl p-6 space-y-5">
+        <h2 class="text-xl font-black text-zinc-100">Cambiar contraseña</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="clave-actual" class={labelClass}>Contraseña actual</label>
+            <input id="clave-actual" type="password" autocomplete="current-password" required class={inputClass} />
+          </div>
+          <div>
+            <label for="clave-nueva" class={labelClass}>Contraseña nueva</label>
+            <input id="clave-nueva" type="password" autocomplete="new-password" minlength="6" required class={inputClass} />
+          </div>
+        </div>
+        <p id="clave-mensaje" class="text-sm font-semibold" role="status"></p>
+        <button type="submit" class={primaryButton}>Cambiar contraseña</button>
+      </form>
+
+      <div class="text-center">
+        <button id="salir" type="button" class={ghostButton}>Cerrar sesión</button>
+      </div>
+    </section>
+  </div>
+</Layout>
+
+<script>
+  import { initCuenta } from '../scripts/cuenta';
+  initCuenta();
+</script>
+
+<style>
+  .modo-boton[aria-selected='true'] {
+    color: #022c22;
+    background: #34d399;
+    border-color: #34d399;
+  }
+  .modo-boton[aria-selected='false'] {
+    color: #a1a1aa;
+    border-color: #27272a;
+  }
+  .equipo-opcion:has(input:checked) {
+    border-color: #34d399;
+    background: rgba(16, 185, 129, 0.12);
+  }
+  .equipo-opcion:has(input:focus-visible) {
+    outline: 2px solid #34d399;
+    outline-offset: 2px;
+  }
+</style>
+
+<style is:global>
+  /* Los botones de Pokémon se crean desde el script: necesitan estilos globales */
+  .pokemon-opcion {
+    border-color: #27272a;
+    background: rgba(24, 24, 27, 0.6);
+  }
+  .pokemon-opcion:hover {
+    border-color: rgba(52, 211, 153, 0.5);
+  }
+  .pokemon-opcion[aria-pressed='true'] {
+    border-color: #34d399;
+    background: rgba(16, 185, 129, 0.15);
+  }
+</style>

@@ -44,6 +44,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <button type="button" data-tab="flyer" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Flyer semanal</button>
           <button type="button" data-tab="miembros" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Miembros</button>
           <button type="button" data-tab="bienvenidas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Bienvenidas <span id="welcome-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
+          <button type="button" data-tab="cuentas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Cuentas y foro <span id="account-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button id="logout" type="button" class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 rounded-xl border border-zinc-800">Salir</button>
         </div>
       </div>
@@ -280,6 +281,20 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Pestaña: Cuentas de la web y foro -->
+      <div id="tab-cuentas" class="hidden space-y-5">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-black text-zinc-100">Cuentas de la web</h2>
+            <p class="text-sm text-zinc-400 mt-1 max-w-2xl">Los miembros crean su cuenta en <a href="/cuenta" target="_blank" class="text-emerald-400 underline">/cuenta</a> con su código de amistad. Apruébalas para que puedan leer y escribir en el <a href="/foro" target="_blank" class="text-emerald-400 underline">foro</a>. Con esta sesión abierta, en el foro puedes fijar temas y borrar cualquier mensaje.</p>
+          </div>
+          <button id="account-refresh" type="button" class={ghostButton}>Actualizar</button>
+        </div>
+        <p id="account-password" class="hidden px-4 py-3 rounded-xl text-sm font-semibold border bg-amber-500/10 border-amber-500/40 text-amber-200" role="status"></p>
+        <p id="account-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">Todavía nadie creó su cuenta.</p>
+        <ul id="account-list" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></ul>
       </div>
     </section>
   </div>

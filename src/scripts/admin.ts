@@ -15,6 +15,7 @@ import {
 } from '../utils/eventos';
 import { drawWeeklyFlyer, weeklyText } from './weeklyFlyer';
 import { compressImage } from './images';
+import { initAccounts, loadAccounts } from './adminCuentas';
 import { initMembers, loadMembers, onShowTab } from './adminMiembros';
 
 type EventInput = Omit<Evento, 'id' | 'flyer'>;
@@ -323,7 +324,7 @@ function setWeek(start: string) {
 
 // ---------- Navegación y acceso ----------
 
-type Tab = 'eventos' | 'flyer' | 'miembros' | 'bienvenidas';
+type Tab = 'eventos' | 'flyer' | 'miembros' | 'bienvenidas' | 'cuentas';
 
 function selectTab(tab: Tab) {
   for (const button of document.querySelectorAll<HTMLButtonElement>('.tab-button')) {
@@ -333,6 +334,8 @@ function selectTab(tab: Tab) {
   $('tab-flyer').classList.toggle('hidden', tab !== 'flyer');
   $('tab-miembros').classList.toggle('hidden', tab !== 'miembros');
   $('tab-bienvenidas').classList.toggle('hidden', tab !== 'bienvenidas');
+  $('tab-cuentas').classList.toggle('hidden', tab !== 'cuentas');
+  if (tab === 'cuentas') loadAccounts();
   if (tab === 'flyer') renderFlyer();
   if (tab === 'miembros' || tab === 'bienvenidas') onShowTab();
 }
@@ -344,6 +347,7 @@ function showPanel() {
   loadEvents();
   // Solo para el contador de bienvenidas pendientes; los errores se muestran al abrir la pestaña
   loadMembers(true);
+  loadAccounts(true);
 }
 
 function logout() {
@@ -399,6 +403,7 @@ export function initAdmin() {
     $('flyer-share').addEventListener('click', onShare);
   }
   initMembers({ api, showStatus, canShareFiles });
+  initAccounts({ api, showStatus });
 
   // La versión anterior guardaba el PIN en el navegador: se borra
   try {

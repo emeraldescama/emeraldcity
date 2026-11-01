@@ -17,6 +17,7 @@
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { endAdminSession, hasAdminSession, sameOrigin, startAdminSession } from './_cookies.js';
+import { deleteAccount, listAccounts, resetPassword, setAccountState } from './_cuentas.js';
 import { DbError, allowImportedContact, normalizePhone, deleteMember, editMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
 
 const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'];
@@ -314,6 +315,15 @@ export default async function handler(req, res) {
         return res.status(200).json({ miembro: await updateMember(String(body.id ?? ''), 'contacto', body.contacto === true) });
       case 'miembroEditar':
         return res.status(200).json({ miembro: await editMember(String(body.id ?? ''), validateMemberEdit(body.miembro)) });
+      // Cuentas de la web y foro
+      case 'cuentas':
+        return res.status(200).json({ cuentas: await listAccounts() });
+      case 'cuentaEstado':
+        return res.status(200).json({ cuenta: await setAccountState(String(body.id ?? ''), String(body.estado ?? '')) });
+      case 'cuentaClave':
+        return res.status(200).json(await resetPassword(String(body.id ?? '')));
+      case 'cuentaEliminar':
+        return res.status(200).json(await deleteAccount(String(body.id ?? '')));
       case 'miembroEliminar':
         return res.status(200).json(await deleteMember(String(body.id ?? '')));
       case 'importar':

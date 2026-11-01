@@ -1,0 +1,109 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const inputClass = 'w-full rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 outline-none px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-500 transition-colors';
+const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 rounded-xl transition-all disabled:opacity-50';
+const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 rounded-xl transition-colors disabled:opacity-40';
+---
+
+<Layout
+  title="Foro | Emerald City"
+  description="El foro de los miembros de Emerald City: intercambios, incursiones, eventos y más."
+  noindex
+>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-24">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-4xl sm:text-5xl font-black text-zinc-100 tracking-tight">Foro <span class="text-emerald-400">Emerald</span></h1>
+        <p class="text-sm text-zinc-400 mt-1">Solo para miembros de la comunidad.</p>
+      </div>
+      <a id="foro-yo" href="/cuenta" class="hidden items-center gap-2 px-3 py-2 rounded-xl border border-zinc-800 hover:border-emerald-500/40 text-sm font-bold text-zinc-200">
+        <img id="foro-yo-avatar" src="" alt="" width="40" height="40" class="w-10 h-10 [image-rendering:pixelated]" />
+        <span id="foro-yo-nombre"></span>
+      </a>
+    </div>
+
+    <p id="foro-cargando" class="text-center text-zinc-400 py-16">Cargando…</p>
+
+    <!-- Sin acceso: hay que entrar o esperar aprobación -->
+    <section id="foro-puerta" class="hidden glass-panel rounded-2xl p-8 text-center space-y-4">
+      <p id="foro-puerta-titulo" class="text-xl font-black text-zinc-100"></p>
+      <p id="foro-puerta-texto" class="text-sm text-zinc-400 max-w-md mx-auto"></p>
+      <div id="foro-puerta-botones" class="flex flex-wrap justify-center gap-3">
+        <a href="/cuenta" class={primaryButton}>Entrar</a>
+        <a href="/cuenta#crear" class={ghostButton + ' inline-flex items-center'}>Crear cuenta</a>
+      </div>
+    </section>
+
+    <p id="foro-error" class="hidden mb-4 px-4 py-3 rounded-xl text-sm font-semibold border bg-red-500/10 border-red-500/40 text-red-300" role="alert"></p>
+
+    <!-- Categorías -->
+    <section id="vista-categorias" class="hidden">
+      <ul id="lista-categorias" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></ul>
+    </section>
+
+    <!-- Temas de una categoría -->
+    <section id="vista-temas" class="hidden space-y-5">
+      <a href="#" class="text-sm font-bold text-emerald-400 hover:text-emerald-300">← Todas las categorías</a>
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="temas-titulo" class="text-2xl font-black text-zinc-100"></h2>
+          <p id="temas-texto" class="text-sm text-zinc-400"></p>
+        </div>
+        <button id="nuevo-tema-abrir" type="button" class={primaryButton}>Nuevo tema</button>
+      </div>
+      <form id="form-tema" class="hidden glass-panel rounded-2xl p-5 space-y-3">
+        <label for="tema-titulo" class="sr-only">Título</label>
+        <input id="tema-titulo" maxlength="100" required placeholder="Título del tema" class={inputClass} />
+        <label for="tema-texto" class="sr-only">Mensaje</label>
+        <textarea id="tema-texto" maxlength="2000" rows="5" required placeholder="Escribe tu mensaje…" class={inputClass}></textarea>
+        <div class="flex justify-end gap-3">
+          <button id="nuevo-tema-cancelar" type="button" class={ghostButton}>Cancelar</button>
+          <button type="submit" class={primaryButton}>Publicar</button>
+        </div>
+      </form>
+      <ul id="lista-temas" class="space-y-2"></ul>
+      <p id="temas-vacio" class="hidden glass-panel rounded-2xl p-8 text-center text-sm text-zinc-400">Todavía no hay temas aquí. ¡Abre el primero!</p>
+    </section>
+
+    <!-- Un tema con sus mensajes -->
+    <section id="vista-tema" class="hidden space-y-5">
+      <a id="tema-volver" href="#" class="text-sm font-bold text-emerald-400 hover:text-emerald-300">←</a>
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <h2 id="tema-nombre" class="text-2xl sm:text-3xl font-black text-zinc-100 break-words min-w-0"></h2>
+        <button id="tema-fijar" type="button" class={`${ghostButton} hidden`}></button>
+      </div>
+      <ol id="lista-mensajes" class="space-y-3"></ol>
+      <form id="form-respuesta" class="glass-panel rounded-2xl p-4 space-y-3">
+        <label for="respuesta-texto" class="sr-only">Tu respuesta</label>
+        <textarea id="respuesta-texto" maxlength="2000" rows="3" required placeholder="Escribe tu respuesta…" class={inputClass}></textarea>
+        <div class="flex justify-end">
+          <button type="submit" class={primaryButton}>Responder</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- Perfil de un miembro -->
+  <dialog id="perfil-miembro" class="perfil-dialogo m-auto w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-emerald-500/30 bg-zinc-950 text-zinc-100 p-0">
+    <div class="p-6 text-center space-y-3">
+      <img id="pm-avatar" src="" alt="" width="96" height="96" class="w-24 h-24 mx-auto [image-rendering:pixelated]" />
+      <p id="pm-nombre" class="text-2xl font-black break-words"></p>
+      <p id="pm-detalle" class="text-sm text-zinc-400"></p>
+      <p id="pm-bio" class="text-sm text-zinc-200 whitespace-pre-line break-words"></p>
+      <button id="pm-codigo" type="button" class="hidden font-mono text-amber-400 border border-amber-500/30 rounded-lg px-3 py-1.5 text-sm"></button>
+      <form method="dialog"><button class={ghostButton}>Cerrar</button></form>
+    </div>
+  </dialog>
+</Layout>
+
+<script>
+  import { initForo } from '../../scripts/foro';
+  initForo();
+</script>
+
+<style>
+  .perfil-dialogo::backdrop {
+    background: rgba(3, 7, 18, 0.8);
+  }
+</style>

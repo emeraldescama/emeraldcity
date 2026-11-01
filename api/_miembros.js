@@ -68,6 +68,37 @@ const SCHEMA = [
   )`,
   // Huella de la red desde donde se votó, para limitar los likes repetidos desde un mismo lugar
   `ALTER TABLE recomendaciones ADD COLUMN IF NOT EXISTS red text NOT NULL DEFAULT ''`,
+  // Cuentas de la web (una por miembro) y foro
+  `CREATE TABLE IF NOT EXISTS cuentas (
+    id text PRIMARY KEY,
+    miembro_id text NOT NULL UNIQUE REFERENCES miembros(id) ON DELETE CASCADE,
+    clave text NOT NULL,
+    estado text NOT NULL DEFAULT 'pendiente',
+    sesion integer NOT NULL DEFAULT 0,
+    avatar integer NOT NULL DEFAULT 25,
+    shiny boolean NOT NULL DEFAULT false,
+    equipo text NOT NULL DEFAULT '',
+    bio text NOT NULL DEFAULT '',
+    creada timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS foro_temas (
+    id text PRIMARY KEY,
+    categoria text NOT NULL,
+    titulo text NOT NULL,
+    cuenta_id text REFERENCES cuentas(id) ON DELETE SET NULL,
+    fijado boolean NOT NULL DEFAULT false,
+    creado timestamptz NOT NULL DEFAULT now(),
+    actividad timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS foro_mensajes (
+    id text PRIMARY KEY,
+    tema_id text NOT NULL REFERENCES foro_temas(id) ON DELETE CASCADE,
+    cuenta_id text REFERENCES cuentas(id) ON DELETE SET NULL,
+    texto text NOT NULL,
+    creado timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS foro_mensajes_tema ON foro_mensajes (tema_id, creado)`,
+  `CREATE INDEX IF NOT EXISTS foro_temas_categoria ON foro_temas (categoria, actividad DESC)`,
 ];
 
 let sqlClient;
@@ -89,7 +120,7 @@ async function db() {
   return sqlClient;
 }
 
-async function run(query) {
+export async function run(query) {
   try {
     return await query(await db());
   } catch (err) {
@@ -127,7 +158,7 @@ function oneMember(rows) {
   return toMember(rows[0]);
 }
 
-const newId = () => randomUUID().slice(0, 8);
+export const newId = () => randomUUID().slice(0, 8);
 
 /**
  * Número de WhatsApp en formato internacional sin "+": "0412-123 4567" → "584121234567".
