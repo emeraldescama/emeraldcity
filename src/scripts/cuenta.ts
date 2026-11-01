@@ -14,6 +14,8 @@ export interface CuentaPropia {
   entrenador: string;
   ciudad: string;
   codigo: string;
+  cumpleDia: number | null;
+  cumpleMes: number | null;
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -94,6 +96,8 @@ function showProfile(account: CuentaPropia) {
   $<HTMLInputElement>('perfil-shiny').checked = account.shiny;
   for (const radio of document.querySelectorAll<HTMLInputElement>('input[name="equipo"]')) radio.checked = radio.value === account.equipo;
   $<HTMLTextAreaElement>('perfil-bio').value = account.bio;
+  $<HTMLSelectElement>('perfil-cumple-dia').value = account.cumpleDia ? String(account.cumpleDia) : '';
+  $<HTMLSelectElement>('perfil-cumple-mes').value = account.cumpleMes ? String(account.cumpleMes) : '';
   $('bio-cuenta').textContent = String(account.bio.length);
   $('acceso').classList.add('hidden');
   $('perfil').classList.remove('hidden');
@@ -170,6 +174,8 @@ async function onSaveProfile(event: SubmitEvent) {
       shiny: $<HTMLInputElement>('perfil-shiny').checked,
       equipo: document.querySelector<HTMLInputElement>('input[name="equipo"]:checked')?.value ?? '',
       bio: $<HTMLTextAreaElement>('perfil-bio').value,
+      cumpleDia: $<HTMLSelectElement>('perfil-cumple-dia').value || null,
+      cumpleMes: $<HTMLSelectElement>('perfil-cumple-mes').value || null,
     });
     cuenta = updated;
     renderHeader();

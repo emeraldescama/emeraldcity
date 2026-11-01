@@ -8,6 +8,7 @@
  */
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
+import { caracasToday } from './_escama.js';
 import { DbError, newId, normalizePhone, run } from './_miembros.js';
 
 const scryptAsync = promisify(scrypt);
@@ -19,6 +20,7 @@ export const CATEGORIAS = {
   intercambios: 'Intercambios',
   incursiones: 'Incursiones y quedadas',
   eventos: 'Eventos',
+  cumpleanos: 'Cumpleaños',
 };
 export const MAX_POKEMON = 1025;
 
@@ -51,7 +53,7 @@ export function temporaryPassword() {
 // ---------- Cuentas ----------
 
 const ACCOUNT_COLUMNS = `c.id, c.estado, c.sesion, c.avatar, c.shiny, c.equipo, c.bio, c.creada,
-  m.entrenador, m.ciudad, m.codigo, m.mostrar`;
+  m.entrenador, m.ciudad, m.codigo, m.mostrar, m.cumple_dia, m.cumple_mes`;
 
 function toAccount(row) {
   return {
@@ -67,6 +69,8 @@ function toAccount(row) {
     ciudad: row.ciudad,
     codigo: row.codigo ?? '',
     mostrar: row.mostrar === true || row.mostrar === 't' || row.mostrar === 'true',
+    cumpleDia: row.cumple_dia === null || row.cumple_dia === undefined ? null : Number(row.cumple_dia),
+    cumpleMes: row.cumple_mes === null || row.cumple_mes === undefined ? null : Number(row.cumple_mes),
   };
 }
 
@@ -81,7 +85,7 @@ export async function accountById(id) {
 export async function createAccount(codigo, telefono, password) {
   const rows = await run(async (sql) => {
     const members = await sql.query(
-      `SELECT m.id, m.telefono, c.id AS cuenta FROM miembros m LEFT JOIN cuentas c ON c.miembro_id = m.id WHERE m.codigo = $1`,
+      `SELECT m.id, m.telefono, m.pokemon, c.id AS cuenta FROM miembros m LEFT JOIN cuentas c ON c.miembro_id = m.id WHERE m.codigo = $1`,
       [codigo],
     );
     const member = members[0];
@@ -94,7 +98,13 @@ export async function createAccount(codigo, telefono, password) {
       throw new DbError(403, 'El WhatsApp no coincide con el que registraste en la comunidad.');
     }
     const id = newId();
-    await sql.query(`INSERT INTO cuentas (id, miembro_id, clave) VALUES ($1, $2, $3)`, [id, member.id, await hashPassword(password)]);
+    // El perfil empieza con el Pokémon favorito que eligió al registrarse
+    await sql.query(`INSERT INTO cuentas (id, miembro_id, clave, avatar) VALUES ($1, $2, $3, coalesce($4::integer, 25))`, [
+      id,
+      member.id,
+      await hashPassword(password),
+      member.pokemon ?? null,
+    ]);
     return [{ id }];
   });
   return accountById(rows[0].id);
@@ -110,15 +120,20 @@ export async function login(codigo, password) {
 }
 
 export async function updateProfile(id, profile) {
-  await run((sql) =>
-    sql.query(`UPDATE cuentas SET avatar = $2, shiny = $3, equipo = $4, bio = $5 WHERE id = $1`, [
+  await run(async (sql) => {
+    await sql.query(`UPDATE cuentas SET avatar = $2, shiny = $3, equipo = $4, bio = $5 WHERE id = $1`, [
       id,
       profile.avatar,
       profile.shiny,
       profile.equipo,
       profile.bio,
-    ]),
-  );
+    ]);
+    // El Pokémon del perfil es también su favorito (el del flyer de cumpleaños)
+    await sql.query(
+      `UPDATE miembros SET pokemon = $2, cumple_dia = $3, cumple_mes = $4 WHERE id = (SELECT miembro_id FROM cuentas WHERE id = $1)`,
+      [id, profile.avatar, profile.cumpleDia, profile.cumpleMes],
+    );
+  });
   return accountById(id);
 }
 
@@ -172,9 +187,52 @@ export async function deleteAccount(id) {
 
 // ---------- Foro ----------
 
+const bool = (v) => v === true || v === 't' || v === 'true';
+
+let birthdaysCheckedFor = '';
+
+/**
+ * Abre el tema de cumpleaños de cada miembro que cumple años hoy (hora de Caracas). Se
+ * llama al abrir el foro; el índice único evita temas repetidos aunque varias visitas
+ * lleguen a la vez. Quien cumple el 29 de febrero lo celebra el 28 en los años no bisiestos.
+ */
+export async function ensureBirthdays() {
+  const today = caracasToday();
+  if (birthdaysCheckedFor === today) return;
+  const [year, month, day] = today.split('-').map(Number);
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const alsoFeb29 = month === 2 && day === 28 && !leap;
+  await run(async (sql) => {
+    const members = await sql.query(
+      `SELECT id, entrenador FROM miembros
+       WHERE entrenador <> '' AND ((cumple_mes = $1 AND cumple_dia = $2) OR ($3::boolean AND cumple_mes = 2 AND cumple_dia = 29))`,
+      [month, day, alsoFeb29],
+    );
+    for (const member of members) {
+      const temaId = newId();
+      const created = await sql.query(
+        `INSERT INTO foro_temas (id, categoria, titulo, cumple_miembro, cumple_fecha) VALUES ($1, 'cumpleanos', $2, $3, $4)
+         ON CONFLICT (cumple_miembro, cumple_fecha) DO NOTHING RETURNING id`,
+        [temaId, `¡Feliz cumpleaños, ${member.entrenador}! 🎂`, member.id, today],
+      );
+      if (!created.length) continue;
+      await sql.query(`INSERT INTO foro_mensajes (id, tema_id, cuenta_id, texto, sistema) VALUES ($1, $2, NULL, $3, true)`, [
+        newId(),
+        temaId,
+        `¡Hoy está de cumpleaños ${member.entrenador}! 🎉 Toda la comunidad de Emerald City te desea un día lleno de shinies. Déjale tus felicitaciones aquí abajo.`,
+      ]);
+    }
+  });
+  birthdaysCheckedFor = today;
+}
+
 const AUTHOR_COLUMNS = `c.id AS autor_id, m.entrenador AS autor, c.avatar, c.shiny, c.equipo`;
 
+// Autor de los mensajes que escribe la web sola (los temas de cumpleaños)
+const SYSTEM_AUTHOR = { id: 'emerald', entrenador: 'Emerald City', avatar: 384, shiny: false, equipo: '', sistema: true };
+
 function toAuthor(row) {
+  if (bool(row.sistema)) return SYSTEM_AUTHOR;
   if (!row.autor_id) return null;
   return {
     id: row.autor_id,
@@ -207,13 +265,13 @@ export async function forumSummary() {
 export async function listTopics(categoria) {
   const rows = await run((sql) =>
     sql.query(
-      `SELECT t.id, t.titulo, t.fijado, t.creado, t.actividad, ${AUTHOR_COLUMNS},
+      `SELECT t.id, t.titulo, t.fijado, t.creado, t.actividad, ${AUTHOR_COLUMNS}, (t.cumple_miembro IS NOT NULL) AS sistema,
               (SELECT count(*) FROM foro_mensajes f WHERE f.tema_id = t.id)::integer - 1 AS respuestas
        FROM foro_temas t
        LEFT JOIN cuentas c ON c.id = t.cuenta_id
        LEFT JOIN miembros m ON m.id = c.miembro_id
        WHERE t.categoria = $1
-       ORDER BY t.fijado DESC, t.actividad DESC
+       ORDER BY t.fijado DESC, coalesce(t.cumple_fecha, t.actividad::date) DESC, t.actividad DESC
        LIMIT 100`,
       [categoria],
     ),
@@ -232,9 +290,18 @@ export async function listTopics(categoria) {
 export async function getTopic(id) {
   const [topics, messages] = await run((sql) =>
     Promise.all([
-      sql.query(`SELECT id, categoria, titulo, fijado, cuenta_id, creado FROM foro_temas WHERE id = $1`, [id]),
       sql.query(
-        `SELECT f.id, f.texto, f.creado, ${AUTHOR_COLUMNS}
+        `SELECT t.id, t.categoria, t.titulo, t.fijado, t.cuenta_id, t.creado, t.cumple_fecha,
+                m.entrenador AS cumple_entrenador, m.codigo AS cumple_codigo, m.mostrar AS cumple_mostrar,
+                coalesce(c.avatar, m.pokemon) AS cumple_pokemon, c.shiny AS cumple_shiny
+         FROM foro_temas t
+         LEFT JOIN miembros m ON m.id = t.cumple_miembro
+         LEFT JOIN cuentas c ON c.miembro_id = m.id
+         WHERE t.id = $1`,
+        [id],
+      ),
+      sql.query(
+        `SELECT f.id, f.texto, f.creado, f.sistema, ${AUTHOR_COLUMNS}
          FROM foro_mensajes f
          LEFT JOIN cuentas c ON c.id = f.cuenta_id
          LEFT JOIN miembros m ON m.id = c.miembro_id
@@ -254,6 +321,16 @@ export async function getTopic(id) {
     fijado: topic.fijado === true || topic.fijado === 't' || topic.fijado === 'true',
     autorId: topic.cuenta_id,
     creado: new Date(topic.creado).toISOString(),
+    // Datos del flyer de cumpleaños; el código solo si el miembro aparece en "Haz amigos"
+    cumple: topic.cumple_entrenador
+      ? {
+          entrenador: topic.cumple_entrenador,
+          codigo: bool(topic.cumple_mostrar) && String(topic.cumple_codigo ?? '').length === 12 ? topic.cumple_codigo : '',
+          pokemon: topic.cumple_pokemon === null || topic.cumple_pokemon === undefined ? 384 : Number(topic.cumple_pokemon),
+          shiny: bool(topic.cumple_shiny),
+          fecha: String(topic.cumple_fecha instanceof Date ? topic.cumple_fecha.toISOString() : topic.cumple_fecha).slice(0, 10),
+        }
+      : null,
     mensajes: messages.map((row) => ({ id: row.id, texto: row.texto, creado: new Date(row.creado).toISOString(), autor: toAuthor(row) })),
   };
 }

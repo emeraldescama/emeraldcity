@@ -73,6 +73,14 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
         <h2 id="tema-nombre" class="text-2xl sm:text-3xl font-black text-zinc-100 break-words min-w-0"></h2>
         <button id="tema-fijar" type="button" class={`${ghostButton} hidden`}></button>
       </div>
+      <!-- Flyer de cumpleaños (solo en los temas de cumpleaños) -->
+      <div id="tema-cumple" class="hidden glass-panel rounded-2xl p-4 space-y-3">
+        <canvas id="cumple-canvas" class="w-full max-w-md mx-auto rounded-xl border border-emerald-500/30"></canvas>
+        <div class="flex flex-wrap justify-center gap-2">
+          <button id="cumple-compartir" type="button" class={`${primaryButton} hidden`}>Compartir</button>
+          <button id="cumple-descargar" type="button" class={ghostButton}>Descargar flyer</button>
+        </div>
+      </div>
       <ol id="lista-mensajes" class="space-y-3"></ol>
       <form id="form-respuesta" class="glass-panel rounded-2xl p-4 space-y-3">
         <label for="respuesta-texto" class="sr-only">Tu respuesta</label>

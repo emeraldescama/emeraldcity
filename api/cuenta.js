@@ -4,11 +4,12 @@
  *   POST { accion: 'entrar', codigo, clave }
  *   POST { accion: 'salir' }
  *   POST { accion: 'yo' }                                    datos de la cuenta abierta
- *   POST { accion: 'perfil', avatar, shiny, equipo, bio }
+ *   POST { accion: 'perfil', avatar, shiny, equipo, bio, cumpleDia, cumpleMes }
  *   POST { accion: 'clave', actual, nueva }
  */
 import { endUserSession, sameOrigin, startUserSession } from './_cookies.js';
 import { EQUIPOS, MAX_POKEMON, changePassword, createAccount, login, updateProfile } from './_cuentas.js';
+import { validBirthday } from './_miembros.js';
 import { currentAccount, fail } from './_sesion.js';
 
 const code = (value) => String(value ?? '').replace(/\D/g, '');
@@ -64,7 +65,8 @@ export default async function handler(req, res) {
         if (!Number.isInteger(avatar) || avatar < 1 || avatar > MAX_POKEMON) return res.status(400).json({ error: 'Elige un Pokémon de la lista.' });
         if (!EQUIPOS.includes(equipo)) return res.status(400).json({ error: 'Equipo no válido.' });
         if (bio.length > 160) return res.status(400).json({ error: 'La descripción puede tener hasta 160 caracteres.' });
-        return res.status(200).json({ cuenta: await updateProfile(account.id, { avatar, shiny: body.shiny === true, equipo, bio }) });
+        const birthday = validBirthday(body.cumpleDia, body.cumpleMes);
+        return res.status(200).json({ cuenta: await updateProfile(account.id, { avatar, shiny: body.shiny === true, equipo, bio, ...birthday }) });
       }
       case 'clave': {
         const account = await currentAccount(req, res);

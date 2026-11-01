@@ -4,6 +4,8 @@
  * anterior) y el flyer de bienvenida de los registros nuevos.
  */
 import { readMembersFromFile, type ImportPreview } from './importar';
+import { pokemonName, pokemonNumber, setupPokemonInput } from './pokemonPicker';
+import { birthdayText } from '../utils/perfil';
 import { drawWelcomeFlyer, welcomeText } from './welcomeFlyer';
 import { createXlsx } from './xlsx';
 
@@ -23,6 +25,12 @@ export interface Miembro {
   bienvenida: string;
   origen: 'web' | 'importado';
   tieneCaptura: boolean;
+  cumpleDia: number | null;
+  cumpleMes: number | null;
+  /** Pokémon del perfil de su cuenta, o el favorito si no tiene cuenta */
+  pokemon: number | null;
+  shiny: boolean;
+  pokemonFavorito: number | null;
 }
 
 type Api = <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
@@ -33,6 +41,15 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 let api: Api;
 let showStatus: ShowStatus;
 let members: Miembro[] = [];
+// Otras pestañas (Cumpleaños) que usan la misma lista de miembros
+const listeners: ((list: Miembro[]) => void)[] = [];
+
+export function onMembersChange(listener: (list: Miembro[]) => void) {
+  listeners.push(listener);
+  if (loaded) listener(members);
+}
+
+const notify = () => listeners.forEach((listener) => listener(members));
 let loaded = false;
 let pendingImport: ImportPreview | null = null;
 let selectedWelcome: Miembro | null = null;
@@ -145,6 +162,7 @@ function renderMembers() {
       cell(formatPhone(member.telefono), 'text-zinc-400'),
       cell(member.campfire ? member.campfireNombre || 'Sí' : member.campfire === false ? 'No' : '—'),
       cell(member.edad ? String(member.edad) : '—'),
+      cell(member.cumpleDia && member.cumpleMes ? birthdayText(member.cumpleDia, member.cumpleMes) : '—'),
       cell(formatDate(member.fecha), 'text-zinc-400'),
       cell(
         member.bienvenida ? (member.bienvenida.includes('T') ? formatDate(member.bienvenida) : member.bienvenida) : 'Pendiente',
@@ -165,6 +183,7 @@ export async function loadMembers(quiet = false) {
     if (selectedWelcome && !pendingWelcomes().some((w) => w.id === selectedWelcome!.id)) clearWelcome();
     renderMembers();
     renderWelcomes();
+    notify();
   } catch (err) {
     if (!quiet) showStatus((err as Error).message, 'error');
   } finally {
@@ -206,6 +225,13 @@ function openEditor(member: Miembro) {
   field('me-edad').value = member.edad ? String(member.edad) : '';
   $<HTMLSelectElement>('me-campfire').value = member.campfire === true ? 'si' : member.campfire === false ? 'no' : '';
   field('me-campfire-nombre').value = member.campfireNombre;
+  $<HTMLSelectElement>('me-cumple-dia').value = member.cumpleDia ? String(member.cumpleDia) : '';
+  $<HTMLSelectElement>('me-cumple-mes').value = member.cumpleMes ? String(member.cumpleMes) : '';
+  field('me-pokemon').value = '';
+  pokemonName(member.pokemonFavorito).then((name) => {
+    if (editing?.id === member.id) field('me-pokemon').value = name;
+  });
+  setupPokemonInput($('me-lista-pokemon') as HTMLDataListElement);
   $('member-edit-error').textContent = '';
   $<HTMLDialogElement>('member-edit').showModal();
 }
@@ -215,6 +241,11 @@ async function saveEdit(event: SubmitEvent) {
   if (!editing) return;
   const button = $<HTMLButtonElement>('member-edit-save');
   const campfire = $<HTMLSelectElement>('me-campfire').value;
+  const pokemon = await pokemonNumber(field('me-pokemon').value);
+  if (pokemon === undefined) {
+    $('member-edit-error').textContent = 'No encontramos ese Pokémon. Elige uno de la lista.';
+    return;
+  }
   button.disabled = true;
   $('member-edit-error').textContent = '';
   try {
@@ -229,12 +260,16 @@ async function saveEdit(event: SubmitEvent) {
         edad: field('me-edad').value,
         campfire: campfire === 'si' ? true : campfire === 'no' ? false : null,
         campfireNombre: field('me-campfire-nombre').value,
+        cumpleDia: $<HTMLSelectElement>('me-cumple-dia').value || null,
+        cumpleMes: $<HTMLSelectElement>('me-cumple-mes').value || null,
+        pokemon,
       },
     });
     members = members.map((m) => (m.id === miembro.id ? miembro : m));
     if (selectedWelcome?.id === miembro.id) selectedWelcome = miembro;
     renderMembers();
     renderWelcomes();
+    notify();
     $<HTMLDialogElement>('member-edit').close();
     showStatus(`Se guardaron los datos de ${miembro.entrenador}.`, 'ok');
   } catch (err) {
@@ -277,7 +312,7 @@ async function allowImportedContact(button: HTMLButtonElement) {
 }
 
 function downloadExcel() {
-  const headers = ['Fecha', 'Nombre de entrenador', 'Nombre y apellido', 'Ciudad o país', 'Código de amistad', 'WhatsApp', 'Acepta mensajes de intercambio', '¿Tiene Campfire?', 'Nombre en Campfire', 'Edad', 'Aparece en Haz amigos', 'Bienvenida', 'Origen'];
+  const headers = ['Fecha', 'Nombre de entrenador', 'Nombre y apellido', 'Ciudad o país', 'Código de amistad', 'WhatsApp', 'Acepta mensajes de intercambio', '¿Tiene Campfire?', 'Nombre en Campfire', 'Edad', 'Cumpleaños', 'Aparece en Haz amigos', 'Bienvenida', 'Origen'];
   const rows = members.map((m) => [
     formatDate(m.fecha),
     m.entrenador,
@@ -289,6 +324,7 @@ function downloadExcel() {
     m.campfire === null ? '' : m.campfire ? 'Sí' : 'No',
     m.campfireNombre,
     m.edad,
+    m.cumpleDia && m.cumpleMes ? birthdayText(m.cumpleDia, m.cumpleMes) : '',
     m.mostrar ? 'Sí' : 'No',
     m.bienvenida ? (m.bienvenida.includes('T') ? formatDate(m.bienvenida) : m.bienvenida) : 'Pendiente',
     m.origen === 'web' ? 'Formulario web' : 'Hoja anterior',

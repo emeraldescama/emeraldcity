@@ -5,6 +5,7 @@ import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
 const infoUrl = getGeneralContactWhatsAppUrl();
 
 const steps = ['Tus datos', 'Tu perfil', 'Campfire', 'Último paso'];
+const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const inputClass = 'w-full rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 outline-none px-4 py-3.5 text-base text-zinc-100 placeholder:text-zinc-500 transition-colors';
 const labelClass = 'block text-sm font-bold text-zinc-100 mb-1.5';
 const helpClass = 'text-xs text-zinc-400 mt-1.5';
@@ -190,6 +191,30 @@ const tipClass = 'rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 t
         <div id="edad-minima" class="hidden rounded-xl bg-red-500/10 border border-red-500/40 p-4 text-sm text-red-200" role="alert">
           <p class="font-bold">Lo sentimos, todavía no puedes registrarte.</p>
           <p class="mt-1">Emerald City admite personas desde los 16 años, por la seguridad de jugar en espacios abiertos usando el celular.</p>
+        </div>
+
+        <fieldset>
+          <legend class={labelClass}>Tu cumpleaños</legend>
+          <div class="flex gap-3 max-w-sm">
+            <label for="cumple-dia" class="sr-only">Día</label>
+            <select id="cumple-dia" class={inputClass}>
+              <option value="">Día</option>
+              {Array.from({ length: 31 }, (_, i) => <option value={i + 1}>{i + 1}</option>)}
+            </select>
+            <label for="cumple-mes" class="sr-only">Mes</label>
+            <select id="cumple-mes" class={inputClass}>
+              <option value="">Mes</option>
+              {months.map((month, i) => <option value={i + 1}>{month}</option>)}
+            </select>
+          </div>
+          <p class={helpClass}>Ese día te felicitamos con tu propio flyer en el foro 🎂</p>
+        </fieldset>
+
+        <div>
+          <label for="pokemon-favorito" class={labelClass}>Tu Pokémon favorito <span class="font-normal text-zinc-400">(opcional)</span></label>
+          <input id="pokemon-favorito" type="text" list="lista-pokemon" autocomplete="off" placeholder="Ej: Rayquaza" class={inputClass} />
+          <datalist id="lista-pokemon"></datalist>
+          <p class={helpClass}>Sale en tu perfil y en tu flyer de cumpleaños.</p>
         </div>
       </fieldset>
 

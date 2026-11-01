@@ -58,6 +58,10 @@ const SCHEMA = [
   )`,
   `ALTER TABLE miembros ADD COLUMN IF NOT EXISTS telefono text NOT NULL DEFAULT ''`,
   `ALTER TABLE miembros ADD COLUMN IF NOT EXISTS contacto boolean NOT NULL DEFAULT false`,
+  // Cumpleaños (día y mes, sin año) y Pokémon favorito, para el flyer de cumpleaños
+  `ALTER TABLE miembros ADD COLUMN IF NOT EXISTS cumple_dia integer`,
+  `ALTER TABLE miembros ADD COLUMN IF NOT EXISTS cumple_mes integer`,
+  `ALTER TABLE miembros ADD COLUMN IF NOT EXISTS pokemon integer`,
   // Limpia ciudades que en realidad eran el enlace de Drive de la captura (importaciones viejas)
   `UPDATE miembros SET ciudad = '' WHERE ciudad ~* '^https?://'`,
   `CREATE TABLE IF NOT EXISTS recomendaciones (
@@ -99,6 +103,11 @@ const SCHEMA = [
   )`,
   `CREATE INDEX IF NOT EXISTS foro_mensajes_tema ON foro_mensajes (tema_id, creado)`,
   `CREATE INDEX IF NOT EXISTS foro_temas_categoria ON foro_temas (categoria, actividad DESC)`,
+  // Temas de cumpleaños que la web abre sola, uno por miembro y año
+  `ALTER TABLE foro_temas ADD COLUMN IF NOT EXISTS cumple_miembro text`,
+  `ALTER TABLE foro_temas ADD COLUMN IF NOT EXISTS cumple_fecha date`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS foro_temas_cumple ON foro_temas (cumple_miembro, cumple_fecha)`,
+  `ALTER TABLE foro_mensajes ADD COLUMN IF NOT EXISTS sistema boolean NOT NULL DEFAULT false`,
   // Sección Eventos: dinámicas (como la de Wild Area), sus retos y las capturas de cada miembro
   `CREATE TABLE IF NOT EXISTS escama_vinculos (
     escama_id text PRIMARY KEY,
@@ -164,7 +173,11 @@ export async function run(query) {
 }
 
 const COLUMNS = `id, fecha, entrenador, nombre, ciudad, codigo, campfire, campfire_nombre, edad, telefono, contacto,
-  mostrar, bienvenida, origen, captura IS NOT NULL AS tiene_captura`;
+  mostrar, bienvenida, origen, captura IS NOT NULL AS tiene_captura, cumple_dia, cumple_mes, pokemon,
+  (SELECT c.avatar FROM cuentas c WHERE c.miembro_id = miembros.id) AS cuenta_avatar,
+  (SELECT c.shiny FROM cuentas c WHERE c.miembro_id = miembros.id) AS cuenta_shiny`;
+
+const intOrNull = (value) => (value === null || value === undefined || value === '' ? null : Number(value));
 
 /** Fila de la tabla → objeto que usa el panel */
 function toMember(row) {
@@ -184,6 +197,12 @@ function toMember(row) {
     bienvenida: row.bienvenida,
     origen: row.origen,
     tieneCaptura: row.tiene_captura,
+    cumpleDia: intOrNull(row.cumple_dia),
+    cumpleMes: intOrNull(row.cumple_mes),
+    // El Pokémon del perfil de su cuenta manda; si no tiene cuenta, el que eligió al registrarse
+    pokemon: intOrNull(row.cuenta_avatar) ?? intOrNull(row.pokemon),
+    shiny: row.cuenta_shiny === true || row.cuenta_shiny === 't' || row.cuenta_shiny === 'true',
+    pokemonFavorito: intOrNull(row.pokemon),
   };
 }
 
@@ -193,6 +212,26 @@ function oneMember(rows) {
 }
 
 export const newId = () => randomUUID().slice(0, 8);
+
+/** { cumpleDia, cumpleMes } válidos (29 de febrero incluido), ambos null si no hay fecha */
+export function validBirthday(dia, mes) {
+  const day = intOrNull(dia);
+  const month = intOrNull(mes);
+  if (day === null && month === null) return { cumpleDia: null, cumpleMes: null };
+  const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(day) || day < 1 || day > daysInMonth[month - 1]) {
+    throw new DbError(400, 'La fecha de cumpleaños no es válida.');
+  }
+  return { cumpleDia: day, cumpleMes: month };
+}
+
+/** Número de Pokémon válido o null */
+export function validPokemon(value) {
+  const number = intOrNull(value);
+  if (number === null) return null;
+  if (!Number.isInteger(number) || number < 1 || number > 1025) throw new DbError(400, 'Ese Pokémon no existe.');
+  return number;
+}
 
 /**
  * Número de WhatsApp en formato internacional sin "+": "0412-123 4567" → "584121234567".
@@ -213,8 +252,9 @@ export async function listMembers() {
 export async function addMember(registro, captura) {
   const rows = await run((sql) =>
     sql.query(
-      `INSERT INTO miembros (id, entrenador, nombre, ciudad, codigo, campfire, campfire_nombre, edad, telefono, contacto, mostrar, origen, captura)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'web', $12)
+      `INSERT INTO miembros (id, entrenador, nombre, ciudad, codigo, campfire, campfire_nombre, edad, telefono, contacto, mostrar, origen, captura,
+         cumple_dia, cumple_mes, pokemon)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'web', $12, $13, $14, $15)
        ON CONFLICT (codigo) DO NOTHING
        RETURNING ${COLUMNS}`,
       [
@@ -230,6 +270,9 @@ export async function addMember(registro, captura) {
         registro.contacto,
         registro.mostrarEnAmigos,
         captura,
+        registro.cumpleDia,
+        registro.cumpleMes,
+        registro.pokemon,
       ],
     ),
   );
@@ -313,9 +356,23 @@ export async function editMember(id, data) {
       }
       const rows = await sql.query(
         `UPDATE miembros SET entrenador = $2, nombre = $3, ciudad = $4, codigo = $5, telefono = $6,
-           contacto = contacto AND $6 <> '', campfire = $7, campfire_nombre = $8, edad = $9
+           contacto = contacto AND $6 <> '', campfire = $7, campfire_nombre = $8, edad = $9,
+           cumple_dia = $10, cumple_mes = $11, pokemon = $12
          WHERE id = $1 RETURNING ${COLUMNS}`,
-        [id, data.entrenador, data.nombre, data.ciudad, data.codigo || null, data.telefono, data.campfire, data.campfireNombre, data.edad],
+        [
+          id,
+          data.entrenador,
+          data.nombre,
+          data.ciudad,
+          data.codigo || null,
+          data.telefono,
+          data.campfire,
+          data.campfireNombre,
+          data.edad,
+          data.cumpleDia,
+          data.cumpleMes,
+          data.pokemon,
+        ],
       );
       const oldCode = current[0].codigo;
       if (oldCode && data.codigo && oldCode !== data.codigo) {

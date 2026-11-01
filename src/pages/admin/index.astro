@@ -5,6 +5,7 @@ import { DEFAULT_EVENT_LOCATION, EVENT_TYPES } from '../../utils/eventos';
 const inputClass = 'w-full rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 outline-none px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500';
 const labelClass = 'block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2';
 const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 hover:border-emerald-400/60 rounded-xl transition-colors disabled:opacity-40';
+const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 rounded-xl shadow-emerald-glow transition-all disabled:opacity-50';
 ---
 
@@ -44,6 +45,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <button type="button" data-tab="flyer" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Flyer semanal</button>
           <button type="button" data-tab="miembros" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Miembros</button>
           <button type="button" data-tab="bienvenidas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Bienvenidas <span id="welcome-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
+          <button type="button" data-tab="cumples" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Cumpleaños <span id="cumples-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button type="button" data-tab="dinamicas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Dinámicas <span id="entregas-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button type="button" data-tab="cuentas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Cuentas y foro <span id="account-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button id="logout" type="button" class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 rounded-xl border border-zinc-800">Salir</button>
@@ -198,6 +200,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
                 <th class="px-3 py-3">Teléfono</th>
                 <th class="px-3 py-3">Campfire</th>
                 <th class="px-3 py-3">Edad</th>
+                <th class="px-3 py-3">Cumpleaños</th>
                 <th class="px-3 py-3">Fecha</th>
                 <th class="px-3 py-3">Bienvenida</th>
                 <th class="px-3 py-3 sticky right-0 bg-zinc-900 border-l border-zinc-800"><span class="sr-only">Acciones</span></th>
@@ -249,6 +252,29 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
                 <input id="me-campfire-nombre" maxlength="30" class={inputClass} />
               </div>
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <fieldset>
+                <legend class={labelClass}>Cumpleaños</legend>
+                <div class="flex gap-2">
+                  <label for="me-cumple-dia" class="sr-only">Día</label>
+                  <select id="me-cumple-dia" class={inputClass}>
+                    <option value="">Día</option>
+                    {Array.from({ length: 31 }, (_, i) => <option value={i + 1}>{i + 1}</option>)}
+                  </select>
+                  <label for="me-cumple-mes" class="sr-only">Mes</label>
+                  <select id="me-cumple-mes" class={inputClass}>
+                    <option value="">Mes</option>
+                    {months.map((month, i) => <option value={i + 1}>{month}</option>)}
+                  </select>
+                </div>
+              </fieldset>
+              <div>
+                <label for="me-pokemon" class={labelClass}>Pokémon favorito</label>
+                <input id="me-pokemon" list="me-lista-pokemon" autocomplete="off" placeholder="Ej: Rayquaza" class={inputClass} />
+                <datalist id="me-lista-pokemon"></datalist>
+              </div>
+            </div>
+            <p class="text-xs text-zinc-400">Si el miembro tiene cuenta en la web, su flyer usa el Pokémon de su perfil.</p>
             <p id="member-edit-error" class="text-sm font-semibold text-red-300" role="alert"></p>
             <div class="flex flex-wrap justify-end gap-3">
               <button id="member-edit-cancel" type="button" class={ghostButton}>Cancelar</button>
@@ -279,6 +305,31 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
               <button id="welcome-download" type="button" class={`${ghostButton} w-full`}>Descargar imagen</button>
               <button id="welcome-copy" type="button" class={`${ghostButton} w-full`}>Copiar mensaje</button>
               <button id="welcome-done" type="button" class={`${ghostButton} w-full`}>Marcar como enviada</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pestaña: Cumpleaños -->
+      <div id="tab-cumples" class="hidden grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div class="lg:col-span-2 space-y-4 self-start">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-black text-zinc-100">Próximos cumpleaños</h2>
+            <button id="cumples-refresh" type="button" class={ghostButton}>Actualizar</button>
+          </div>
+          <p class="text-sm text-zinc-400">El día del cumpleaños el foro abre solo un tema con el flyer en la categoría Cumpleaños. Aquí también puedes descargarlo para el grupo de WhatsApp.</p>
+          <ul id="cumples-list" class="space-y-2"></ul>
+          <p id="cumples-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">Nadie cumple años en los próximos 30 días.</p>
+          <p id="cumples-faltan" class="text-xs text-zinc-500"></p>
+        </div>
+        <div class="lg:col-span-3">
+          <p id="cumples-placeholder" class="glass-panel rounded-2xl p-10 text-center text-sm text-zinc-400">Elige un cumpleañero de la lista para ver su flyer.</p>
+          <div id="cumples-preview" class="hidden space-y-4">
+            <canvas id="cumples-canvas" class="w-full max-w-xl mx-auto rounded-2xl border border-emerald-500/30 shadow-emerald-glow"></canvas>
+            <div class="max-w-xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button id="cumples-share" type="button" class={`${primaryButton} w-full hidden`}>Compartir en WhatsApp</button>
+              <button id="cumples-download" type="button" class={`${ghostButton} w-full`}>Descargar imagen</button>
+              <button id="cumples-copy" type="button" class={`${ghostButton} w-full`}>Copiar mensaje</button>
             </div>
           </div>
         </div>

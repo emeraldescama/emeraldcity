@@ -11,7 +11,7 @@
  *   POST  { accion: 'fijar', tema, fijado }                   solo administrador
  */
 import { hasAdminSession, sameOrigin } from './_cookies.js';
-import { CATEGORIAS, createTopic, deleteMessage, forumSummary, getTopic, listTopics, pinTopic, publicProfile, reply } from './_cuentas.js';
+import { CATEGORIAS, createTopic, deleteMessage, ensureBirthdays, forumSummary, getTopic, listTopics, pinTopic, publicProfile, reply } from './_cuentas.js';
 import { currentAccount, fail } from './_sesion.js';
 
 const ID = /^[a-z0-9-]{4,40}$/;
@@ -50,6 +50,8 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       const query = req.query || {};
+      // Los temas de cumpleaños del día se abren solos al entrar al foro
+      if (!query.tema && !query.perfil) await ensureBirthdays();
       if (query.tema) return res.status(200).json({ ...me, tema: await getTopic(id(query.tema)) });
       if (query.perfil) return res.status(200).json({ ...me, perfil: await publicProfile(id(query.perfil)) });
       if (query.categoria) {
@@ -69,6 +71,7 @@ export default async function handler(req, res) {
     switch (body.accion) {
       case 'tema': {
         if (!CATEGORIAS[body.categoria]) throw new BadRequest('Esa categoría no existe.');
+        if (body.categoria === 'cumpleanos') throw new BadRequest('Los temas de cumpleaños los abre la web sola cada día.');
         const titulo = text(body.titulo, 'el título', 100);
         const texto = text(body.texto, 'el mensaje', 2000);
         return res.status(200).json({ tema: await createTopic(writer(), body.categoria, titulo, texto) });

@@ -16,6 +16,7 @@ import {
 import { drawWeeklyFlyer, weeklyText } from './weeklyFlyer';
 import { compressImage } from './images';
 import { initAccounts, loadAccounts } from './adminCuentas';
+import { initBirthdays } from './adminCumples';
 import { initDynamics, loadDynamicsTab, loadSubmissions } from './adminDinamicas';
 import { initMembers, loadMembers, onShowTab } from './adminMiembros';
 
@@ -325,7 +326,7 @@ function setWeek(start: string) {
 
 // ---------- Navegación y acceso ----------
 
-type Tab = 'eventos' | 'flyer' | 'miembros' | 'bienvenidas' | 'dinamicas' | 'cuentas';
+type Tab = 'eventos' | 'flyer' | 'miembros' | 'bienvenidas' | 'cumples' | 'dinamicas' | 'cuentas';
 
 function selectTab(tab: Tab) {
   for (const button of document.querySelectorAll<HTMLButtonElement>('.tab-button')) {
@@ -337,6 +338,7 @@ function selectTab(tab: Tab) {
   $('tab-bienvenidas').classList.toggle('hidden', tab !== 'bienvenidas');
   $('tab-cuentas').classList.toggle('hidden', tab !== 'cuentas');
   $('tab-dinamicas').classList.toggle('hidden', tab !== 'dinamicas');
+  $('tab-cumples').classList.toggle('hidden', tab !== 'cumples');
   if (tab === 'dinamicas') loadDynamicsTab();
   if (tab === 'cuentas') loadAccounts();
   if (tab === 'flyer') renderFlyer();
@@ -409,6 +411,7 @@ export function initAdmin() {
   initMembers({ api, showStatus, canShareFiles });
   initAccounts({ api, showStatus });
   initDynamics({ api, showStatus });
+  initBirthdays({ showStatus, canShareFiles });
 
   // La versión anterior guardaba el PIN en el navegador: se borra
   try {

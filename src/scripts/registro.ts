@@ -1,8 +1,9 @@
 /**
  * Formulario de registro de /unirse: avanza paso a paso, valida cada paso y
- * envía el registro a /api/registro, que lo guarda en la hoja de Google.
+ * envía el registro a /api/registro, que lo guarda en la base de datos de la página.
  */
 import { compressImage } from './images';
+import { pokemonNumber, setupPokemonInput } from './pokemonPicker';
 import { DEFAULT_WHATSAPP_PHONE } from '../utils/whatsapp';
 
 const MIN_AGE = 16;
@@ -74,6 +75,12 @@ function stepProblem(): { message: string; field?: HTMLElement } | null {
     }
   }
   if (step === 4 && ageTooLow()) return { message: 'La comunidad admite personas desde los 16 años.' };
+  if (step === 4) {
+    const day = Number($<HTMLSelectElement>('cumple-dia').value);
+    const month = Number($<HTMLSelectElement>('cumple-mes').value);
+    if (!day || !month) return { message: 'Cuéntanos qué día es tu cumpleaños.', field: $(day ? 'cumple-mes' : 'cumple-dia') };
+    if (day > [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]) return { message: 'Ese día no existe en ese mes.', field: $('cumple-dia') };
+  }
   return null;
 }
 
@@ -99,6 +106,12 @@ async function onScreenshot() {
 
 async function submit() {
   const button = $<HTMLButtonElement>('continuar');
+  const pokemon = await pokemonNumber($<HTMLInputElement>('pokemon-favorito').value);
+  if (pokemon === undefined) {
+    showError('No encontramos ese Pokémon. Elige uno de la lista o déjalo vacío.');
+    $('pokemon-favorito').focus();
+    return;
+  }
   button.disabled = true;
   button.textContent = 'Enviando…';
   const campfire = campfireAnswer() === 'si';
@@ -118,6 +131,9 @@ async function submit() {
         campfire,
         campfireNombre: campfire ? $<HTMLInputElement>('campfire-nombre').value : '',
         edad: Number($<HTMLInputElement>('edad').value),
+        cumpleDia: Number($<HTMLSelectElement>('cumple-dia').value),
+        cumpleMes: Number($<HTMLSelectElement>('cumple-mes').value),
+        pokemon,
         captura: screenshot,
       }),
     });
@@ -163,6 +179,8 @@ export function initRegistro() {
     render();
   });
   $('captura').addEventListener('change', onScreenshot);
+  // Las sugerencias de Pokémon se cargan cuando la persona llega a ese campo
+  $('pokemon-favorito').addEventListener('focus', () => setupPokemonInput($('lista-pokemon') as HTMLDataListElement), { once: true });
   // El aviso de un campo pendiente desaparece en cuanto la persona lo corrige
   $('registro').addEventListener('input', () => showError(''));
 

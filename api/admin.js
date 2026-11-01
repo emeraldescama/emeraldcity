@@ -30,7 +30,7 @@ import {
   saveDynamic,
   submissionImage,
 } from './_dinamicas.js';
-import { DbError, allowImportedContact, normalizePhone, deleteMember, editMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
+import { DbError, allowImportedContact, normalizePhone, validBirthday, validPokemon, deleteMember, editMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
 
 const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'];
 const EVENTS_DIR = 'src/content/eventos';
@@ -307,6 +307,7 @@ function validateMemberEdit(input) {
   if (edad !== null && (!Number.isInteger(edad) || edad < 1 || edad > 119)) throw new HttpError(400, 'La edad no es válida.');
   if (/^https?:\/\//i.test(member.ciudad)) throw new HttpError(400, 'La ciudad no puede ser un enlace.');
   if (member.campfire !== true) member.campfireNombre = '';
+  Object.assign(member, validBirthday(data.cumpleDia, data.cumpleMes), { pokemon: validPokemon(data.pokemon) });
   return member;
 }
 

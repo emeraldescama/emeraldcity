@@ -6,6 +6,7 @@
  * Todo el texto se muestra con textContent: nadie puede meter código en un mensaje.
  */
 import { avatarUrl, CATEGORY_HINTS, CATEGORY_NAMES, TEAM_COLORS, TEAM_NAMES, timeAgo, type Equipo } from '../utils/perfil';
+import { birthdayMessage, canvasToFile, drawBirthdayFlyer, type Cumpleanero } from './birthdayFlyer';
 import { cuentaApi, type CuentaPropia } from './cuenta';
 
 interface Autor {
@@ -14,6 +15,8 @@ interface Autor {
   avatar: number;
   shiny: boolean;
   equipo: Equipo;
+  /** Mensajes que escribe la web sola (cumpleaños) */
+  sistema?: boolean;
 }
 interface Categoria {
   id: string;
@@ -42,6 +45,7 @@ interface Tema {
   titulo: string;
   fijado: boolean;
   mensajes: Mensaje[];
+  cumple: Cumpleanero | null;
 }
 interface Perfil extends Autor {
   ciudad: string;
@@ -118,8 +122,8 @@ function showGate(status: number, message: string) {
 // ---------- Piezas ----------
 
 function avatar(autor: Autor | null, size = 'w-12 h-12') {
-  const img = el('img', `${size} flex-shrink-0 rounded-xl bg-zinc-900 border border-zinc-800 [image-rendering:pixelated]`);
-  img.src = avatarUrl(autor?.avatar ?? 132, autor?.shiny);
+  const img = el('img', `${size} flex-shrink-0 rounded-xl bg-zinc-900 border border-zinc-800 ${autor?.sistema ? 'object-contain p-1' : '[image-rendering:pixelated]'}`);
+  img.src = autor?.sistema ? '/images/branding/logo-emerald-city-128.png' : avatarUrl(autor?.avatar ?? 132, autor?.shiny);
   img.alt = '';
   img.loading = 'lazy';
   return img;
@@ -128,6 +132,7 @@ function avatar(autor: Autor | null, size = 'w-12 h-12') {
 /** Nombre del autor; al tocarlo se abre su perfil */
 function authorName(autor: Autor | null) {
   if (!autor) return el('span', 'font-bold text-zinc-500', 'Cuenta borrada');
+  if (autor.sistema) return el('span', 'font-bold text-emerald-300', autor.entrenador);
   const button = el('button', 'inline-flex items-center gap-1.5 font-bold text-zinc-100 hover:text-emerald-300');
   button.type = 'button';
   if (autor.equipo) {
@@ -187,8 +192,10 @@ async function showTopics(categoria: string) {
   $('temas-titulo').textContent = CATEGORY_NAMES[categoria] ?? 'Foro';
   $('temas-texto').textContent = CATEGORY_HINTS[categoria] ?? '';
   $('form-tema').dataset.categoria = categoria;
-  $('nuevo-tema-abrir').classList.toggle('hidden', !me.cuenta);
+  // Los temas de cumpleaños los abre la web sola
+  $('nuevo-tema-abrir').classList.toggle('hidden', !me.cuenta || categoria === 'cumpleanos');
   $('temas-vacio').classList.toggle('hidden', temas.length > 0);
+  $('temas-vacio').textContent = categoria === 'cumpleanos' ? 'Hoy nadie está de cumpleaños. Cuando alguien cumpla, su tema aparece aquí solo.' : 'Todavía no hay temas aquí. ¡Abre el primero!';
   $('lista-temas').replaceChildren(
     ...temas.map((t) => {
       const item = el('li');
@@ -209,8 +216,23 @@ async function showTopics(categoria: string) {
   );
 }
 
+let flyerFor = '';
+
+/** Dibuja el flyer de cumpleaños del tema (una sola vez por tema) */
+async function renderBirthday(tema: Tema) {
+  $('tema-cumple').classList.toggle('hidden', !tema.cumple);
+  if (!tema.cumple || flyerFor === tema.id) return;
+  flyerFor = tema.id;
+  await drawBirthdayFlyer($<HTMLCanvasElement>('cumple-canvas'), tema.cumple);
+}
+
+async function birthdayFile() {
+  return canvasToFile($<HTMLCanvasElement>('cumple-canvas'), `cumpleanos-${currentTopic?.cumple?.entrenador ?? 'emerald'}.png`);
+}
+
 function renderTopic(tema: Tema) {
   currentTopic = tema;
+  renderBirthday(tema);
   $('tema-nombre').textContent = `${tema.fijado ? '📌 ' : ''}${tema.titulo}`;
   const back = $<HTMLAnchorElement>('tema-volver');
   back.href = `#c/${tema.categoria}`;
@@ -395,6 +417,24 @@ export function initForo() {
     $('tema-titulo').focus();
   });
   $('nuevo-tema-cancelar').addEventListener('click', () => $('form-tema').classList.add('hidden'));
+  $('cumple-descargar').addEventListener('click', async () => {
+    const file = await birthdayFile();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(file);
+    link.download = file.name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  });
+  // En el celular se puede mandar directo a WhatsApp
+  const probe = new File([''], 'probe.png', { type: 'image/png' });
+  if (navigator.canShare?.({ files: [probe] })) {
+    $('cumple-compartir').classList.remove('hidden');
+    $('cumple-compartir').addEventListener('click', async () => {
+      if (!currentTopic?.cumple) return;
+      const file = await birthdayFile();
+      await navigator.share({ files: [file], text: birthdayMessage(currentTopic.cumple) }).catch(() => undefined);
+    });
+  }
   window.addEventListener('hashchange', route);
   showMe();
   route();

@@ -6,6 +6,7 @@ const labelClass = 'block text-sm font-bold text-zinc-100 mb-1.5';
 const helpClass = 'text-xs text-zinc-400 mt-1.5';
 const primaryButton = 'w-full px-5 py-3.5 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 rounded-xl transition-all disabled:opacity-50';
 const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 rounded-xl transition-colors disabled:opacity-40';
+const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const teams = [
   { value: '', label: 'Sin equipo', color: '#71717a' },
   { value: 'instinto', label: 'Instinto', color: '#facc15' },
@@ -96,7 +97,8 @@ const teams = [
         <h2 class="text-xl font-black text-zinc-100">Tu perfil</h2>
 
         <div>
-          <label for="buscar-pokemon" class={labelClass}>Tu Pokémon de perfil</label>
+          <label for="buscar-pokemon" class={labelClass}>Tu Pokémon favorito</label>
+          <p class="text-xs text-zinc-400 mb-2">Es tu ícono en el foro y sale en tu flyer de cumpleaños.</p>
           <input id="buscar-pokemon" type="search" autocomplete="off" placeholder="Busca por nombre o número: Pikachu, Rayquaza, 448…" class={inputClass} />
           <ul id="lista-pokemon" class="mt-3 grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-80 overflow-y-auto pr-1" aria-label="Pokémon"></ul>
           <label class="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-zinc-200 cursor-pointer">
@@ -116,6 +118,23 @@ const teams = [
               </label>
             ))}
           </div>
+        </fieldset>
+
+        <fieldset>
+          <legend class={labelClass}>Tu cumpleaños</legend>
+          <div class="flex gap-3 max-w-sm">
+            <label for="perfil-cumple-dia" class="sr-only">Día</label>
+            <select id="perfil-cumple-dia" class={inputClass}>
+              <option value="">Día</option>
+              {Array.from({ length: 31 }, (_, i) => <option value={i + 1}>{i + 1}</option>)}
+            </select>
+            <label for="perfil-cumple-mes" class="sr-only">Mes</label>
+            <select id="perfil-cumple-mes" class={inputClass}>
+              <option value="">Mes</option>
+              {months.map((month, i) => <option value={i + 1}>{month}</option>)}
+            </select>
+          </div>
+          <p class={helpClass}>Ese día el foro te felicita con tu propio flyer 🎂</p>
         </fieldset>
 
         <div>

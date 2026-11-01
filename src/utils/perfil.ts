@@ -19,6 +19,7 @@ export const CATEGORY_NAMES: Record<string, string> = {
   intercambios: 'Intercambios',
   incursiones: 'Incursiones y quedadas',
   eventos: 'Eventos',
+  cumpleanos: 'Cumpleaños',
 };
 
 export const CATEGORY_HINTS: Record<string, string> = {
@@ -26,6 +27,7 @@ export const CATEGORY_HINTS: Record<string, string> = {
   intercambios: 'Busca intercambios con suerte, shinies y Pokémon regionales.',
   incursiones: 'Organiza incursiones, horas legendarias y quedadas.',
   eventos: 'Comenta los eventos del juego y de la comunidad.',
+  cumpleanos: 'Cada día la web felicita a quien cumple años. ¡Déjale tus felicitaciones!',
 };
 
 /** Ícono del perfil: sprite oficial del Pokémon (96 px, pesa 1–3 KB) */
@@ -41,4 +43,14 @@ export function timeAgo(iso: string): string {
   if (seconds < 86400) return `hace ${Math.floor(seconds / 3600)} h`;
   if (seconds < 7 * 86400) return `hace ${Math.floor(seconds / 86400)} d`;
   return new Date(iso).toLocaleDateString('es-VE', { day: 'numeric', month: 'short' });
+}
+
+export const MONTH_NAMES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** "3 de noviembre" */
+export const birthdayText = (dia: number, mes: number) => `${dia} de ${MONTH_NAMES[mes - 1]}`;
+
+/** Ilustración oficial grande del Pokémon (para flyers) */
+export function artworkUrl(number: number, shiny = false): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${shiny ? 'shiny/' : ''}${number}.png`;
 }
