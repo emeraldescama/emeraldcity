@@ -322,6 +322,12 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <ul id="cumples-list" class="space-y-2"></ul>
           <p id="cumples-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">Nadie cumple años en los próximos 30 días.</p>
           <p id="cumples-faltan" class="text-xs text-zinc-500"></p>
+
+          <div class="glass-panel rounded-2xl p-4 space-y-3">
+            <p class="font-bold text-zinc-100">📧 Correo diario de cumpleaños</p>
+            <p id="correo-estado" class="text-sm text-zinc-400">Revisando…</p>
+            <button id="correo-prueba" type="button" class={`${ghostButton} w-full`}>Enviar correo de prueba</button>
+          </div>
         </div>
         <div class="lg:col-span-3">
           <p id="cumples-placeholder" class="glass-panel rounded-2xl p-10 text-center text-sm text-zinc-400">Elige un cumpleañero de la lista para ver su flyer.</p>

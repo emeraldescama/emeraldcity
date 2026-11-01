@@ -108,6 +108,8 @@ const SCHEMA = [
   `ALTER TABLE foro_temas ADD COLUMN IF NOT EXISTS cumple_fecha date`,
   `CREATE UNIQUE INDEX IF NOT EXISTS foro_temas_cumple ON foro_temas (cumple_miembro, cumple_fecha)`,
   `ALTER TABLE foro_mensajes ADD COLUMN IF NOT EXISTS sistema boolean NOT NULL DEFAULT false`,
+  // Datos sueltos de la página, por ejemplo el último día en que se mandó el correo de cumpleaños
+  `CREATE TABLE IF NOT EXISTS ajustes (clave text PRIMARY KEY, valor text NOT NULL)`,
   // Sección Eventos: dinámicas (como la de Wild Area), sus retos y las capturas de cada miembro
   `CREATE TABLE IF NOT EXISTS escama_vinculos (
     escama_id text PRIMARY KEY,

@@ -411,7 +411,7 @@ export function initAdmin() {
   initMembers({ api, showStatus, canShareFiles });
   initAccounts({ api, showStatus });
   initDynamics({ api, showStatus });
-  initBirthdays({ showStatus, canShareFiles });
+  initBirthdays({ api, showStatus, canShareFiles });
 
   // La versión anterior guardaba el PIN en el navegador: se borra
   try {

@@ -101,6 +101,12 @@ El formulario de `/unirse` guarda a cada miembro en la base de datos de la pági
 - En el panel, pestaña **Cumpleaños**: los de hoy y los próximos 30 días, con su WhatsApp (solo visible con el PIN), el flyer para descargar o compartir y el mensaje del grupo con `@número` para etiquetarlo.
 - Importar la hoja anterior también lee las columnas "Fecha de nacimiento" / "Cumpleaños" y "Pokémon favorito": completa esos datos en los miembros que ya existen (sin duplicarlos ni reemplazar lo que ya pusieron) y agrega a los nuevos.
 
+### Correo diario de cumpleaños
+
+- Vercel Cron llama a `/api/cumple-correo` todos los días a las 11:00 UTC (7:00 AM en Caracas, ver `vercel.json`). Si alguien cumple años, manda un correo con sus datos, su WhatsApp, el mensaje para el grupo con `@número` y el enlace a su flyer en el foro. Sale una sola vez por día.
+- Variables en Vercel: `GMAIL_USER` (el Gmail que envía), `GMAIL_APP_PASSWORD` (contraseña de aplicación de esa cuenta: myaccount.google.com → Seguridad → Verificación en 2 pasos → Contraseñas de aplicaciones), `CORREO_CUMPLEANOS` (a quién le llega; varios separados por coma) y, opcional, `CRON_SECRET` para que solo Vercel pueda llamarlo.
+- En el panel, pestaña **Cumpleaños**: muestra si está configurado y tiene un botón para mandar un correo de prueba.
+
 ## 6) Levantar servidor de desarrollo
 
 ```bash

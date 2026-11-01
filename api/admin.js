@@ -17,6 +17,7 @@
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { endAdminSession, hasAdminSession, sameOrigin, startAdminSession } from './_cookies.js';
+import { missingEmailSettings, sendBirthdayEmail } from './_correo.js';
 import { deleteAccount, listAccounts, resetPassword, setAccountState } from './_cuentas.js';
 import {
   adminDynamics,
@@ -408,6 +409,11 @@ export default async function handler(req, res) {
         return res
           .status(200)
           .json(await linkEscama(cleanText(body.escamaId, 'Miembro de Escama', 80), body.cuentaId ? validateId(String(body.cuentaId)) : null));
+      // Correo diario de cumpleaños
+      case 'correoEstado':
+        return res.status(200).json({ falta: missingEmailSettings(), para: process.env.CORREO_CUMPLEANOS ?? '' });
+      case 'correoPrueba':
+        return res.status(200).json(await sendBirthdayEmail({ test: true }));
       case 'miembroEliminar':
         return res.status(200).json(await deleteMember(String(body.id ?? '')));
       case 'importar':

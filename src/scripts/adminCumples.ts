@@ -8,11 +8,13 @@ import { avatarUrl, birthdayText } from '../utils/perfil';
 import { caracasToday } from '../utils/eventos';
 
 type ShowStatus = (message: string, kind?: 'ok' | 'error' | 'info') => void;
+type Api = <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const DAYS_AHEAD = 30;
 
 let showStatus: ShowStatus;
+let api: Api;
 let members: Miembro[] = [];
 let selected: Cumpleanero | null = null;
 let selectedPhone = '';
@@ -97,8 +99,40 @@ async function select(person: Cumpleanero, telefono: string) {
 
 const file = () => canvasToFile($<HTMLCanvasElement>('cumples-canvas'), `cumpleanos-${selected?.entrenador ?? 'emerald'}.png`);
 
-export function initBirthdays(options: { showStatus: ShowStatus; canShareFiles: boolean }) {
+async function loadEmailStatus() {
+  const status = $('correo-estado');
+  try {
+    const { falta, para } = await api<{ falta: string[]; para: string }>('correoEstado');
+    status.textContent = falta.length
+      ? `Falta configurarlo en Vercel (Settings → Environment Variables): ${falta.join(', ')}.`
+      : `Cada día a las 7:00 AM, si alguien cumple años, llega un correo a ${para} con sus datos y el mensaje para el grupo.`;
+    status.className = `text-sm ${falta.length ? 'text-amber-300' : 'text-emerald-300'}`;
+  } catch (err) {
+    status.textContent = (err as Error).message;
+  }
+}
+
+async function sendTestEmail(button: HTMLButtonElement) {
+  button.disabled = true;
+  button.textContent = 'Enviando…';
+  try {
+    const { para } = await api<{ para: string }>('correoPrueba');
+    showStatus(`Correo de prueba enviado a ${para}. Revisa la bandeja de entrada (y la de spam).`, 'ok');
+  } catch (err) {
+    showStatus((err as Error).message, 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Enviar correo de prueba';
+  }
+}
+
+export function initBirthdays(options: { api: Api; showStatus: ShowStatus; canShareFiles: boolean }) {
   showStatus = options.showStatus;
+  api = options.api;
+  const testButton = $<HTMLButtonElement>('correo-prueba');
+  testButton.addEventListener('click', () => sendTestEmail(testButton));
+  // El estado del correo se revisa al abrir la pestaña
+  document.querySelector('[data-tab="cumples"]')?.addEventListener('click', loadEmailStatus);
   onMembersChange((list) => {
     members = list;
     render();
