@@ -244,9 +244,20 @@ function validateImport(list) {
         edad: Number.isInteger(edad) && edad > 0 && edad < 120 ? edad : null,
         fecha: Number.isNaN(fecha.getTime()) ? '' : fecha.toISOString(),
         telefono: normalizePhone(item?.telefono),
+        ...safeBirthday(item?.cumpleDia, item?.cumpleMes),
+        pokemon: Number.isInteger(item?.pokemon) && item.pokemon >= 1 && item.pokemon <= 1025 ? item.pokemon : null,
       };
     })
     .filter((item) => item.entrenador);
+}
+
+/** En una importación, una fecha rara se ignora en vez de frenar todo el archivo */
+function safeBirthday(dia, mes) {
+  try {
+    return validBirthday(dia, mes);
+  } catch {
+    return { cumpleDia: null, cumpleMes: null };
+  }
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

@@ -3,6 +3,7 @@
  * columnas por el título (nombre de entrenador, código, edad…), para importar a los miembros.
  */
 import { readXlsxRows } from './xlsxReader';
+import { pokemonNumber } from './pokemonPicker';
 
 export interface ImportedMember {
   fecha: string;
@@ -14,13 +15,21 @@ export interface ImportedMember {
   campfireNombre: string;
   edad: number | null;
   telefono: string;
+  cumpleDia: number | null;
+  cumpleMes: number | null;
+  pokemon: number | null;
+  /** Nombre del Pokémon tal como venía en la hoja */
+  pokemonTexto?: string;
 }
 
 // "captura" solo sirve para que esa columna no se confunda con otra; no se importa
-type Field = keyof ImportedMember | 'captura';
+type Field = Exclude<keyof ImportedMember, 'cumpleDia' | 'cumpleMes'> | 'cumple' | 'captura';
 
 /** Orden importa: los campos más específicos se reconocen primero */
 const FIELDS: { key: Field; label: string; match: (h: string) => boolean }[] = [
+  // Antes que "Fecha": "Fecha de nacimiento" es el cumpleaños, no la fecha del registro
+  { key: 'cumple', label: 'Cumpleaños', match: (h) => /cumple|nacimiento|nacido|birthday|birth/.test(h) },
+  { key: 'pokemon', label: 'Pokémon favorito', match: (h) => /pokemon/.test(h) && /favorit|preferid/.test(h) },
   { key: 'fecha', label: 'Fecha', match: (h) => /marca temporal|timestamp|^fecha/.test(h) },
   { key: 'campfireNombre', label: 'Nombre en Campfire', match: (h) => h.includes('campfire') && /nombre|usuario|user|nick/.test(h) },
   { key: 'campfire', label: '¿Tiene Campfire?', match: (h) => h.includes('campfire') },
@@ -90,6 +99,42 @@ function parseDate(text: string): string {
 }
 
 /** Los códigos guardados como número pierden los ceros iniciales: se recuperan */
+const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const MONTHS_EN = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+/**
+ * Día y mes del cumpleaños, venga como venga: fecha de Excel, "15/03/1995", "15-03",
+ * "1995-03-15" o "15 de marzo". Con números, primero va el día (como se escribe en
+ * Venezuela), salvo que el segundo número no pueda ser un mes.
+ */
+export function parseBirthday(text: string): { dia: number; mes: number } | null {
+  const raw = normalize(text);
+  if (!raw) return null;
+  const valid = (dia: number, mes: number) => (mes >= 1 && mes <= 12 && dia >= 1 && dia <= DAYS_IN_MONTH[mes - 1] ? { dia, mes } : null);
+
+  // Fecha de Excel: días desde 1899-12-30
+  if (/^\d{4,5}(\.\d+)?$/.test(raw) && Number(raw) > 1000) {
+    const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(Number(raw)) * 86400000);
+    return valid(date.getUTCDate(), date.getUTCMonth() + 1);
+  }
+  const iso = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (iso) return valid(Number(iso[3]), Number(iso[2]));
+
+  const numbers = raw.match(/^(\d{1,2})[-/. ](\d{1,2})(?:[-/. ](\d{2,4}))?$/);
+  if (numbers) {
+    const a = Number(numbers[1]);
+    const b = Number(numbers[2]);
+    return b > 12 ? valid(b, a) : valid(a, b);
+  }
+
+  // "15 de marzo", "marzo 15", "15 mar 1995"
+  const day = raw.match(/\b(\d{1,2})\b/);
+  const monthIndex = [MONTHS, MONTHS_EN].map((list) => list.findIndex((m) => new RegExp(`\\b${m}`).test(raw))).find((i) => i >= 0) ?? -1;
+  if (day && monthIndex >= 0) return valid(Number(day[1]), monthIndex + 1);
+  return null;
+}
+
 function parseCode(text: string): string {
   const digits = text.replace(/\D/g, '');
   return digits.length > 0 && digits.length < 12 ? digits.padStart(12, '0') : digits.length === 12 ? digits : '';
@@ -99,6 +144,7 @@ export interface ImportPreview {
   members: ImportedMember[];
   columns: { label: string; header: string | null }[];
   withoutCode: number;
+  withBirthday: number;
 }
 
 /** Acepta el archivo tal como lo descarga Google: Excel (.xlsx) o CSV */
@@ -108,7 +154,12 @@ export async function readMembersFromFile(file: File): Promise<ImportPreview> {
     throw new Error('Ese es el formato de Excel antiguo (.xls). Guárdalo como .xlsx o descárgalo de Google como .xlsx o .csv.');
   }
   const rows = name.endsWith('.xlsx') ? await readXlsxRows(await file.arrayBuffer()) : parseCsv(await file.text());
-  return readMembers(rows);
+  const preview = readMembers(rows);
+  // El Pokémon favorito viene escrito con su nombre: se busca su número
+  for (const member of preview.members) {
+    if (member.pokemonTexto) member.pokemon = (await pokemonNumber(member.pokemonTexto)) ?? null;
+  }
+  return preview;
 }
 
 export function readMembers([headerRow = [], ...rows]: string[][]): ImportPreview {
@@ -133,6 +184,7 @@ export function readMembers([headerRow = [], ...rows]: string[][]): ImportPrevie
     .map((row) => {
       const campfire = normalize(get(row, 'campfire'));
       const edad = parseInt(get(row, 'edad'), 10);
+      const birthday = parseBirthday(get(row, 'cumple'));
       return {
         fecha: parseDate(get(row, 'fecha')),
         entrenador: get(row, 'entrenador'),
@@ -144,6 +196,10 @@ export function readMembers([headerRow = [], ...rows]: string[][]): ImportPrevie
         campfire: campfire.startsWith('s') ? true : campfire.startsWith('n') ? false : get(row, 'campfireNombre') ? true : null,
         campfireNombre: get(row, 'campfireNombre'),
         edad: Number.isInteger(edad) ? edad : null,
+        cumpleDia: birthday?.dia ?? null,
+        cumpleMes: birthday?.mes ?? null,
+        pokemon: null as number | null,
+        pokemonTexto: get(row, 'pokemon'),
       };
     })
     .filter((m) => m.entrenador);
@@ -152,5 +208,6 @@ export function readMembers([headerRow = [], ...rows]: string[][]): ImportPrevie
     members,
     columns: FIELDS.map((f) => ({ label: f.label, header: map.has(f.key) ? headerRow[map.get(f.key)!] : null })),
     withoutCode: members.filter((m) => !m.codigo).length,
+    withBirthday: members.filter((m) => m.cumpleDia).length,
   };
 }

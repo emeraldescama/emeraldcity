@@ -342,8 +342,10 @@ async function onImportFile() {
   if (!file) return;
   try {
     pendingImport = await readMembersFromFile(file);
-    const { members: found, columns, withoutCode } = pendingImport;
-    $('import-summary').textContent = `Encontramos ${found.length} miembro${found.length === 1 ? '' : 's'}${withoutCode ? ` (${withoutCode} sin código de amistad, no saldrán en Haz amigos)` : ''}. Los que ya estén registrados no se duplican.`;
+    const { members: found, columns, withoutCode, withBirthday } = pendingImport;
+    $('import-summary').textContent = `Encontramos ${found.length} miembro${found.length === 1 ? '' : 's'}${withoutCode ? ` (${withoutCode} sin código de amistad, no saldrán en Haz amigos)` : ''}${
+      withBirthday ? `, ${withBirthday} con cumpleaños` : ''
+    }. Los que ya estén registrados no se duplican: solo se les completa el cumpleaños si no lo tenían.`;
     const list = $('import-columns');
     list.replaceChildren();
     for (const column of columns) {
@@ -365,12 +367,15 @@ async function confirmImport() {
   button.disabled = true;
   showStatus('Importando miembros…');
   try {
-    const { added, updated, duplicated } = await api<{ added: number; updated: number; duplicated: number }>('importar', { miembros: pendingImport.members });
+    const { added, updated, duplicated, birthdays } = await api<{ added: number; updated: number; duplicated: number; birthdays: number }>('importar', {
+      miembros: pendingImport.members,
+    });
     cancelImport();
     await loadMembers();
     const parts = [`se agregaron ${added}`];
     if (updated) parts.push(`se actualizaron ${updated}`);
     if (duplicated) parts.push(`${duplicated} se omitieron (repetidos o ya registrados en la web)`);
+    if (birthdays) parts.push(`se completó el cumpleaños de ${birthdays}`);
     showStatus(`Listo: ${parts.join(', ')}.`, 'ok');
   } catch (err) {
     showStatus((err as Error).message, 'error');

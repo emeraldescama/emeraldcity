@@ -325,6 +325,15 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
         <div class="lg:col-span-3">
           <p id="cumples-placeholder" class="glass-panel rounded-2xl p-10 text-center text-sm text-zinc-400">Elige un cumpleañero de la lista para ver su flyer.</p>
           <div id="cumples-preview" class="hidden space-y-4">
+            <div class="max-w-xl mx-auto glass-panel rounded-2xl p-4 space-y-3">
+              <p class="text-xs font-bold uppercase tracking-wider text-zinc-400">WhatsApp de <span id="cumples-nombre" class="text-zinc-100"></span></p>
+              <p id="cumples-telefono" class="text-2xl font-black text-emerald-300 font-mono"></p>
+              <div id="cumples-telefono-botones" class="flex flex-wrap gap-2">
+                <button id="cumples-copy-phone" type="button" class={ghostButton}>Copiar número</button>
+                <a id="cumples-chat" href="#" target="_blank" rel="noopener" class={`${ghostButton} inline-flex items-center`}>Felicitarlo por privado</a>
+              </div>
+              <p class="text-xs text-zinc-400">El mensaje del grupo incluye <strong>@su número</strong> para etiquetarlo. Si al pegarlo WhatsApp no lo marca en azul, borra esa parte, escribe <strong>@</strong> y elige a la persona en la lista.</p>
+            </div>
             <canvas id="cumples-canvas" class="w-full max-w-xl mx-auto rounded-2xl border border-emerald-500/30 shadow-emerald-glow"></canvas>
             <div class="max-w-xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button id="cumples-share" type="button" class={`${primaryButton} w-full hidden`}>Compartir en WhatsApp</button>

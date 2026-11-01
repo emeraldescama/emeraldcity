@@ -15,6 +15,7 @@ const DAYS_AHEAD = 30;
 let showStatus: ShowStatus;
 let members: Miembro[] = [];
 let selected: Cumpleanero | null = null;
+let selectedPhone = '';
 
 /** Días que faltan para el próximo cumpleaños (0 = hoy) y su fecha */
 function nextBirthday(member: Miembro, today: string): { days: number; date: string } | null {
@@ -71,17 +72,26 @@ function render() {
       when.textContent = `${birthdayText(member.cumpleDia!, member.cumpleMes!)} · ${next.days === 0 ? '¡Hoy! 🎂' : next.days === 1 ? 'mañana' : `en ${next.days} días`}`;
       info.append(name, when);
       button.append(img, info);
-      button.addEventListener('click', () => select(toPerson(member, next.date)));
+      button.addEventListener('click', () => select(toPerson(member, next.date), member.telefono));
       item.append(button);
       return item;
     }),
   );
 }
 
-async function select(person: Cumpleanero) {
+async function select(person: Cumpleanero, telefono: string) {
   selected = person;
+  selectedPhone = telefono;
   $('cumples-placeholder').classList.add('hidden');
   $('cumples-preview').classList.remove('hidden');
+  $('cumples-nombre').textContent = person.entrenador;
+  $('cumples-telefono').textContent = telefono ? `+${telefono}` : 'No tiene teléfono registrado (agrégalo en Miembros → Editar)';
+  $('cumples-telefono').classList.toggle('text-base', !telefono);
+  $('cumples-telefono-botones').classList.toggle('hidden', !telefono);
+  // Chat privado con la persona, con la felicitación ya escrita
+  $<HTMLAnchorElement>('cumples-chat').href = `https://wa.me/${telefono}?text=${encodeURIComponent(
+    `🎂 ¡Feliz cumpleaños, ${person.entrenador}! Toda la comunidad de Emerald City te desea un día lleno de shinies 💚`,
+  )}`;
   await drawBirthdayFlyer($<HTMLCanvasElement>('cumples-canvas'), person);
 }
 
@@ -104,14 +114,18 @@ export function initBirthdays(options: { showStatus: ShowStatus; canShareFiles: 
   });
   $('cumples-copy').addEventListener('click', async () => {
     if (!selected) return;
-    await navigator.clipboard.writeText(birthdayMessage(selected)).catch(() => undefined);
+    await navigator.clipboard.writeText(birthdayMessage(selected, selectedPhone)).catch(() => undefined);
     showStatus('Mensaje copiado. Pégalo en el grupo junto con el flyer.', 'ok');
+  });
+  $('cumples-copy-phone').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(`+${selectedPhone}`).catch(() => undefined);
+    showStatus('Número copiado.', 'ok');
   });
   if (options.canShareFiles) {
     $('cumples-share').classList.remove('hidden');
     $('cumples-share').addEventListener('click', async () => {
       if (!selected) return;
-      await navigator.share({ files: [await file()], text: birthdayMessage(selected) }).catch(() => undefined);
+      await navigator.share({ files: [await file()], text: birthdayMessage(selected, selectedPhone) }).catch(() => undefined);
     });
   }
 }

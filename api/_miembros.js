@@ -286,9 +286,15 @@ export async function addMember(registro, captura) {
  * duplica a nadie. Devuelve cuántos se agregaron, actualizaron y omitieron.
  */
 export async function importMembers(list) {
-  // Un código repetido dentro del mismo archivo cuenta una sola vez
+  // Una persona repetida dentro del mismo archivo cuenta una sola vez: por su código o,
+  // si no tiene, por su nombre de entrenador
   const seen = new Set();
-  const unique = list.filter((item) => !item.codigo || (!seen.has(item.codigo) && seen.add(item.codigo)));
+  const unique = list.filter((item) => {
+    const key = item.codigo || `nombre:${item.entrenador.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   const column = (key, empty = null) => unique.map((item) => item[key] || empty);
 
   const rows = await run((sql) =>
@@ -327,7 +333,35 @@ export async function importMembers(list) {
   );
   const added = rows.filter((r) => r.inserted).length;
   const updated = rows.length - added;
-  return { added, updated, duplicated: list.length - rows.length };
+
+  // Cumpleaños y Pokémon favorito: se completan en todos los que coinciden (también los
+  // registrados en la web), por código o, si no tiene, por nombre de entrenador. Nunca
+  // reemplazan lo que el miembro ya puso.
+  const extras = unique.filter((item) => item.cumpleDia || item.pokemon);
+  let birthdays = 0;
+  if (extras.length) {
+    const completed = await run((sql) =>
+      sql.query(
+        `UPDATE miembros m SET
+           cumple_dia = CASE WHEN m.cumple_dia IS NULL THEN t.dia ELSE m.cumple_dia END,
+           cumple_mes = CASE WHEN m.cumple_dia IS NULL THEN t.mes ELSE m.cumple_mes END,
+           pokemon = coalesce(m.pokemon, t.pokemon)
+         FROM unnest($1::text[], $2::text[], $3::integer[], $4::integer[], $5::integer[]) AS t(codigo, entrenador, dia, mes, pokemon)
+         WHERE (m.codigo = t.codigo OR (t.codigo IS NULL AND lower(m.entrenador) = lower(t.entrenador)))
+           AND ((m.cumple_dia IS NULL AND t.dia IS NOT NULL) OR (m.pokemon IS NULL AND t.pokemon IS NOT NULL))
+         RETURNING (t.dia IS NOT NULL AND m.cumple_dia = t.dia) AS cumple`,
+        [
+          extras.map((item) => item.codigo || null),
+          extras.map((item) => item.entrenador),
+          extras.map((item) => item.cumpleDia ?? null),
+          extras.map((item) => item.cumpleMes ?? null),
+          extras.map((item) => item.pokemon ?? null),
+        ],
+      ),
+    );
+    birthdays = completed.filter((r) => r.cumple === true || r.cumple === 't' || r.cumple === 'true').length;
+  }
+  return { added, updated, duplicated: list.length - rows.length, birthdays };
 }
 
 const PATCHABLE = { mostrar: 'mostrar', contacto: 'contacto' };

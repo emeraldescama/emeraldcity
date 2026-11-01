@@ -98,7 +98,8 @@ El formulario de `/unirse` guarda a cada miembro en la base de datos de la pági
 
 - El registro (`/unirse`) pide el cumpleaños (día y mes) y, opcional, el Pokémon favorito. Los miembros pueden cambiarlos en `/cuenta` (el Pokémon del perfil es su favorito) y el administrador en Miembros → Editar.
 - Cada día, al abrir el foro, la web crea sola un tema en la categoría **Cumpleaños** por cada miembro que cumple años (hora de Caracas), con su flyer: nombre de entrenador, código de amistad (solo si aparece en Haz amigos) y su Pokémon favorito. Quien cumple el 29 de febrero lo celebra el 28 en los años no bisiestos.
-- En el panel, pestaña **Cumpleaños**: los de hoy y los próximos 30 días, con el flyer para descargar o compartir en WhatsApp.
+- En el panel, pestaña **Cumpleaños**: los de hoy y los próximos 30 días, con su WhatsApp (solo visible con el PIN), el flyer para descargar o compartir y el mensaje del grupo con `@número` para etiquetarlo.
+- Importar la hoja anterior también lee las columnas "Fecha de nacimiento" / "Cumpleaños" y "Pokémon favorito": completa esos datos en los miembros que ya existen (sin duplicarlos ni reemplazar lo que ya pusieron) y agrega a los nuevos.
 
 ## 6) Levantar servidor de desarrollo
 

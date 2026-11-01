@@ -203,8 +203,10 @@ export async function drawBirthdayFlyer(canvas: HTMLCanvasElement, persona: Cump
   ctx.textAlign = 'left';
 }
 
-export function birthdayMessage(persona: Cumpleanero): string {
-  return `🎂 ¡Hoy está de cumpleaños *${persona.entrenador}*! Toda la comunidad de Emerald City te desea un día lleno de shinies 💚${
+/** Mensaje para el grupo; con el teléfono, lo etiqueta (@584121234567) */
+export function birthdayMessage(persona: Cumpleanero, telefono = ''): string {
+  const who = telefono ? `@${telefono} (*${persona.entrenador}*)` : `*${persona.entrenador}*`;
+  return `🎂 ¡Hoy está de cumpleaños ${who}! Toda la comunidad de Emerald City te desea un día lleno de shinies 💚${
     persona.codigo ? `\nEnvíale un regalo: ${persona.codigo.replace(/(\d{4})(?=\d)/g, '$1 ')}` : ''
   }`;
 }
