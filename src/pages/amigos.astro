@@ -78,12 +78,16 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
+  import { avatarUrl } from '../utils/perfil';
+
   interface Amigo {
     entrenador: string;
     codigo: string;
     ciudad: string;
     contacto: boolean;
     recomendaciones: number;
+    pokemon: number | null;
+    shiny: boolean;
   }
 
   // Desde cuántas recomendaciones se muestra la marca "Envía regalos"
@@ -156,8 +160,25 @@ import Layout from '../layouts/Layout.astro';
     const top = document.createElement('div');
     top.className = 'flex items-center gap-4';
     const avatar = document.createElement('span');
-    avatar.className = 'w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg font-black text-emerald-300 flex-shrink-0';
-    avatar.textContent = amigo.entrenador.charAt(0).toUpperCase();
+    avatar.className = 'w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg font-black text-emerald-300 flex-shrink-0 overflow-hidden';
+    const initial = () => {
+      avatar.textContent = amigo.entrenador.charAt(0).toUpperCase();
+    };
+    if (amigo.pokemon) {
+      // Su Pokémon favorito; si la imagen no carga, vuelve a la inicial
+      const img = document.createElement('img');
+      img.src = avatarUrl(amigo.pokemon, amigo.shiny);
+      img.alt = '';
+      img.loading = 'lazy';
+      img.width = 48;
+      img.height = 48;
+      img.className = 'w-full h-full object-contain scale-[1.45] [image-rendering:pixelated]';
+      img.addEventListener('error', () => {
+        img.remove();
+        initial();
+      });
+      avatar.append(img);
+    } else initial();
 
     const info = document.createElement('div');
     info.className = 'min-w-0 flex-1';

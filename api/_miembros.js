@@ -460,20 +460,28 @@ export async function getScreenshot(id) {
 }
 
 /**
- * Lista pública de "Haz amigos": nombre de entrenador, código, ciudad, recomendaciones y
- * si acepta mensajes. El teléfono nunca sale en la lista.
+ * Lista pública de "Haz amigos": nombre de entrenador, código, ciudad, recomendaciones,
+ * Pokémon favorito y si acepta mensajes. El teléfono nunca sale en la lista.
  */
 export async function publicFriends() {
   const rows = await run((sql) =>
     sql.query(
       `SELECT m.entrenador, m.codigo, m.ciudad, (m.contacto AND m.telefono <> '') AS contacto,
-              (SELECT count(*) FROM recomendaciones r WHERE r.codigo = m.codigo)::integer AS recomendaciones
+              (SELECT count(*) FROM recomendaciones r WHERE r.codigo = m.codigo)::integer AS recomendaciones,
+              coalesce(c.avatar, m.pokemon) AS pokemon, coalesce(c.shiny, false) AS shiny
        FROM miembros m
+       LEFT JOIN cuentas c ON c.miembro_id = m.id
        WHERE m.mostrar AND m.codigo IS NOT NULL AND length(m.codigo) = 12 AND m.entrenador <> ''
        ORDER BY m.fecha DESC`,
     ),
   );
-  return rows.map((r) => ({ ...r, recomendaciones: Number(r.recomendaciones) }));
+  return rows.map((r) => ({
+    ...r,
+    recomendaciones: Number(r.recomendaciones),
+    // Pokémon favorito (el de su perfil si tiene cuenta); sin él, la página muestra su inicial
+    pokemon: r.pokemon === null || r.pokemon === undefined ? null : Number(r.pokemon),
+    shiny: r.shiny === true || r.shiny === 't' || r.shiny === 'true',
+  }));
 }
 
 // Likes que se aceptan para un mismo entrenador desde una misma conexión. No es 1 porque en
