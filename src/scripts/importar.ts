@@ -3,7 +3,7 @@
  * columnas por el título (nombre de entrenador, código, edad…), para importar a los miembros.
  */
 import { readXlsxRows } from './xlsxReader';
-import { pokemonNumber } from './pokemonPicker';
+import { findPokemonInText } from './pokemonPicker';
 
 export interface ImportedMember {
   fecha: string;
@@ -29,7 +29,12 @@ type Field = Exclude<keyof ImportedMember, 'cumpleDia' | 'cumpleMes'> | 'cumple'
 const FIELDS: { key: Field; label: string; match: (h: string) => boolean }[] = [
   // Antes que "Fecha": "Fecha de nacimiento" es el cumpleaños, no la fecha del registro
   { key: 'cumple', label: 'Cumpleaños', match: (h) => /cumple|nacimiento|nacido|birthday|birth/.test(h) },
-  { key: 'pokemon', label: 'Pokémon favorito', match: (h) => /pokemon/.test(h) && /favorit|preferid/.test(h) },
+  // "Pokémon favorito", "Pokémon fav", "¿Qué Pokémon te gusta más?", o solo "Pokémon"; nunca "Nombre en Pokémon GO"
+  {
+    key: 'pokemon',
+    label: 'Pokémon favorito',
+    match: (h) => /pokemon|poke\b/.test(h) && (/favorit|preferid|\bfav\b|gusta|mascota|elige/.test(h) || /^(tu |su )?pokemon$/.test(h)),
+  },
   { key: 'fecha', label: 'Fecha', match: (h) => /marca temporal|timestamp|^fecha/.test(h) },
   { key: 'campfireNombre', label: 'Nombre en Campfire', match: (h) => h.includes('campfire') && /nombre|usuario|user|nick/.test(h) },
   { key: 'campfire', label: '¿Tiene Campfire?', match: (h) => h.includes('campfire') },
@@ -145,6 +150,9 @@ export interface ImportPreview {
   columns: { label: string; header: string | null }[];
   withoutCode: number;
   withBirthday: number;
+  withPokemon: number;
+  /** Lo que se escribió como Pokémon y no se pudo reconocer */
+  unknownPokemon: string[];
 }
 
 /** Acepta el archivo tal como lo descarga Google: Excel (.xlsx) o CSV */
@@ -155,10 +163,15 @@ export async function readMembersFromFile(file: File): Promise<ImportPreview> {
   }
   const rows = name.endsWith('.xlsx') ? await readXlsxRows(await file.arrayBuffer()) : parseCsv(await file.text());
   const preview = readMembers(rows);
-  // El Pokémon favorito viene escrito con su nombre: se busca su número
+  // El Pokémon favorito viene escrito a mano: se busca su número, perdonando errores de tipeo
+  const unknown = new Set<string>();
   for (const member of preview.members) {
-    if (member.pokemonTexto) member.pokemon = (await pokemonNumber(member.pokemonTexto)) ?? null;
+    if (!member.pokemonTexto) continue;
+    member.pokemon = await findPokemonInText(member.pokemonTexto);
+    if (!member.pokemon) unknown.add(member.pokemonTexto);
   }
+  preview.withPokemon = preview.members.filter((m) => m.pokemon).length;
+  preview.unknownPokemon = [...unknown];
   return preview;
 }
 
@@ -209,5 +222,7 @@ export function readMembers([headerRow = [], ...rows]: string[][]): ImportPrevie
     columns: FIELDS.map((f) => ({ label: f.label, header: map.has(f.key) ? headerRow[map.get(f.key)!] : null })),
     withoutCode: members.filter((m) => !m.codigo).length,
     withBirthday: members.filter((m) => m.cumpleDia).length,
+    withPokemon: 0,
+    unknownPokemon: [],
   };
 }

@@ -4,8 +4,8 @@
  * anterior) y el flyer de bienvenida de los registros nuevos.
  */
 import { readMembersFromFile, type ImportPreview } from './importar';
-import { pokemonName, pokemonNumber, setupPokemonInput } from './pokemonPicker';
-import { birthdayText } from '../utils/perfil';
+import { pokemonList, pokemonName, pokemonNumber, setupPokemonInput } from './pokemonPicker';
+import { avatarUrl, birthdayText } from '../utils/perfil';
 import { drawWelcomeFlyer, welcomeText } from './welcomeFlyer';
 import { createXlsx } from './xlsx';
 
@@ -113,9 +113,34 @@ function switchButton(on: boolean, labels: [string, string], title: string, onCl
 
 const formatPhone = (phone: string) => (phone ? `+${phone}` : '—');
 
+// Nombres de los Pokémon para la columna "Pokémon" (se cargan una vez)
+let pokemonNames = new Map<number, string>();
+
+/** Ícono y nombre del Pokémon favorito (o el de su perfil, si tiene cuenta) */
+function pokemonCell(member: Miembro) {
+  const td = document.createElement('td');
+  td.className = 'pl-3 pr-5 py-1.5 whitespace-nowrap';
+  if (!member.pokemon) {
+    td.textContent = '—';
+    return td;
+  }
+  const wrap = document.createElement('span');
+  wrap.className = 'inline-flex items-center gap-1.5';
+  const img = document.createElement('img');
+  img.src = avatarUrl(member.pokemon, member.shiny);
+  img.alt = '';
+  img.loading = 'lazy';
+  img.className = 'w-9 h-9 -my-1 [image-rendering:pixelated]';
+  wrap.append(img, document.createTextNode(pokemonNames.get(member.pokemon) ?? `#${member.pokemon}`));
+  td.append(wrap);
+  return td;
+}
+
 function renderMembers() {
   const query = $<HTMLInputElement>('member-search').value.trim().toLowerCase();
-  const shown = members.filter((m) => !query || `${m.entrenador} ${m.nombre} ${m.ciudad} ${m.codigo} ${m.telefono}`.toLowerCase().includes(query));
+  const shown = members.filter(
+    (m) => !query || `${m.entrenador} ${m.nombre} ${m.ciudad} ${m.codigo} ${m.telefono} ${pokemonNames.get(m.pokemon ?? 0) ?? ''}`.toLowerCase().includes(query),
+  );
   $('member-count').textContent = `${members.length} miembro${members.length === 1 ? '' : 's'}`;
   $('member-empty').classList.toggle('hidden', members.length > 0);
   $('member-table-wrap').classList.toggle('hidden', members.length === 0);
@@ -163,6 +188,7 @@ function renderMembers() {
       cell(member.campfire ? member.campfireNombre || 'Sí' : member.campfire === false ? 'No' : '—'),
       cell(member.edad ? String(member.edad) : '—'),
       cell(member.cumpleDia && member.cumpleMes ? birthdayText(member.cumpleDia, member.cumpleMes) : '—'),
+      pokemonCell(member),
       cell(formatDate(member.fecha), 'text-zinc-400'),
       cell(
         member.bienvenida ? (member.bienvenida.includes('T') ? formatDate(member.bienvenida) : member.bienvenida) : 'Pendiente',
@@ -312,7 +338,7 @@ async function allowImportedContact(button: HTMLButtonElement) {
 }
 
 function downloadExcel() {
-  const headers = ['Fecha', 'Nombre de entrenador', 'Nombre y apellido', 'Ciudad o país', 'Código de amistad', 'WhatsApp', 'Acepta mensajes de intercambio', '¿Tiene Campfire?', 'Nombre en Campfire', 'Edad', 'Cumpleaños', 'Aparece en Haz amigos', 'Bienvenida', 'Origen'];
+  const headers = ['Fecha', 'Nombre de entrenador', 'Nombre y apellido', 'Ciudad o país', 'Código de amistad', 'WhatsApp', 'Acepta mensajes de intercambio', '¿Tiene Campfire?', 'Nombre en Campfire', 'Edad', 'Cumpleaños', 'Pokémon favorito', 'Aparece en Haz amigos', 'Bienvenida', 'Origen'];
   const rows = members.map((m) => [
     formatDate(m.fecha),
     m.entrenador,
@@ -325,6 +351,7 @@ function downloadExcel() {
     m.campfireNombre,
     m.edad,
     m.cumpleDia && m.cumpleMes ? birthdayText(m.cumpleDia, m.cumpleMes) : '',
+    m.pokemon ? (pokemonNames.get(m.pokemon) ?? String(m.pokemon)) : '',
     m.mostrar ? 'Sí' : 'No',
     m.bienvenida ? (m.bienvenida.includes('T') ? formatDate(m.bienvenida) : m.bienvenida) : 'Pendiente',
     m.origen === 'web' ? 'Formulario web' : 'Hoja anterior',
@@ -342,10 +369,15 @@ async function onImportFile() {
   if (!file) return;
   try {
     pendingImport = await readMembersFromFile(file);
-    const { members: found, columns, withoutCode, withBirthday } = pendingImport;
+    const { members: found, columns, withoutCode, withBirthday, withPokemon, unknownPokemon } = pendingImport;
+    const extras = [withBirthday ? `${withBirthday} con cumpleaños` : '', withPokemon ? `${withPokemon} con Pokémon favorito` : ''].filter(Boolean).join(' y ');
     $('import-summary').textContent = `Encontramos ${found.length} miembro${found.length === 1 ? '' : 's'}${withoutCode ? ` (${withoutCode} sin código de amistad, no saldrán en Haz amigos)` : ''}${
-      withBirthday ? `, ${withBirthday} con cumpleaños` : ''
-    }. Los que ya estén registrados no se duplican: solo se les completa el cumpleaños si no lo tenían.`;
+      extras ? `, ${extras}` : ''
+    }. Los que ya estén registrados no se duplican: solo se les completa el cumpleaños y el Pokémon si no los tenían.${
+      unknownPokemon.length
+        ? ` No reconocimos estos Pokémon (corrígelos en la hoja o luego en Editar): ${unknownPokemon.slice(0, 12).join(', ')}${unknownPokemon.length > 12 ? '…' : ''}.`
+        : ''
+    }`;
     const list = $('import-columns');
     list.replaceChildren();
     for (const column of columns) {
@@ -367,7 +399,7 @@ async function confirmImport() {
   button.disabled = true;
   showStatus('Importando miembros…');
   try {
-    const { added, updated, duplicated, birthdays } = await api<{ added: number; updated: number; duplicated: number; birthdays: number }>('importar', {
+    const { added, updated, duplicated, birthdays, pokemon } = await api<{ added: number; updated: number; duplicated: number; birthdays: number; pokemon: number }>('importar', {
       miembros: pendingImport.members,
     });
     cancelImport();
@@ -376,6 +408,7 @@ async function confirmImport() {
     if (updated) parts.push(`se actualizaron ${updated}`);
     if (duplicated) parts.push(`${duplicated} se omitieron (repetidos o ya registrados en la web)`);
     if (birthdays) parts.push(`se completó el cumpleaños de ${birthdays}`);
+    if (pokemon) parts.push(`se completó el Pokémon favorito de ${pokemon}`);
     showStatus(`Listo: ${parts.join(', ')}.`, 'ok');
   } catch (err) {
     showStatus((err as Error).message, 'error');
@@ -500,6 +533,10 @@ export function initMembers(options: { api: Api; showStatus: ShowStatus; canShar
   showStatus = options.showStatus;
 
   $('member-refresh').addEventListener('click', () => loadMembers());
+  pokemonList().then((list) => {
+    pokemonNames = new Map(list);
+    if (loaded) renderMembers();
+  });
   $('member-search').addEventListener('input', renderMembers);
   $('member-excel').addEventListener('click', downloadExcel);
   const allowButton = $<HTMLButtonElement>('member-allow-contact');

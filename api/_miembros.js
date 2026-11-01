@@ -306,13 +306,14 @@ export async function importMembers(list) {
        -- Sin código no hay con qué compararlos: se evita repetir el mismo nombre de entrenador
        WHERE t.codigo IS NOT NULL
           OR NOT EXISTS (SELECT 1 FROM miembros x WHERE x.codigo IS NULL AND lower(x.entrenador) = lower(t.entrenador))
+       -- Un dato vacío en la hoja nunca borra lo que ya estaba (por ejemplo, un Excel solo con cumpleaños)
        ON CONFLICT (codigo) DO UPDATE SET
-         entrenador = excluded.entrenador,
-         nombre = excluded.nombre,
-         ciudad = excluded.ciudad,
-         campfire = excluded.campfire,
-         campfire_nombre = excluded.campfire_nombre,
-         edad = excluded.edad,
+         entrenador = CASE WHEN excluded.entrenador <> '' THEN excluded.entrenador ELSE m.entrenador END,
+         nombre = CASE WHEN excluded.nombre <> '' THEN excluded.nombre ELSE m.nombre END,
+         ciudad = CASE WHEN excluded.ciudad <> '' THEN excluded.ciudad ELSE m.ciudad END,
+         campfire = coalesce(excluded.campfire, m.campfire),
+         campfire_nombre = CASE WHEN excluded.campfire_nombre <> '' THEN excluded.campfire_nombre ELSE m.campfire_nombre END,
+         edad = coalesce(excluded.edad, m.edad),
          telefono = CASE WHEN excluded.telefono <> '' THEN excluded.telefono ELSE m.telefono END
        WHERE m.origen = 'importado'
        RETURNING (xmax = 0) AS inserted`,
@@ -339,17 +340,27 @@ export async function importMembers(list) {
   // reemplazan lo que el miembro ya puso.
   const extras = unique.filter((item) => item.cumpleDia || item.pokemon);
   let birthdays = 0;
+  let pokemon = 0;
   if (extras.length) {
     const completed = await run((sql) =>
       sql.query(
-        `UPDATE miembros m SET
-           cumple_dia = CASE WHEN m.cumple_dia IS NULL THEN t.dia ELSE m.cumple_dia END,
-           cumple_mes = CASE WHEN m.cumple_dia IS NULL THEN t.mes ELSE m.cumple_mes END,
-           pokemon = coalesce(m.pokemon, t.pokemon)
-         FROM unnest($1::text[], $2::text[], $3::integer[], $4::integer[], $5::integer[]) AS t(codigo, entrenador, dia, mes, pokemon)
-         WHERE (m.codigo = t.codigo OR (t.codigo IS NULL AND lower(m.entrenador) = lower(t.entrenador)))
-           AND ((m.cumple_dia IS NULL AND t.dia IS NOT NULL) OR (m.pokemon IS NULL AND t.pokemon IS NOT NULL))
-         RETURNING (t.dia IS NOT NULL AND m.cumple_dia = t.dia) AS cumple`,
+        `WITH t AS (
+           SELECT * FROM unnest($1::text[], $2::text[], $3::integer[], $4::integer[], $5::integer[]) AS t(codigo, entrenador, dia, mes, pokemon)
+         ),
+         cambios AS (
+           SELECT DISTINCT ON (m.id) m.id, t.dia, t.mes, t.pokemon,
+                  (m.cumple_dia IS NULL AND t.dia IS NOT NULL) AS pone_cumple,
+                  (m.pokemon IS NULL AND t.pokemon IS NOT NULL) AS pone_pokemon
+           FROM miembros m JOIN t ON m.codigo = t.codigo OR (t.codigo IS NULL AND lower(m.entrenador) = lower(t.entrenador))
+           ORDER BY m.id, coalesce(m.codigo = t.codigo, false) DESC
+         )
+         UPDATE miembros m SET
+           cumple_dia = CASE WHEN c.pone_cumple THEN c.dia ELSE m.cumple_dia END,
+           cumple_mes = CASE WHEN c.pone_cumple THEN c.mes ELSE m.cumple_mes END,
+           pokemon = CASE WHEN c.pone_pokemon THEN c.pokemon ELSE m.pokemon END
+         FROM cambios c
+         WHERE m.id = c.id AND (c.pone_cumple OR c.pone_pokemon)
+         RETURNING c.pone_cumple, c.pone_pokemon`,
         [
           extras.map((item) => item.codigo || null),
           extras.map((item) => item.entrenador),
@@ -359,9 +370,11 @@ export async function importMembers(list) {
         ],
       ),
     );
-    birthdays = completed.filter((r) => r.cumple === true || r.cumple === 't' || r.cumple === 'true').length;
+    const yes = (v) => v === true || v === 't' || v === 'true';
+    birthdays = completed.filter((r) => yes(r.pone_cumple)).length;
+    pokemon = completed.filter((r) => yes(r.pone_pokemon)).length;
   }
-  return { added, updated, duplicated: list.length - rows.length, birthdays };
+  return { added, updated, duplicated: list.length - rows.length, birthdays, pokemon };
 }
 
 const PATCHABLE = { mostrar: 'mostrar', contacto: 'contacto' };
