@@ -8,6 +8,7 @@
 import { avatarUrl, CATEGORY_HINTS, CATEGORY_NAMES, TEAM_COLORS, TEAM_NAMES, timeAgo, type Equipo } from '../utils/perfil';
 import { birthdayMessage, canvasToFile, drawBirthdayFlyer, type Cumpleanero } from './birthdayFlyer';
 import { cuentaApi, type CuentaPropia } from './cuenta';
+import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
 
 interface Autor {
   id: string;
@@ -108,15 +109,120 @@ function showView(view: (typeof VIEWS)[number] | null) {
   for (const id of VIEWS) $(id).classList.toggle('hidden', id !== view);
 }
 
-function showGate(status: number, message: string) {
+// ---------- Entrada: crear la cuenta o entrar sin salir del foro ----------
+
+type Gate = 'anonimo' | 'pendiente' | 'mensaje';
+
+function showGate(gate: Gate, message = '') {
   showView(null);
-  const pending = status === 403;
-  $('foro-puerta-titulo').textContent = pending ? 'Tu cuenta está esperando aprobación' : 'Entra con tu cuenta para ver el foro';
-  $('foro-puerta-texto').textContent = pending
-    ? 'El equipo revisa las cuentas nuevas pronto. Mientras tanto puedes elegir tu Pokémon de perfil.'
-    : message || 'El foro es solo para miembros de Emerald City con cuenta aprobada.';
-  $('foro-puerta-botones').classList.toggle('hidden', pending);
+  $('puerta-anonimo').classList.toggle('hidden', gate !== 'anonimo');
+  $('puerta-pendiente').classList.toggle('hidden', gate !== 'pendiente');
+  $('puerta-mensaje').classList.toggle('hidden', gate !== 'mensaje');
+  $('puerta-mensaje').textContent = message;
   $('foro-puerta').classList.remove('hidden');
+}
+
+function setGateTab(tab: 'crear' | 'entrar') {
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.puerta-tab')) {
+    button.setAttribute('aria-selected', String(button.dataset.puerta === tab));
+  }
+  $('puerta-crear').classList.toggle('hidden', tab !== 'crear');
+  $('puerta-entrar').classList.toggle('hidden', tab !== 'entrar');
+}
+
+/** Llamada a /api/cuenta que conserva el código de error para explicar qué pasó */
+async function accountCall(accion: string, payload: Record<string, unknown>) {
+  const res = await fetch('/api/cuenta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ accion, ...payload }),
+  });
+  const data = await res.json().catch(() => ({ error: 'No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.' }));
+  if (!res.ok) throw new ForoError(res.status, data.error || 'No se pudo completar. Inténtalo de nuevo.');
+  return data as { cuenta: CuentaPropia };
+}
+
+function showPending(account: CuentaPropia) {
+  $('pendiente-nombre').textContent = `, ${account.entrenador}`;
+  const message = `Hola, soy ${account.entrenador} y ya creé mi cuenta del foro de Emerald City. ¿Me la pueden aprobar? 🙏`;
+  $<HTMLAnchorElement>('pendiente-whatsapp').href = getGeneralContactWhatsAppUrl(message);
+  showGate('pendiente');
+}
+
+function formatCode(input: HTMLInputElement) {
+  input.value = input.value.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
+}
+
+function createError(message: string, action?: { label: string; href: string }) {
+  $('pc-error-texto').textContent = message;
+  const link = $<HTMLAnchorElement>('pc-error-accion');
+  link.classList.toggle('hidden', !action);
+  if (action) {
+    link.textContent = action.label;
+    link.href = action.href;
+    link.target = action.href.startsWith('http') ? '_blank' : '';
+  }
+  $('pc-error').classList.toggle('hidden', !message);
+}
+
+async function onCreate(event: SubmitEvent) {
+  event.preventDefault();
+  const form = event.target as HTMLFormElement;
+  const codigo = $<HTMLInputElement>('pc-codigo').value.replace(/\D/g, '');
+  const clave = $<HTMLInputElement>('pc-clave').value;
+  createError('');
+  if (codigo.length !== 12) return createError('Escribe tu código de amistad completo: son 12 números.');
+  if (clave.length < 6) return createError('La contraseña debe tener al menos 6 letras o números.');
+  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  button.disabled = true;
+  button.textContent = 'Creando tu cuenta…';
+  try {
+    const { cuenta } = await accountCall('crear', { codigo, telefono: $<HTMLInputElement>('pc-telefono').value, clave });
+    showMe();
+    showPending(cuenta);
+  } catch (err) {
+    const status = err instanceof ForoError ? err.status : 0;
+    const help = (text: string) => ({ label: 'Pedir ayuda por WhatsApp', href: getGeneralContactWhatsAppUrl(text) });
+    if (status === 404) createError((err as Error).message, { label: 'Registrarme en la comunidad', href: '/unirse' });
+    else if (status === 409) {
+      // Ya tenía cuenta: se le lleva a "Ya tengo cuenta" con su código escrito
+      setGateTab('entrar');
+      $<HTMLInputElement>('pe-codigo').value = $<HTMLInputElement>('pc-codigo').value;
+      $('pe-error').textContent = 'Ese código ya tiene cuenta. Entra con tu contraseña.';
+      $('pe-error').classList.remove('hidden');
+      $('pe-clave').focus();
+    } else if (status === 403) {
+      createError(`${(err as Error).message} Revisa el número o pídenos ayuda.`, help(`Hola, quiero crear mi cuenta del foro y me dice que el WhatsApp no coincide. Mi código de amistad es ${codigo}.`));
+    } else createError((err as Error).message, help('Hola, necesito ayuda para crear mi cuenta del foro de Emerald City.'));
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Crear mi cuenta';
+  }
+}
+
+async function onLogin(event: SubmitEvent) {
+  event.preventDefault();
+  const form = event.target as HTMLFormElement;
+  const error = $('pe-error');
+  error.classList.add('hidden');
+  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  button.disabled = true;
+  button.textContent = 'Entrando…';
+  try {
+    const { cuenta } = await accountCall('entrar', { codigo: $<HTMLInputElement>('pe-codigo').value, clave: $<HTMLInputElement>('pe-clave').value });
+    showMe();
+    if (cuenta.estado === 'aprobada') {
+      $('foro-puerta').classList.add('hidden');
+      await route();
+    } else showPending(cuenta);
+  } catch (err) {
+    error.textContent = (err as Error).message;
+    error.classList.remove('hidden');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Entrar al foro';
+  }
 }
 
 // ---------- Piezas ----------
@@ -389,7 +495,13 @@ async function route() {
     else await showCategories();
     $('foro-puerta').classList.add('hidden');
   } catch (err) {
-    if (err instanceof ForoError && (err.status === 401 || err.status === 403)) showGate(err.status, err.message);
+    if (err instanceof ForoError && err.status === 401) showGate('anonimo');
+    else if (err instanceof ForoError && err.status === 403) {
+      // Cuenta creada pero sin aprobar
+      const me = await cuentaApi<{ cuenta: CuentaPropia | null }>('yo').catch(() => ({ cuenta: null }));
+      if (me.cuenta) showPending(me.cuenta);
+      else showGate('mensaje', err.message);
+    }
     else showError((err as Error).message);
   } finally {
     $('foro-cargando').classList.add('hidden');
@@ -435,6 +547,21 @@ export function initForo() {
       await navigator.share({ files: [file], text: birthdayMessage(currentTopic.cumple) }).catch(() => undefined);
     });
   }
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.puerta-tab')) {
+    button.addEventListener('click', () => setGateTab(button.dataset.puerta as 'crear' | 'entrar'));
+  }
+  setGateTab('crear');
+  $('puerta-crear').addEventListener('submit', onCreate);
+  $('puerta-entrar').addEventListener('submit', onLogin);
+  for (const id of ['pc-codigo', 'pe-codigo']) $(id).addEventListener('input', () => formatCode($<HTMLInputElement>(id)));
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.ver-clave')) {
+    button.addEventListener('click', () => {
+      const input = $<HTMLInputElement>(button.dataset.ver!);
+      input.type = input.type === 'password' ? 'text' : 'password';
+      button.textContent = input.type === 'password' ? 'Ver' : 'Ocultar';
+    });
+  }
+  $('pendiente-revisar').addEventListener('click', () => route());
   window.addEventListener('hashchange', route);
   showMe();
   route();

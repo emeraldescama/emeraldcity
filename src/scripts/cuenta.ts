@@ -3,6 +3,7 @@
  * descripción). La sesión es una cookie que pone el servidor; la página no guarda nada.
  */
 import { avatarUrl, TEAM_NAMES, type Equipo } from '../utils/perfil';
+import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
 
 export interface CuentaPropia {
   id: string;
@@ -87,6 +88,9 @@ function renderHeader() {
   $('perfil-nombre').textContent = cuenta.entrenador;
   $('perfil-detalle').textContent = [cuenta.ciudad, cuenta.equipo ? `Equipo ${TEAM_NAMES[cuenta.equipo]}` : ''].filter(Boolean).join(' · ');
   $('perfil-pendiente').classList.toggle('hidden', cuenta.estado !== 'pendiente');
+  $<HTMLAnchorElement>('perfil-avisar').href = getGeneralContactWhatsAppUrl(
+    `Hola, soy ${cuenta.entrenador} y ya creé mi cuenta del foro de Emerald City. ¿Me la pueden aprobar? 🙏`,
+  );
   $('perfil-foro').classList.toggle('hidden', cuenta.estado !== 'aprobada');
 }
 

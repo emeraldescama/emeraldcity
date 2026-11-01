@@ -1,6 +1,10 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { getGeneralContactWhatsAppUrl } from '../../utils/whatsapp';
 
+const helpUrl = (message: string) => getGeneralContactWhatsAppUrl(message);
+const labelClass = 'block text-sm font-bold text-zinc-100 mb-1.5';
+const helpClass = 'text-xs text-zinc-400 mt-1.5';
 const inputClass = 'w-full rounded-xl bg-zinc-900/90 border border-zinc-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/30 outline-none px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-500 transition-colors';
 const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 rounded-xl transition-all disabled:opacity-50';
 const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 rounded-xl transition-colors disabled:opacity-40';
@@ -25,14 +29,99 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
 
     <p id="foro-cargando" class="text-center text-zinc-400 py-16">Cargando…</p>
 
-    <!-- Sin acceso: hay que entrar o esperar aprobación -->
-    <section id="foro-puerta" class="hidden glass-panel rounded-2xl p-8 text-center space-y-4">
-      <p id="foro-puerta-titulo" class="text-xl font-black text-zinc-100"></p>
-      <p id="foro-puerta-texto" class="text-sm text-zinc-400 max-w-md mx-auto"></p>
-      <div id="foro-puerta-botones" class="flex flex-wrap justify-center gap-3">
-        <a href="/cuenta" class={primaryButton}>Entrar</a>
-        <a href="/cuenta#crear" class={ghostButton + ' inline-flex items-center'}>Crear cuenta</a>
+    <!-- Sin acceso: crear la cuenta o entrar aquí mismo, sin salir del foro -->
+    <section id="foro-puerta" class="hidden space-y-5">
+      <div id="puerta-anonimo" class="space-y-5">
+        <div class="glass-panel rounded-2xl p-5 sm:p-8 text-center">
+          <p class="text-2xl sm:text-3xl font-black text-zinc-100">Únete al foro en 1 minuto</p>
+          <p class="text-sm text-zinc-400 mt-2">Solo necesitas tu <strong class="text-zinc-200">código de amistad</strong> y el <strong class="text-zinc-200">WhatsApp</strong> con el que te registraste en la comunidad.</p>
+          <ol class="mt-4 sm:mt-6 grid grid-cols-3 gap-2 sm:gap-3 text-left">
+            <li class="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-2.5 sm:p-4">
+              <span class="inline-flex w-6 h-6 sm:w-7 sm:h-7 items-center justify-center rounded-full bg-emerald-400 text-zinc-950 text-sm font-black">1</span>
+              <p class="text-xs sm:text-base font-bold text-zinc-100 mt-1.5 sm:mt-2 leading-tight">Crea tu cuenta</p>
+              <p class="hidden sm:block text-xs text-zinc-400 mt-1">Aquí abajo, con tu código y una contraseña.</p>
+            </li>
+            <li class="rounded-xl border border-zinc-800 p-2.5 sm:p-4">
+              <span class="inline-flex w-6 h-6 sm:w-7 sm:h-7 items-center justify-center rounded-full bg-zinc-800 text-zinc-200 text-sm font-black">2</span>
+              <p class="text-xs sm:text-base font-bold text-zinc-100 mt-1.5 sm:mt-2 leading-tight">El equipo la aprueba</p>
+              <p class="hidden sm:block text-xs text-zinc-400 mt-1">Avísanos por WhatsApp y lo hacemos rápido.</p>
+            </li>
+            <li class="rounded-xl border border-zinc-800 p-2.5 sm:p-4">
+              <span class="inline-flex w-6 h-6 sm:w-7 sm:h-7 items-center justify-center rounded-full bg-zinc-800 text-zinc-200 text-sm font-black">3</span>
+              <p class="text-xs sm:text-base font-bold text-zinc-100 mt-1.5 sm:mt-2 leading-tight">¡A conversar!</p>
+              <p class="hidden sm:block text-xs text-zinc-400 mt-1">Intercambios, incursiones, eventos y cumpleaños.</p>
+            </li>
+          </ol>
+        </div>
+
+        <div class="max-w-lg mx-auto">
+          <div class="grid grid-cols-2 gap-2 mb-3" role="tablist">
+            <button type="button" data-puerta="crear" class="puerta-tab px-4 py-3 text-sm font-bold rounded-xl border">Crear mi cuenta</button>
+            <button type="button" data-puerta="entrar" class="puerta-tab px-4 py-3 text-sm font-bold rounded-xl border">Ya tengo cuenta</button>
+          </div>
+
+          <form id="puerta-crear" class="glass-panel rounded-2xl p-6 space-y-4" novalidate>
+            <div>
+              <label for="pc-codigo" class={labelClass}>Tu código de amistad</label>
+              <input id="pc-codigo" inputmode="numeric" autocomplete="username" placeholder="1234 5678 9012" maxlength="14" class={`${inputClass} font-mono tracking-widest`} />
+              <p class={helpClass}>Lo ves en Pokémon GO: Amigos → Agregar amigo.</p>
+            </div>
+            <div>
+              <label for="pc-telefono" class={labelClass}>Tu WhatsApp</label>
+              <input id="pc-telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="0412 1234567" class={inputClass} />
+              <p class={helpClass}>El mismo que pusiste al registrarte en la comunidad. Si no pusiste ninguno, déjalo vacío.</p>
+            </div>
+            <div>
+              <label for="pc-clave" class={labelClass}>Inventa una contraseña</label>
+              <div class="relative">
+                <input id="pc-clave" type="password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 letras o números" class={`${inputClass} pr-20`} />
+                <button type="button" data-ver="pc-clave" class="ver-clave absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-bold text-emerald-300">Ver</button>
+              </div>
+              <p class={helpClass}>Anótala: la usarás para entrar desde cualquier teléfono.</p>
+            </div>
+            <div id="pc-error" class="hidden rounded-xl bg-red-500/10 border border-red-500/40 p-3 text-sm text-red-200 space-y-2" role="alert">
+              <p id="pc-error-texto"></p>
+              <a id="pc-error-accion" href="/unirse" class="hidden font-bold text-emerald-300 underline"></a>
+            </div>
+            <button type="submit" class={`${primaryButton} w-full text-base py-4`}>Crear mi cuenta</button>
+          </form>
+
+          <form id="puerta-entrar" class="hidden glass-panel rounded-2xl p-6 space-y-4" novalidate>
+            <div>
+              <label for="pe-codigo" class={labelClass}>Tu código de amistad</label>
+              <input id="pe-codigo" inputmode="numeric" autocomplete="username" placeholder="1234 5678 9012" maxlength="14" class={`${inputClass} font-mono tracking-widest`} />
+            </div>
+            <div>
+              <label for="pe-clave" class={labelClass}>Tu contraseña</label>
+              <div class="relative">
+                <input id="pe-clave" type="password" autocomplete="current-password" class={`${inputClass} pr-20`} />
+                <button type="button" data-ver="pe-clave" class="ver-clave absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-bold text-emerald-300">Ver</button>
+              </div>
+            </div>
+            <p id="pe-error" class="hidden rounded-xl bg-red-500/10 border border-red-500/40 p-3 text-sm text-red-200" role="alert"></p>
+            <button type="submit" class={`${primaryButton} w-full text-base py-4`}>Entrar al foro</button>
+            <a href={helpUrl('Hola, olvidé mi contraseña del foro de Emerald City. ¿Me ayudan?')} target="_blank" rel="noopener" class="block text-center text-sm font-bold text-emerald-300 underline">Olvidé mi contraseña</a>
+          </form>
+
+          <p class="text-center text-sm text-zinc-400 mt-4">
+            ¿Todavía no eres parte de Emerald City? <a href="/unirse" class="font-bold text-emerald-300 underline">Regístrate aquí</a> ·
+            <a href={helpUrl('Hola, necesito ayuda para crear mi cuenta del foro de Emerald City.')} target="_blank" rel="noopener" class="font-bold text-emerald-300 underline">Pedir ayuda</a>
+          </p>
+        </div>
       </div>
+
+      <!-- Cuenta creada, esperando aprobación -->
+      <div id="puerta-pendiente" class="hidden glass-panel rounded-2xl p-8 text-center space-y-4 max-w-lg mx-auto">
+        <p class="text-4xl">🎉</p>
+        <p class="text-2xl font-black text-zinc-100">¡Tu cuenta está creada<span id="pendiente-nombre"></span>!</p>
+        <p class="text-sm text-zinc-300">Solo falta que el equipo la apruebe. <strong>Avísanos por WhatsApp</strong> y en cuanto la aprobemos entras directo con tu código y tu contraseña.</p>
+        <a id="pendiente-whatsapp" href="#" target="_blank" rel="noopener" class={`${primaryButton} w-full inline-flex justify-center text-base py-4`}>Avisar por WhatsApp</a>
+        <a href="/cuenta" class={`${ghostButton} inline-flex`}>Mientras tanto, elige tu Pokémon</a>
+        <button id="pendiente-revisar" type="button" class="block mx-auto text-sm font-bold text-emerald-300 underline">Ya me aprobaron, entrar</button>
+      </div>
+
+      <!-- Cuenta bloqueada u otro problema -->
+      <p id="puerta-mensaje" class="hidden glass-panel rounded-2xl p-6 text-center text-sm text-zinc-300"></p>
     </section>
 
     <p id="foro-error" class="hidden mb-4 px-4 py-3 rounded-xl text-sm font-semibold border bg-red-500/10 border-red-500/40 text-red-300" role="alert"></p>
@@ -111,6 +200,15 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
 </script>
 
 <style>
+  .puerta-tab[aria-selected='true'] {
+    color: #022c22;
+    background: #34d399;
+    border-color: #34d399;
+  }
+  .puerta-tab[aria-selected='false'] {
+    color: #a1a1aa;
+    border-color: #27272a;
+  }
   .perfil-dialogo::backdrop {
     background: rgba(3, 7, 18, 0.8);
   }
