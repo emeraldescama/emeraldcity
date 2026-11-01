@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import AboutCommunity from '../components/AboutCommunity.astro';
 import Countdown from '../components/Countdown.astro';
 import WeeklyEvents from '../components/WeeklyEvents.astro';
+import BirthdayBanner from '../components/BirthdayBanner.astro';
 import { getEventos } from '../utils/getEventos';
 
 // Eventos cargados desde el panel y la sincronización automática
@@ -38,6 +39,9 @@ const shortcuts = [
   description="Emerald City es la comunidad de Pokémon GO de Caracas: Días de la Comunidad en el Parque del Este, incursiones en Plaza Los Palos Grandes y mucho más."
   image="/images/comunidad/foto-grupal.jpg"
 >
+  <!-- Cumpleaños de hoy: lo primero que se ve, solo los días en que alguien cumple -->
+  <BirthdayBanner />
+
   <!-- 1. Quiénes somos y botón para unirse -->
   <AboutCommunity />
 

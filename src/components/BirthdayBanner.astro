@@ -1,0 +1,88 @@
+---
+/**
+ * Felicitación de cumpleaños en la página de inicio. Solo aparece los días en que alguien
+ * de la comunidad cumple años; el resto de los días no carga nada más que una consulta pequeña.
+ */
+---
+
+<section id="cumple-inicio" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10" aria-label="Cumpleaños de hoy">
+  <div class="glass-card rounded-3xl p-5 sm:p-8 border border-amber-400/40 relative overflow-hidden">
+    <div class="flex flex-col lg:flex-row lg:items-center gap-6 relative z-10">
+      <div class="lg:w-1/3 space-y-3">
+        <p class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold uppercase tracking-wider">
+          🎂 Cumpleaños de hoy
+        </p>
+        <h2 id="cumple-inicio-titulo" class="text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight"></h2>
+        <p class="text-zinc-300">Toda la comunidad de Emerald City le desea un día lleno de shinies 💚 ¡Envíale un regalo y déjale tus felicitaciones en el foro!</p>
+      </div>
+      <ul id="cumple-inicio-lista" class="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-5"></ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  interface Cumple {
+    tema: string;
+    entrenador: string;
+    codigo: string;
+    pokemon: number;
+    shiny: boolean;
+    fecha: string;
+  }
+
+  async function showBirthdays() {
+    let list: Cumple[] = [];
+    try {
+      const res = await fetch('/api/cumpleanos');
+      if (!res.ok) return;
+      list = (await res.json()).cumpleanos ?? [];
+    } catch {
+      return;
+    }
+    if (!list.length) return;
+
+    // El dibujo del flyer solo se descarga los días que hay cumpleaños
+    const { drawBirthdayFlyer, canvasToFile } = await import('../scripts/birthdayFlyer');
+    const section = document.getElementById('cumple-inicio')!;
+    const names = list.map((c) => c.entrenador);
+    document.getElementById('cumple-inicio-titulo')!.textContent =
+      names.length === 1 ? `¡Feliz cumpleaños, ${names[0]}!` : `¡Feliz cumpleaños, ${names.slice(0, -1).join(', ')} y ${names.at(-1)}!`;
+
+    const items = list.slice(0, 4).map((cumple) => {
+      const item = document.createElement('li');
+      item.className = 'space-y-3';
+      const canvas = document.createElement('canvas');
+      canvas.className = 'w-full max-w-xs mx-auto block rounded-2xl border border-emerald-500/30 shadow-emerald-glow';
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', `Flyer de cumpleaños de ${cumple.entrenador}`);
+      const actions = document.createElement('div');
+      actions.className = 'flex flex-wrap justify-center gap-2';
+      const forum = document.createElement('a');
+      forum.href = `/foro#t/${cumple.tema}`;
+      forum.className = 'px-4 py-2.5 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-xl';
+      forum.textContent = 'Felicitar en el foro';
+      const download = document.createElement('button');
+      download.type = 'button';
+      download.className = 'px-4 py-2.5 text-sm font-bold text-emerald-300 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/10';
+      download.textContent = 'Descargar flyer';
+      download.addEventListener('click', async () => {
+        const file = await canvasToFile(canvas, `cumpleanos-${cumple.entrenador}.png`);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(file);
+        link.download = file.name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      });
+      actions.append(forum, download);
+      item.append(canvas, actions);
+      drawBirthdayFlyer(canvas, cumple);
+      return item;
+    });
+    document.getElementById('cumple-inicio-lista')!.replaceChildren(...items);
+    // Con una sola persona, su flyer va centrado en el espacio
+    if (items.length === 1) document.getElementById('cumple-inicio-lista')!.classList.replace('sm:grid-cols-2', 'sm:grid-cols-1');
+    section.classList.remove('hidden');
+  }
+
+  showBirthdays();
+</script>

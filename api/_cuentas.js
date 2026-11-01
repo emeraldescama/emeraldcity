@@ -189,16 +189,19 @@ export async function deleteAccount(id) {
 
 const bool = (v) => v === true || v === 't' || v === 'true';
 
-let birthdaysCheckedFor = '';
+// Se vuelve a revisar cada 10 minutos: así un cumpleaños de hoy agregado o importado a
+// media mañana también recibe su tema y su felicitación
+const BIRTHDAY_CHECK_MS = 10 * 60 * 1000;
+let birthdaysChecked = { day: '', at: 0 };
 
 /**
  * Abre el tema de cumpleaños de cada miembro que cumple años hoy (hora de Caracas). Se
- * llama al abrir el foro; el índice único evita temas repetidos aunque varias visitas
+ * llama al abrir el foro, la página de inicio y el correo diario; el índice único evita temas repetidos aunque varias visitas
  * lleguen a la vez. Quien cumple el 29 de febrero lo celebra el 28 en los años no bisiestos.
  */
 export async function ensureBirthdays() {
   const today = caracasToday();
-  if (birthdaysCheckedFor === today) return;
+  if (birthdaysChecked.day === today && Date.now() - birthdaysChecked.at < BIRTHDAY_CHECK_MS) return;
   const [year, month, day] = today.split('-').map(Number);
   const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const alsoFeb29 = month === 2 && day === 28 && !leap;
@@ -223,7 +226,7 @@ export async function ensureBirthdays() {
       ]);
     }
   });
-  birthdaysCheckedFor = today;
+  birthdaysChecked = { day: today, at: Date.now() };
 }
 
 const AUTHOR_COLUMNS = `c.id AS autor_id, m.entrenador AS autor, c.avatar, c.shiny, c.equipo`;
@@ -400,6 +403,30 @@ export async function pinTopic(id, fijado) {
   const rows = await run((sql) => sql.query(`UPDATE foro_temas SET fijado = $2 WHERE id = $1 RETURNING id`, [id, fijado === true]));
   if (!rows.length) throw new DbError(404, 'Ese tema ya no existe.');
   return getTopic(id);
+}
+
+/**
+ * Quienes cumplen años hoy, para la página de inicio: solo datos públicos (nombre de
+ * entrenador, Pokémon y el código si aparece en "Haz amigos"; nunca el teléfono).
+ */
+export async function birthdaysToday() {
+  await ensureBirthdays();
+  const rows = await run((sql) =>
+    sql.query(
+      `SELECT t.id AS tema, t.cumple_fecha, m.entrenador, m.codigo, m.mostrar, coalesce(c.avatar, m.pokemon) AS pokemon, c.shiny
+       FROM foro_temas t JOIN miembros m ON m.id = t.cumple_miembro LEFT JOIN cuentas c ON c.miembro_id = m.id
+       WHERE t.cumple_fecha = $1 ORDER BY lower(m.entrenador)`,
+      [caracasToday()],
+    ),
+  );
+  return rows.map((r) => ({
+    tema: r.tema,
+    entrenador: r.entrenador,
+    codigo: bool(r.mostrar) && String(r.codigo ?? '').length === 12 ? r.codigo : '',
+    pokemon: r.pokemon === null || r.pokemon === undefined ? 384 : Number(r.pokemon),
+    shiny: bool(r.shiny),
+    fecha: String(r.cumple_fecha instanceof Date ? r.cumple_fecha.toISOString() : r.cumple_fecha).slice(0, 10),
+  }));
 }
 
 /** WhatsApp de quien cumple años en un tema de cumpleaños (solo para el administrador) */
