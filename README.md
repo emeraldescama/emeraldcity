@@ -88,6 +88,12 @@ El formulario de `/unirse` guarda a cada miembro en la base de datos de la pági
 - Los íconos de perfil son los sprites de PokeAPI; la lista de nombres en español está en `public/data/pokemon.json` (se regenera con `node scripts/pokemon-nombres.mjs`).
 - Las tablas (`cuentas`, `foro_temas`, `foro_mensajes`) se crean solas en la misma base de datos Neon.
 
+### Eventos y retos (Escama Esmeralda)
+
+- La página `/eventos` muestra las dinámicas (por ejemplo, rumbo a Wild Area), el reto del día y la tabla de puntos con el Pokémon de perfil de cada participante.
+- Participan los miembros **activos** de Escama Esmeralda (no están de baja y su suscripción no venció) que tienen su cuenta de la web aprobada y vinculada. La lista se lee en vivo de `https://escama-6jm5.vercel.app/api/data` (vista pública, sin pagos ni teléfonos) y se guarda 5 minutos en memoria. Si la página cambia de dirección, define `ESCAMA_URL` en Vercel.
+- En el panel, pestaña **Dinámicas**: crear dinámicas y retos (los retos aparecen desde su fecha de inicio), revisar las capturas (aprobar suma los puntos; la captura se borra al revisarla) y vincular a cada miembro de Escama con su cuenta (el panel sugiere la cuenta cuando el alias o el nombre coinciden).
+
 ## 6) Levantar servidor de desarrollo
 
 ```bash

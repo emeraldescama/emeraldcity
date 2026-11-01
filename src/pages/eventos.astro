@@ -1,0 +1,50 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const ghostButton = 'inline-flex items-center px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 rounded-xl transition-colors';
+const primaryButton = 'inline-flex items-center px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 rounded-xl transition-all';
+---
+
+<Layout
+  title="Eventos y retos | Emerald City"
+  description="Dinámicas y retos diarios para los miembros de Escama Esmeralda de Emerald City. Suma puntos y sube en la tabla."
+>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-24 space-y-8">
+    <header class="text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider mb-4">
+        Exclusivo Escama Esmeralda
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-black text-zinc-100 tracking-tight">Eventos <span class="text-emerald-400">Emerald</span></h1>
+      <p class="text-base text-zinc-400 mt-3 max-w-2xl mx-auto">Retos para los miembros activos de Escama Esmeralda. Cumple el reto, sube tu captura y suma puntos.</p>
+    </header>
+
+    <p id="ev-cargando" class="text-center text-zinc-400 py-10">Cargando…</p>
+    <p id="ev-error" class="hidden px-4 py-3 rounded-xl text-sm font-semibold border bg-red-500/10 border-red-500/40 text-red-300" role="alert"></p>
+
+    <!-- Cómo participar (si todavía no participa) -->
+    <section id="ev-participar" class="hidden glass-panel rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+      <div>
+        <p class="font-black text-zinc-100">¿Quieres participar?</p>
+        <p id="ev-motivo" class="text-sm text-zinc-400 mt-1"></p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a id="ev-entrar" href="/cuenta" class={primaryButton}>Entrar a mi cuenta</a>
+        <a href="https://escama-6jm5.vercel.app/" target="_blank" rel="noopener" class={ghostButton}>Escama Esmeralda</a>
+      </div>
+    </section>
+
+    <section id="ev-vacio" class="hidden glass-panel rounded-2xl p-10 text-center">
+      <p class="text-xl font-black text-zinc-100">Pronto anunciaremos la próxima dinámica</p>
+      <p class="text-sm text-zinc-400 mt-2">Mantente atento al grupo de WhatsApp de Escama Esmeralda.</p>
+    </section>
+
+    <div id="ev-dinamicas" class="space-y-12"></div>
+  </div>
+
+  <input id="ev-archivo" type="file" accept="image/*" class="hidden" />
+</Layout>
+
+<script>
+  import { initEventos } from '../scripts/eventosDinamicas';
+  initEventos();
+</script>

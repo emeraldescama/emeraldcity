@@ -99,6 +99,40 @@ const SCHEMA = [
   )`,
   `CREATE INDEX IF NOT EXISTS foro_mensajes_tema ON foro_mensajes (tema_id, creado)`,
   `CREATE INDEX IF NOT EXISTS foro_temas_categoria ON foro_temas (categoria, actividad DESC)`,
+  // Sección Eventos: dinámicas (como la de Wild Area), sus retos y las capturas de cada miembro
+  `CREATE TABLE IF NOT EXISTS escama_vinculos (
+    escama_id text PRIMARY KEY,
+    cuenta_id text NOT NULL UNIQUE REFERENCES cuentas(id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS dinamicas (
+    id text PRIMARY KEY,
+    nombre text NOT NULL,
+    descripcion text NOT NULL DEFAULT '',
+    inicio date NOT NULL,
+    fin date NOT NULL,
+    creada timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS retos (
+    id text PRIMARY KEY,
+    dinamica_id text NOT NULL REFERENCES dinamicas(id) ON DELETE CASCADE,
+    titulo text NOT NULL,
+    descripcion text NOT NULL DEFAULT '',
+    puntos integer NOT NULL DEFAULT 5,
+    inicio date NOT NULL,
+    fin date NOT NULL,
+    creado timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS entregas (
+    id text PRIMARY KEY,
+    reto_id text NOT NULL REFERENCES retos(id) ON DELETE CASCADE,
+    cuenta_id text NOT NULL REFERENCES cuentas(id) ON DELETE CASCADE,
+    captura text,
+    estado text NOT NULL DEFAULT 'pendiente',
+    nota text NOT NULL DEFAULT '',
+    creada timestamptz NOT NULL DEFAULT now(),
+    revisada timestamptz,
+    UNIQUE (reto_id, cuenta_id)
+  )`,
 ];
 
 let sqlClient;

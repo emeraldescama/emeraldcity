@@ -44,6 +44,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <button type="button" data-tab="flyer" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Flyer semanal</button>
           <button type="button" data-tab="miembros" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Miembros</button>
           <button type="button" data-tab="bienvenidas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Bienvenidas <span id="welcome-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
+          <button type="button" data-tab="dinamicas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Dinámicas <span id="entregas-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button type="button" data-tab="cuentas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Cuentas y foro <span id="account-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button id="logout" type="button" class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 rounded-xl border border-zinc-800">Salir</button>
         </div>
@@ -282,6 +283,120 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           </div>
         </div>
       </div>
+
+      <!-- Pestaña: Dinámicas de la sección Eventos (retos para Escama Esmeralda) -->
+      <div id="tab-dinamicas" class="hidden space-y-10">
+        <section class="space-y-4">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-black text-zinc-100">Capturas por revisar</h2>
+              <p class="text-sm text-zinc-400 mt-1">Al aprobar, el miembro suma los puntos del reto. La captura se borra al revisarla.</p>
+            </div>
+            <button id="entregas-refresh" type="button" class={ghostButton}>Actualizar</button>
+          </div>
+          <p id="entregas-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">No hay capturas por revisar.</p>
+          <ul id="entregas-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></ul>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <form id="dinamica-form" class="lg:col-span-2 glass-panel rounded-2xl p-6 space-y-4 self-start">
+            <div class="flex items-center justify-between">
+              <h2 id="dinamica-form-title" class="text-xl font-black text-zinc-100">Nueva dinámica</h2>
+              <button id="dinamica-cancel" type="button" class="hidden text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200">Cancelar</button>
+            </div>
+            <div>
+              <label for="di-nombre" class={labelClass}>Nombre</label>
+              <input id="di-nombre" required maxlength="80" placeholder="Rumbo a Wild Area" class={inputClass} />
+            </div>
+            <div>
+              <label for="di-descripcion" class={labelClass}>Descripción</label>
+              <textarea id="di-descripcion" maxlength="600" rows="3" placeholder="Retos diarios para los miembros de Escama Esmeralda hasta la llegada de Wild Area." class={inputClass}></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="di-inicio" class={labelClass}>Empieza</label>
+                <input id="di-inicio" type="date" required class={inputClass} />
+              </div>
+              <div>
+                <label for="di-fin" class={labelClass}>Termina</label>
+                <input id="di-fin" type="date" required class={inputClass} />
+              </div>
+            </div>
+            <button type="submit" class={`${primaryButton} w-full`}>Guardar dinámica</button>
+          </form>
+
+          <div class="lg:col-span-3 space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-xl font-black text-zinc-100">Dinámicas y retos</h2>
+              <button id="dinamicas-refresh" type="button" class={ghostButton}>Actualizar</button>
+            </div>
+            <p id="dinamicas-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">Todavía no hay dinámicas. Crea la primera con el formulario.</p>
+            <div id="dinamicas-list" class="space-y-5"></div>
+          </div>
+        </section>
+
+        <section class="space-y-4">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-black text-zinc-100">Miembros de Escama Esmeralda</h2>
+              <p class="text-sm text-zinc-400 mt-1 max-w-2xl">La lista se lee en vivo de la página de Escama Esmeralda. Vincula a cada miembro con su cuenta de la web: solo participan los <strong>activos</strong> con cuenta vinculada.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <label class="inline-flex items-center gap-2 text-sm font-semibold text-zinc-300"><input id="escama-solo-activos" type="checkbox" checked class="w-4 h-4 accent-emerald-400" /> Solo activos</label>
+              <button id="escama-refresh" type="button" class={ghostButton}>Actualizar</button>
+            </div>
+          </div>
+          <p id="escama-resumen" class="text-sm text-zinc-400"></p>
+          <div class="overflow-auto max-h-[70vh] rounded-2xl border border-zinc-800">
+            <table class="w-full text-sm text-zinc-300">
+              <thead class="sticky top-0 z-10 bg-zinc-900 text-xs uppercase tracking-wider text-zinc-400 text-left">
+                <tr>
+                  <th class="px-3 py-3">Miembro de Escama</th>
+                  <th class="px-3 py-3">Estado</th>
+                  <th class="px-3 py-3">Vence</th>
+                  <th class="px-3 py-3">Cuenta de la web</th>
+                </tr>
+              </thead>
+              <tbody id="escama-rows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- Formulario de un reto -->
+      <dialog id="reto-dialog" class="member-edit m-auto w-[min(32rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] rounded-2xl border border-emerald-500/30 bg-zinc-950 text-zinc-100 p-0">
+        <form id="reto-form" method="dialog" class="p-6 space-y-4">
+          <h2 id="reto-form-title" class="text-xl font-black">Nuevo reto</h2>
+          <div>
+            <label for="re-titulo" class={labelClass}>Reto</label>
+            <input id="re-titulo" required maxlength="120" placeholder="Eclosiona 20 huevos" class={inputClass} />
+          </div>
+          <div>
+            <label for="re-descripcion" class={labelClass}>Instrucciones</label>
+            <textarea id="re-descripcion" maxlength="600" rows="3" placeholder="Sube la captura del diario de Pokémon GO donde se vean los 20 huevos eclosionados hoy." class={inputClass}></textarea>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label for="re-puntos" class={labelClass}>Puntos</label>
+              <input id="re-puntos" type="number" min="1" max="1000" required value="5" class={inputClass} />
+            </div>
+            <div>
+              <label for="re-inicio" class={labelClass}>Desde</label>
+              <input id="re-inicio" type="date" required class={inputClass} />
+            </div>
+            <div>
+              <label for="re-fin" class={labelClass}>Hasta</label>
+              <input id="re-fin" type="date" required class={inputClass} />
+            </div>
+          </div>
+          <p class="text-xs text-zinc-400">El reto aparece en la web desde el día "Desde" y recibe capturas hasta el final del día "Hasta" (hora de Caracas).</p>
+          <p id="reto-error" class="text-sm font-semibold text-red-300" role="alert"></p>
+          <div class="flex justify-end gap-3">
+            <button id="reto-cancel" type="button" class={ghostButton}>Cancelar</button>
+            <button type="submit" class={primaryButton}>Guardar reto</button>
+          </div>
+        </form>
+      </dialog>
 
       <!-- Pestaña: Cuentas de la web y foro -->
       <div id="tab-cuentas" class="hidden space-y-5">

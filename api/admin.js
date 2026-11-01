@@ -18,6 +18,18 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { endAdminSession, hasAdminSession, sameOrigin, startAdminSession } from './_cookies.js';
 import { deleteAccount, listAccounts, resetPassword, setAccountState } from './_cuentas.js';
+import {
+  adminDynamics,
+  deleteChallenge,
+  deleteDynamic,
+  escamaAdminView,
+  linkEscama,
+  pendingSubmissions,
+  reviewSubmission,
+  saveChallenge,
+  saveDynamic,
+  submissionImage,
+} from './_dinamicas.js';
 import { DbError, allowImportedContact, normalizePhone, deleteMember, editMember, getScreenshot, importMembers, listMembers, markWelcomed, updateMember } from './_miembros.js';
 
 const EVENT_TYPES = ['Día de la Comunidad', 'Incursiones', 'GO Tour', 'GO Fest', 'Wild Area', 'Quedada', 'Torneo PvP', 'Otro'];
@@ -151,7 +163,7 @@ function validateEvent(input) {
 }
 
 function validateId(id) {
-  if (typeof id !== 'string' || !/^[a-z0-9-]{1,80}$/.test(id)) throw new HttpError(400, 'Identificador de evento no válido.');
+  if (typeof id !== 'string' || !/^[a-z0-9-]{1,80}$/.test(id)) throw new HttpError(400, 'Identificador no válido.');
   return id;
 }
 
@@ -235,6 +247,41 @@ function validateImport(list) {
       };
     })
     .filter((item) => item.entrenador);
+}
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const optionalId = (value) => (value ? validateId(String(value)) : '');
+
+function validateDateRange(input) {
+  const inicio = String(input.inicio ?? '');
+  const fin = String(input.fin ?? '');
+  if (!DATE.test(inicio) || !DATE.test(fin)) throw new HttpError(400, 'Las fechas no son válidas.');
+  if (fin < inicio) throw new HttpError(400, 'La fecha final no puede ser antes de la inicial.');
+  return { inicio, fin };
+}
+
+function validateDynamic(input) {
+  const data = input || {};
+  return {
+    id: optionalId(data.id),
+    nombre: cleanText(data.nombre, 'Nombre', 80),
+    descripcion: cleanText(data.descripcion, 'Descripción', 600, false),
+    ...validateDateRange(data),
+  };
+}
+
+function validateChallenge(input) {
+  const data = input || {};
+  const puntos = Number(data.puntos);
+  if (!Number.isInteger(puntos) || puntos < 1 || puntos > 1000) throw new HttpError(400, 'Los puntos deben ser un número entre 1 y 1000.');
+  return {
+    id: optionalId(data.id),
+    dinamicaId: validateId(String(data.dinamicaId ?? '')),
+    titulo: cleanText(data.titulo, 'Reto', 120),
+    descripcion: cleanText(data.descripcion, 'Descripción', 600, false),
+    puntos,
+    ...validateDateRange(data),
+  };
 }
 
 /** Datos del miembro corregidos por el administrador */
@@ -324,6 +371,31 @@ export default async function handler(req, res) {
         return res.status(200).json(await resetPassword(String(body.id ?? '')));
       case 'cuentaEliminar':
         return res.status(200).json(await deleteAccount(String(body.id ?? '')));
+      // Sección Eventos: dinámicas, retos, capturas y vínculos con Escama Esmeralda
+      case 'dinamicas':
+        return res.status(200).json({ dinamicas: await adminDynamics() });
+      case 'dinamicaGuardar':
+        return res.status(200).json(await saveDynamic(validateDynamic(body.dinamica)));
+      case 'dinamicaEliminar':
+        return res.status(200).json(await deleteDynamic(validateId(String(body.id ?? ''))));
+      case 'retoGuardar':
+        return res.status(200).json(await saveChallenge(validateChallenge(body.reto)));
+      case 'retoEliminar':
+        return res.status(200).json(await deleteChallenge(validateId(String(body.id ?? ''))));
+      case 'entregas':
+        return res.status(200).json({ entregas: await pendingSubmissions() });
+      case 'entregaCaptura':
+        return res.status(200).json(await submissionImage(validateId(String(body.id ?? ''))));
+      case 'entregaRevisar':
+        return res
+          .status(200)
+          .json(await reviewSubmission(validateId(String(body.id ?? '')), String(body.estado ?? ''), cleanText(body.nota, 'Nota', 200, false)));
+      case 'escama':
+        return res.status(200).json(await escamaAdminView());
+      case 'escamaVincular':
+        return res
+          .status(200)
+          .json(await linkEscama(cleanText(body.escamaId, 'Miembro de Escama', 80), body.cuentaId ? validateId(String(body.cuentaId)) : null));
       case 'miembroEliminar':
         return res.status(200).json(await deleteMember(String(body.id ?? '')));
       case 'importar':
