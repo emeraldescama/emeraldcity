@@ -5,7 +5,7 @@
  *   /foro#t/abc123     mensajes de un tema (se actualiza solo cada 20 segundos)
  * Todo el texto se muestra con textContent: nadie puede meter código en un mensaje.
  */
-import { avatarUrl, CATEGORY_HINTS, CATEGORY_NAMES, TEAM_COLORS, TEAM_NAMES, timeAgo, type Equipo } from '../utils/perfil';
+import { avatarUrl, CATEGORY_HINTS, CATEGORY_NAMES, ROLE_BADGES, TEAM_COLORS, TEAM_NAMES, timeAgo, type Equipo } from '../utils/perfil';
 import { birthdayMessage, canvasToFile, drawBirthdayFlyer, type Cumpleanero } from './birthdayFlyer';
 import { cuentaApi, type CuentaPropia } from './cuenta';
 import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
@@ -18,6 +18,8 @@ interface Autor {
   equipo: Equipo;
   /** Mensajes que escribe la web sola (cumpleaños) */
   sistema?: boolean;
+  /** 'principal' o 'admin': etiqueta de administrador */
+  rol?: string;
 }
 interface Categoria {
   id: string;
@@ -249,7 +251,18 @@ function authorName(autor: Autor | null) {
   }
   button.append(document.createTextNode(autor.entrenador));
   button.addEventListener('click', () => openProfile(autor.id));
-  return button;
+  const badge = roleBadge(autor.rol);
+  if (!badge) return button;
+  const wrap = el('span', 'inline-flex flex-wrap items-center gap-1.5');
+  wrap.append(button, badge);
+  return wrap;
+}
+
+/** Etiqueta "Admin" que destaca a los administradores en el foro */
+function roleBadge(rol?: string) {
+  const badge = rol ? ROLE_BADGES[rol] : undefined;
+  if (!badge) return null;
+  return el('span', `px-1.5 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider ${badge.className}`, badge.label);
 }
 
 /** Texto del mensaje con los enlaces convertidos en links seguros */
@@ -311,10 +324,12 @@ async function showTopics(categoria: string) {
       const title = el('p', 'font-bold text-zinc-100 break-words');
       if (t.fijado) title.append(el('span', 'mr-2 text-amber-400', '📌'));
       title.append(document.createTextNode(t.titulo));
-      body.append(
-        title,
-        el('p', 'text-xs text-zinc-400 mt-1', `${t.autor?.entrenador ?? 'Cuenta borrada'} · ${t.respuestas} respuesta${t.respuestas === 1 ? '' : 's'} · ${timeAgo(t.actividad)}`),
-      );
+      const meta = el('p', 'text-xs text-zinc-400 mt-1 flex flex-wrap items-center gap-1.5');
+      meta.append(document.createTextNode(t.autor?.entrenador ?? 'Cuenta borrada'));
+      const badge = roleBadge(t.autor?.rol);
+      if (badge) meta.append(badge);
+      meta.append(document.createTextNode(`· ${t.respuestas} respuesta${t.respuestas === 1 ? '' : 's'} · ${timeAgo(t.actividad)}`));
+      body.append(title, meta);
       link.append(avatar(t.autor, 'w-11 h-11'), body);
       item.append(link);
       return item;
@@ -371,7 +386,7 @@ function renderTopic(tema: Tema) {
 
   $('lista-mensajes').replaceChildren(
     ...tema.mensajes.map((m, i) => {
-      const item = el('li', 'glass-panel rounded-2xl p-4 flex gap-3');
+      const item = el('li', `glass-panel rounded-2xl p-4 flex gap-3 ${m.autor?.rol ? 'border-amber-400/40 bg-amber-500/[0.04]' : ''}`);
       item.id = `m-${m.id}`;
       const body = el('div', 'min-w-0 flex-grow');
       const head = el('div', 'flex flex-wrap items-center gap-x-2 gap-y-1 text-sm');
@@ -478,6 +493,8 @@ async function openProfile(id: string) {
     const { perfil } = await foroGet<{ perfil: Perfil }>(`?perfil=${encodeURIComponent(id)}`);
     $<HTMLImageElement>('pm-avatar').src = avatarUrl(perfil.avatar, perfil.shiny);
     $('pm-nombre').textContent = perfil.entrenador;
+    const badge = roleBadge(perfil.rol);
+    if (badge) $('pm-nombre').append(document.createElement('br'), badge);
     $('pm-detalle').textContent = [
       perfil.ciudad,
       perfil.equipo ? `Equipo ${TEAM_NAMES[perfil.equipo as Exclude<Equipo, ''>]}` : '',

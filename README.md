@@ -84,6 +84,7 @@ El formulario de `/unirse` guarda a cada miembro en la base de datos de la pági
 
 - Los miembros crean su cuenta en `/cuenta` con su código de amistad y una contraseña. Si se registraron con teléfono, también deben escribirlo (así nadie crea la cuenta de otro con un código público).
 - Las cuentas nuevas quedan **pendientes** hasta que se aprueban en el panel, pestaña **Cuentas y foro**. Ahí también se bloquean, se borran y se reinicia la contraseña (el panel muestra una temporal para enviarla por WhatsApp).
+- El administrador crea su propia cuenta del foro en el panel (Cuentas y foro → "Tu cuenta en el foro"): escribe con su nick y la etiqueta **👑 Admin principal**, sin contraseña aparte (entra con la sesión del panel; "Salir" del panel también cierra esa sesión). Desde la misma pestaña puede dar o quitar la etiqueta **🛡️ Admin** a otras cuentas.
 - El foro (`/foro`) solo lo ven las cuentas aprobadas. Con la sesión del panel abierta, el administrador puede fijar temas y borrar cualquier mensaje.
 - Los íconos de perfil son los sprites de PokeAPI; la lista de nombres en español está en `public/data/pokemon.json` (se regenera con `node scripts/pokemon-nombres.mjs`).
 - Las tablas (`cuentas`, `foro_temas`, `foro_mensajes`) se crean solas en la misma base de datos Neon.

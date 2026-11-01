@@ -54,3 +54,9 @@ export const birthdayText = (dia: number, mes: number) => `${dia} de ${MONTH_NAM
 export function artworkUrl(number: number, shiny = false): string {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${shiny ? 'shiny/' : ''}${number}.png`;
 }
+
+/** Etiqueta del foro según el rol de la cuenta */
+export const ROLE_BADGES: Record<string, { label: string; className: string }> = {
+  principal: { label: '👑 Admin principal', className: 'text-amber-200 bg-amber-500/15 border-amber-400/60' },
+  admin: { label: '🛡️ Admin', className: 'text-emerald-200 bg-emerald-500/15 border-emerald-400/60' },
+};

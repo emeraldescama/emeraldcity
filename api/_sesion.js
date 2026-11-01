@@ -1,6 +1,6 @@
 /** Ayudas compartidas por las funciones de cuentas y foro */
-import { endUserSession, userSession } from './_cookies.js';
-import { accountById } from './_cuentas.js';
+import { endUserSession, hasAdminSession, startUserSession, userSession } from './_cookies.js';
+import { accountById, mainAdminAccount } from './_cuentas.js';
 import { DbError } from './_miembros.js';
 
 /**
@@ -12,6 +12,14 @@ export async function currentAccount(req, res, { optional = false, approved = fa
   const account = session ? await accountById(session.id) : null;
   const valid = account && account.sesion === session.sesion && account.estado !== 'bloqueada';
   if (!valid) {
+    // Con la sesión del panel abierta, el administrador entra solo con su cuenta del foro
+    if (hasAdminSession(req)) {
+      const admin = await mainAdminAccount();
+      if (admin) {
+        startUserSession(res, admin);
+        return admin;
+      }
+    }
     if (session) endUserSession(res);
     if (optional) return null;
     throw new DbError(401, 'Inicia sesión para continuar.');

@@ -52,7 +52,7 @@ export function temporaryPassword() {
 
 // ---------- Cuentas ----------
 
-const ACCOUNT_COLUMNS = `c.id, c.estado, c.sesion, c.avatar, c.shiny, c.equipo, c.bio, c.creada,
+const ACCOUNT_COLUMNS = `c.id, c.estado, c.sesion, c.avatar, c.shiny, c.equipo, c.bio, c.creada, c.rol,
   m.entrenador, m.ciudad, m.codigo, m.mostrar, m.cumple_dia, m.cumple_mes`;
 
 function toAccount(row) {
@@ -71,6 +71,7 @@ function toAccount(row) {
     mostrar: row.mostrar === true || row.mostrar === 't' || row.mostrar === 'true',
     cumpleDia: row.cumple_dia === null || row.cumple_dia === undefined ? null : Number(row.cumple_dia),
     cumpleMes: row.cumple_mes === null || row.cumple_mes === undefined ? null : Number(row.cumple_mes),
+    rol: row.rol ?? '',
   };
 }
 
@@ -170,6 +171,60 @@ export async function setAccountState(id, estado) {
   return accountById(id);
 }
 
+// ---------- Administradores del foro ----------
+
+/** Cuenta del administrador principal (la del panel), o null si todavía no la creó */
+export async function mainAdminAccount() {
+  const rows = await run((sql) => sql.query(`SELECT id FROM cuentas WHERE rol = 'principal' LIMIT 1`));
+  return rows.length ? accountById(rows[0].id) : null;
+}
+
+/**
+ * Crea la cuenta del administrador principal para escribir en el foro. Si ya es miembro
+ * (da su código de amistad) se usa ese registro; si no, se crea uno solo para el foro,
+ * que no aparece en "Haz amigos". No necesita contraseña: entra con la sesión del panel.
+ */
+export async function createMainAdmin(nick, codigo) {
+  if (await mainAdminAccount()) throw new DbError(409, 'Ya creaste tu cuenta de administrador.');
+  await run(async (sql) => {
+    let memberId;
+    if (codigo) {
+      const members = await sql.query(
+        `SELECT m.id, c.id AS cuenta FROM miembros m LEFT JOIN cuentas c ON c.miembro_id = m.id WHERE m.codigo = $1`,
+        [codigo],
+      );
+      if (!members.length) throw new DbError(404, 'Ese código no está en la lista de miembros. Déjalo vacío para crear la cuenta solo con tu nick.');
+      await sql.query(`UPDATE miembros SET entrenador = $2 WHERE id = $1`, [members[0].id, nick]);
+      if (members[0].cuenta) {
+        // Ya tenía cuenta de miembro: esa pasa a ser la del administrador principal
+        await sql.query(`UPDATE cuentas SET rol = 'principal', estado = 'aprobada' WHERE id = $1`, [members[0].cuenta]);
+        return;
+      }
+      memberId = members[0].id;
+    } else {
+      const taken = await sql.query(`SELECT 1 FROM miembros WHERE lower(entrenador) = lower($1)`, [nick]);
+      if (taken.length) throw new DbError(409, `Ya hay un miembro llamado ${nick}. Si eres tú, escribe tu código de amistad para usar ese registro.`);
+      memberId = newId();
+      await sql.query(`INSERT INTO miembros (id, entrenador, mostrar, origen, bienvenida) VALUES ($1, $2, false, 'admin', 'Administrador')`, [memberId, nick]);
+    }
+    // Sin contraseña usable: solo se entra con la sesión del panel
+    await sql.query(`INSERT INTO cuentas (id, miembro_id, clave, estado, rol) VALUES ($1, $2, $3, 'aprobada', 'principal')`, [
+      newId(),
+      memberId,
+      await hashPassword(randomBytes(24).toString('base64')),
+    ]);
+  });
+  return mainAdminAccount();
+}
+
+/** Da o quita la etiqueta de administrador en el foro */
+export async function setAccountRole(id, rol) {
+  if (!['', 'admin'].includes(rol)) throw new DbError(400, 'Etiqueta no válida.');
+  const rows = await run((sql) => sql.query(`UPDATE cuentas SET rol = $2 WHERE id = $1 AND rol <> 'principal' RETURNING id`, [id, rol]));
+  if (!rows.length) throw new DbError(409, 'Esa cuenta no existe o es la del administrador principal.');
+  return accountById(id);
+}
+
 export async function resetPassword(id) {
   const password = temporaryPassword();
   const rows = await run(async (sql) =>
@@ -229,7 +284,7 @@ export async function ensureBirthdays() {
   birthdaysChecked = { day: today, at: Date.now() };
 }
 
-const AUTHOR_COLUMNS = `c.id AS autor_id, m.entrenador AS autor, c.avatar, c.shiny, c.equipo`;
+const AUTHOR_COLUMNS = `c.id AS autor_id, m.entrenador AS autor, c.avatar, c.shiny, c.equipo, c.rol`;
 
 // Autor de los mensajes que escribe la web sola (los temas de cumpleaños)
 const SYSTEM_AUTHOR = { id: 'emerald', entrenador: 'Emerald City', avatar: 384, shiny: false, equipo: '', sistema: true };
@@ -243,6 +298,7 @@ function toAuthor(row) {
     avatar: Number(row.avatar),
     shiny: row.shiny === true || row.shiny === 't' || row.shiny === 'true',
     equipo: row.equipo,
+    rol: row.rol ?? '',
   };
 }
 
@@ -452,6 +508,7 @@ export async function publicProfile(id) {
     bio: account.bio,
     creada: account.creada,
     mensajes: Number(rows[0].total),
+    rol: account.rol,
     // El código solo se muestra si el miembro aparece en "Haz amigos"
     codigo: account.mostrar ? account.codigo : '',
   };

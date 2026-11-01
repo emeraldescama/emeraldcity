@@ -474,6 +474,33 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           </div>
           <button id="account-refresh" type="button" class={ghostButton}>Actualizar</button>
         </div>
+        <!-- Cuenta del administrador principal en el foro -->
+        <div class="glass-panel rounded-2xl p-5 border border-amber-400/40 space-y-3">
+          <p class="font-black text-zinc-100">👑 Tu cuenta en el foro</p>
+          <div id="admin-propia-lista" class="hidden space-y-2">
+            <p class="text-sm text-zinc-300">Escribes en el foro como <strong id="admin-propia-nick" class="text-amber-200"></strong>, con la etiqueta <strong>Admin principal</strong>. No necesitas contraseña: entras solo con este panel abierto.</p>
+            <div class="flex flex-wrap gap-2">
+              <a href="/foro" target="_blank" class={`${ghostButton} inline-flex`}>Ir al foro</a>
+              <a href="/cuenta" target="_blank" class={`${ghostButton} inline-flex`}>Elegir mi Pokémon</a>
+            </div>
+            <p class="text-xs text-zinc-400">Para cambiar tu nick: Miembros → Editar tu fila. Para que otra persona tenga la etiqueta Admin, usa el botón "Dar etiqueta Admin" en su cuenta aquí abajo.</p>
+          </div>
+          <form id="admin-propia-form" class="hidden space-y-3">
+            <p class="text-sm text-zinc-300">Crea tu cuenta para escribir en el foro con tu nick y la etiqueta <strong>Admin principal</strong>. Entrarás con este mismo panel, sin otra contraseña.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="admin-propia-input" class={labelClass}>Tu nick en el foro</label>
+                <input id="admin-propia-input" required maxlength="30" value="Ophiuc0" class={inputClass} />
+              </div>
+              <div>
+                <label for="admin-propia-codigo" class={labelClass}>Tu código de amistad (opcional)</label>
+                <input id="admin-propia-codigo" inputmode="numeric" maxlength="14" placeholder="Si ya estás en la lista de miembros" class={inputClass} />
+              </div>
+            </div>
+            <button type="submit" class={primaryButton}>Crear mi cuenta de administrador</button>
+          </form>
+        </div>
+
         <p id="account-password" class="hidden px-4 py-3 rounded-xl text-sm font-semibold border bg-amber-500/10 border-amber-500/40 text-amber-200" role="status"></p>
         <p id="account-empty" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">Todavía nadie creó su cuenta.</p>
         <ul id="account-list" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></ul>

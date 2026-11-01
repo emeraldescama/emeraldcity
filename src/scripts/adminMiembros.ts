@@ -23,7 +23,7 @@ export interface Miembro {
   contacto: boolean;
   mostrar: boolean;
   bienvenida: string;
-  origen: 'web' | 'importado';
+  origen: 'web' | 'importado' | 'admin';
   tieneCaptura: boolean;
   cumpleDia: number | null;
   cumpleMes: number | null;
@@ -354,7 +354,7 @@ function downloadExcel() {
     m.pokemon ? (pokemonNames.get(m.pokemon) ?? String(m.pokemon)) : '',
     m.mostrar ? 'Sí' : 'No',
     m.bienvenida ? (m.bienvenida.includes('T') ? formatDate(m.bienvenida) : m.bienvenida) : 'Pendiente',
-    m.origen === 'web' ? 'Formulario web' : 'Hoja anterior',
+    m.origen === 'web' ? 'Formulario web' : m.origen === 'admin' ? 'Administrador' : 'Hoja anterior',
   ]);
   const today = new Date().toISOString().slice(0, 10);
   downloadBlob(createXlsx('Miembros', headers, rows), `miembros-emerald-city-${today}.xlsx`);

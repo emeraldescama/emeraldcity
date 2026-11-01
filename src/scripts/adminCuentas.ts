@@ -2,7 +2,7 @@
  * Pestaña "Cuentas y foro" del panel: aprobar, bloquear o borrar las cuentas que los
  * miembros crean en /cuenta, y reiniciar su contraseña cuando la olvidan.
  */
-import { avatarUrl, TEAM_NAMES, type Equipo } from '../utils/perfil';
+import { avatarUrl, ROLE_BADGES, TEAM_NAMES, type Equipo } from '../utils/perfil';
 
 interface Cuenta {
   id: string;
@@ -17,6 +17,7 @@ interface Cuenta {
   telefono: string;
   creada: string;
   mensajes: number;
+  rol: '' | 'admin' | 'principal';
 }
 
 type Api = <T>(action: string, payload?: Record<string, unknown>) => Promise<T>;
@@ -45,7 +46,46 @@ function button(label: string, className: string, onClick: (b: HTMLButtonElement
   return b;
 }
 
+/** Recuadro "Tu cuenta en el foro": crearla o ver con qué nick escribes */
+function renderMainAdmin() {
+  const main = accounts.find((a) => a.rol === 'principal');
+  $('admin-propia-lista').classList.toggle('hidden', !main);
+  $('admin-propia-form').classList.toggle('hidden', Boolean(main));
+  if (main) $('admin-propia-nick').textContent = main.entrenador;
+}
+
+async function createMainAdmin(event: SubmitEvent) {
+  event.preventDefault();
+  const submit = (event.target as HTMLFormElement).querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  submit.disabled = true;
+  try {
+    const { cuenta } = await api<{ cuenta: Cuenta }>('cuentaAdminCrear', {
+      nick: $<HTMLInputElement>('admin-propia-input').value,
+      codigo: $<HTMLInputElement>('admin-propia-codigo').value,
+    });
+    showStatus(`¡Listo! Ya puedes escribir en el foro como ${cuenta.entrenador}.`, 'ok');
+    await loadAccounts();
+  } catch (err) {
+    showStatus((err as Error).message, 'error');
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function setRole(account: Cuenta, rol: '' | 'admin', b: HTMLButtonElement) {
+  b.disabled = true;
+  try {
+    const { cuenta } = await api<{ cuenta: Cuenta }>('cuentaRol', { id: account.id, rol });
+    replace(cuenta);
+    showStatus(rol ? `${account.entrenador} ahora tiene la etiqueta Admin en el foro.` : `${account.entrenador} ya no tiene la etiqueta Admin.`, 'ok');
+  } catch (err) {
+    b.disabled = false;
+    showStatus((err as Error).message, 'error');
+  }
+}
+
 function render() {
+  renderMainAdmin();
   const pending = accounts.filter((a) => a.estado === 'pendiente').length;
   const count = $('account-count');
   count.textContent = String(pending);
@@ -73,6 +113,13 @@ function render() {
       state.className = `px-2 py-0.5 text-[11px] font-bold uppercase rounded-md border ${STATE_STYLES[account.estado]}`;
       state.textContent = STATE_LABELS[account.estado];
       title.append(name, state);
+      const role = ROLE_BADGES[account.rol];
+      if (role) {
+        const badge = document.createElement('span');
+        badge.className = `px-2 py-0.5 text-[11px] font-black uppercase rounded-md border ${role.className}`;
+        badge.textContent = role.label;
+        title.append(badge);
+      }
       const details = document.createElement('p');
       details.className = 'text-xs text-zinc-400 break-words';
       details.textContent = [
@@ -92,13 +139,19 @@ function render() {
       if (account.estado !== 'aprobada') {
         actions.append(button('Aprobar', 'text-zinc-950 bg-emerald-400 border-emerald-400', (b) => setState(account, 'aprobada', b)));
       }
-      if (account.estado !== 'bloqueada') {
-        actions.append(button('Bloquear', 'text-red-300 border-red-500/30', (b) => setState(account, 'bloqueada', b)));
+      // La cuenta del administrador principal no se bloquea, no se borra ni pierde su etiqueta
+      if (account.rol !== 'principal') {
+        if (account.estado !== 'bloqueada') {
+          actions.append(button('Bloquear', 'text-red-300 border-red-500/30', (b) => setState(account, 'bloqueada', b)));
+        }
+        actions.append(
+          account.rol === 'admin'
+            ? button('Quitar etiqueta Admin', 'text-amber-300 border-amber-500/30', (b) => setRole(account, '', b))
+            : button('Dar etiqueta Admin', 'text-amber-300 border-amber-500/30', (b) => setRole(account, 'admin', b)),
+          button('Reiniciar contraseña', 'text-zinc-300 border-zinc-700', (b) => resetPassword(account, b)),
+          button('Borrar cuenta', 'text-red-300 border-red-500/30', (b) => removeAccount(account, b)),
+        );
       }
-      actions.append(
-        button('Reiniciar contraseña', 'text-zinc-300 border-zinc-700', (b) => resetPassword(account, b)),
-        button('Borrar cuenta', 'text-red-300 border-red-500/30', (b) => removeAccount(account, b)),
-      );
 
       info.append(title, details, actions);
       item.append(img, info);
@@ -185,4 +238,5 @@ export function initAccounts(options: { api: Api; showStatus: ShowStatus }) {
   api = options.api;
   showStatus = options.showStatus;
   $('account-refresh').addEventListener('click', () => loadAccounts());
+  $('admin-propia-form').addEventListener('submit', createMainAdmin);
 }

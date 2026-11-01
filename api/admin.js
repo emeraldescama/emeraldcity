@@ -16,9 +16,9 @@
  * HttpOnly (8 horas), que los scripts de la página no pueden leer ni modificar.
  */
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { endAdminSession, hasAdminSession, sameOrigin, startAdminSession } from './_cookies.js';
+import { endAdminSession, endUserSession, hasAdminSession, sameOrigin, startAdminSession } from './_cookies.js';
 import { missingEmailSettings, sendBirthdayEmail } from './_correo.js';
-import { deleteAccount, listAccounts, resetPassword, setAccountState } from './_cuentas.js';
+import { createMainAdmin, deleteAccount, listAccounts, resetPassword, setAccountRole, setAccountState } from './_cuentas.js';
 import {
   adminDynamics,
   deleteChallenge,
@@ -348,6 +348,8 @@ export default async function handler(req, res) {
   }
   if (body.action === 'logout') {
     endAdminSession(res);
+    // También la del foro: la cuenta del administrador principal entra con la del panel
+    endUserSession(res);
     return res.status(200).json({ ok: true });
   }
   if (!hasAdminSession(req)) {
@@ -380,6 +382,14 @@ export default async function handler(req, res) {
         return res.status(200).json({ cuentas: await listAccounts() });
       case 'cuentaEstado':
         return res.status(200).json({ cuenta: await setAccountState(String(body.id ?? ''), String(body.estado ?? '')) });
+      case 'cuentaAdminCrear': {
+        const nick = cleanText(body.nick, 'Nick', 30);
+        const codigo = String(body.codigo ?? '').replace(/\D/g, '');
+        if (codigo && codigo.length !== 12) throw new HttpError(400, 'El código de amistad tiene 12 números.');
+        return res.status(200).json({ cuenta: await createMainAdmin(nick, codigo) });
+      }
+      case 'cuentaRol':
+        return res.status(200).json({ cuenta: await setAccountRole(String(body.id ?? ''), body.rol === 'admin' ? 'admin' : '') });
       case 'cuentaClave':
         return res.status(200).json(await resetPassword(String(body.id ?? '')));
       case 'cuentaEliminar':

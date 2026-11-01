@@ -110,6 +110,8 @@ const SCHEMA = [
   `ALTER TABLE foro_mensajes ADD COLUMN IF NOT EXISTS sistema boolean NOT NULL DEFAULT false`,
   // Datos sueltos de la página, por ejemplo el último día en que se mandó el correo de cumpleaños
   `CREATE TABLE IF NOT EXISTS ajustes (clave text PRIMARY KEY, valor text NOT NULL)`,
+  // Etiqueta en el foro: '' (miembro), 'admin' o 'principal' (la cuenta del administrador del panel)
+  `ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS rol text NOT NULL DEFAULT ''`,
   // Sección Eventos: dinámicas (como la de Wild Area), sus retos y las capturas de cada miembro
   `CREATE TABLE IF NOT EXISTS escama_vinculos (
     escama_id text PRIMARY KEY,
