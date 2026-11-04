@@ -112,6 +112,24 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS ajustes (clave text PRIMARY KEY, valor text NOT NULL)`,
   // Etiqueta en el foro: '' (miembro), 'admin' o 'principal' (la cuenta del administrador del panel)
   `ALTER TABLE cuentas ADD COLUMN IF NOT EXISTS rol text NOT NULL DEFAULT ''`,
+  // Foro: responder a un comentario, me gusta y avisos de menciones y respuestas
+  `ALTER TABLE foro_mensajes ADD COLUMN IF NOT EXISTS respuesta_a text REFERENCES foro_mensajes(id) ON DELETE SET NULL`,
+  `CREATE TABLE IF NOT EXISTS foro_likes (
+    mensaje_id text NOT NULL REFERENCES foro_mensajes(id) ON DELETE CASCADE,
+    cuenta_id text NOT NULL REFERENCES cuentas(id) ON DELETE CASCADE,
+    creado timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (mensaje_id, cuenta_id)
+  )`,
+  `CREATE TABLE IF NOT EXISTS foro_avisos (
+    id text PRIMARY KEY,
+    cuenta_id text NOT NULL REFERENCES cuentas(id) ON DELETE CASCADE,
+    tipo text NOT NULL,
+    de_cuenta text REFERENCES cuentas(id) ON DELETE CASCADE,
+    mensaje_id text NOT NULL REFERENCES foro_mensajes(id) ON DELETE CASCADE,
+    leido boolean NOT NULL DEFAULT false,
+    creado timestamptz NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS foro_avisos_cuenta ON foro_avisos (cuenta_id, creado DESC)`,
   // Sección Eventos: dinámicas (como la de Wild Area), sus retos y las capturas de cada miembro
   `CREATE TABLE IF NOT EXISTS escama_vinculos (
     escama_id text PRIMARY KEY,

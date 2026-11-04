@@ -41,6 +41,31 @@ interface Mensaje {
   texto: string;
   creado: string;
   autor: Autor | null;
+  /** Comentario al que responde */
+  respuestaA: string | null;
+  likes: number;
+  meGusta: boolean;
+  /** Quiénes le dieron me gusta (los últimos 12) */
+  gustan: string[];
+}
+interface Usuario {
+  id: string;
+  entrenador: string;
+  avatar: number;
+  shiny: boolean;
+  rol: string;
+}
+interface Aviso {
+  id: string;
+  tipo: 'mencion' | 'respuesta';
+  leido: boolean;
+  creado: string;
+  mensajeId: string;
+  temaId: string;
+  titulo: string;
+  de: string;
+  avatar: number;
+  shiny: boolean;
 }
 interface Tema {
   id: string;
@@ -64,6 +89,10 @@ const REFRESH_MS = 20_000;
 
 let me: { cuenta: string | null; moderador: boolean } = { cuenta: null, moderador: false };
 let currentTopic: Tema | null = null;
+let replyTarget: Mensaje | null = null;
+let users: Usuario[] = [];
+let usersLoaded: Promise<void> | null = null;
+let noticesTimer: number | undefined;
 let refreshTimer: number | undefined;
 
 class ForoError extends Error {
@@ -265,7 +294,23 @@ function roleBadge(rol?: string) {
   return el('span', `px-1.5 py-0.5 rounded-md border text-[10px] font-black uppercase tracking-wider ${badge.className}`, badge.label);
 }
 
-/** Texto del mensaje con los enlaces convertidos en links seguros */
+const MENTION = /(@[\p{L}\p{N}_]{2,30})/u;
+
+/** Cuentas del foro, para resaltar menciones y sugerir nombres al escribir @ (una vez) */
+function loadUsers() {
+  usersLoaded ??= foroGet<{ usuarios: Usuario[] }>('?usuarios=1')
+    .then((data) => {
+      users = data.usuarios;
+    })
+    .catch(() => {
+      usersLoaded = null;
+    });
+  return usersLoaded;
+}
+
+const findUser = (name: string) => users.find((u) => u.entrenador.toLowerCase() === name.toLowerCase());
+
+/** Texto del mensaje: enlaces seguros y menciones @ resaltadas (las mías en dorado) */
 function messageText(text: string) {
   const p = el('p', 'text-zinc-200 whitespace-pre-wrap break-words mt-1');
   for (const part of text.split(/(https?:\/\/[^\s<>"]+)/g)) {
@@ -275,11 +320,218 @@ function messageText(text: string) {
       link.target = '_blank';
       link.rel = 'noopener noreferrer nofollow';
       p.append(link);
-    } else if (part) p.append(document.createTextNode(part));
+      continue;
+    }
+    for (const piece of part.split(MENTION)) {
+      const user = piece.startsWith('@') ? findUser(piece.slice(1)) : undefined;
+      if (user) {
+        const mention = el('button', `foro-mencion ${user.id === me.cuenta ? 'foro-mencion-mia' : ''}`, `@${user.entrenador}`);
+        mention.type = 'button';
+        mention.addEventListener('click', () => openProfile(user.id));
+        p.append(mention);
+      } else if (piece) p.append(document.createTextNode(piece));
+    }
   }
   return p;
 }
 
+/** Bloque "↪ Nombre: comienzo del comentario" que lleva al comentario respondido */
+function quote(parentId: string, tema: Tema) {
+  const parent = tema.mensajes.find((m) => m.id === parentId);
+  const box = el('button', 'mt-1 mb-1 w-full text-left rounded-lg border-l-4 border-emerald-500/60 bg-zinc-900/70 px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800/70');
+  box.type = 'button';
+  if (!parent) {
+    box.textContent = '↪ Respondía a un comentario que ya fue borrado';
+    box.disabled = true;
+    return box;
+  }
+  box.append(el('span', 'font-bold text-emerald-300', `↪ ${parent.autor?.entrenador ?? 'Cuenta borrada'}: `), document.createTextNode(excerpt(parent.texto)));
+  box.addEventListener('click', () => scrollToMessage(parent.id));
+  return box;
+}
+
+const excerpt = (text: string) => (text.length > 90 ? `${text.slice(0, 90).trimEnd()}…` : text).replace(/\s+/g, ' ');
+
+/** Lleva a un comentario y lo resalta un momento */
+function scrollToMessage(id: string) {
+  const target = document.getElementById(`m-${id}`);
+  if (!target) return;
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  target.classList.add('foro-destacado');
+  setTimeout(() => target.classList.remove('foro-destacado'), 2200);
+}
+
+function likeButton(m: Mensaje) {
+  const mine = !me.cuenta || m.autor?.sistema || m.autor?.id === me.cuenta;
+  const label = `${m.meGusta ? '❤️' : '🤍'} ${m.likes || ''}`.trim();
+  const button = el(
+    'button',
+    `inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-bold transition-colors ${
+      m.meGusta ? 'border-pink-400/60 bg-pink-500/15 text-pink-200' : 'border-zinc-700 text-zinc-300 hover:border-pink-400/50'
+    }`,
+    label,
+  );
+  button.type = 'button';
+  button.title = m.gustan.length ? `Les gusta a: ${m.gustan.join(', ')}${m.likes > m.gustan.length ? ' y más' : ''}` : 'Me gusta';
+  // A los comentarios propios no se les da me gusta: solo se ve el contador
+  if (mine) {
+    button.disabled = true;
+    if (!m.likes) button.classList.add('hidden');
+    return button;
+  }
+  button.setAttribute('aria-pressed', String(m.meGusta));
+  button.addEventListener('click', () => toggleLike(m, button));
+  return button;
+}
+
+async function toggleLike(m: Mensaje, button: HTMLButtonElement) {
+  button.disabled = true;
+  try {
+    const { likes, meGusta } = await foroPost<{ likes: number; meGusta: boolean }>('like', { mensaje: m.id });
+    m.likes = likes;
+    m.meGusta = meGusta;
+    const mine = users.find((u) => u.id === me.cuenta)?.entrenador;
+    if (mine) m.gustan = meGusta ? [mine, ...m.gustan.filter((n) => n !== mine)] : m.gustan.filter((n) => n !== mine);
+    button.replaceWith(likeButton(m));
+  } catch (err) {
+    button.disabled = false;
+    showError((err as Error).message);
+  }
+}
+
+// ---------- Responder a un comentario ----------
+
+function setReplyTarget(m: Mensaje | null) {
+  replyTarget = m;
+  $('respuesta-a').classList.toggle('hidden', !m);
+  if (!m) return;
+  $('respuesta-a-nombre').textContent = m.autor?.entrenador ?? 'Cuenta borrada';
+  $('respuesta-a-texto').textContent = excerpt(m.texto);
+  const box = $<HTMLTextAreaElement>('respuesta-texto');
+  box.focus();
+  $('form-respuesta').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ---------- Menciones: sugerencias al escribir @ ----------
+
+/** Sugiere nombres mientras se escribe "@nom…" y completa el que se elige */
+function attachMentions(textarea: HTMLTextAreaElement) {
+  const list = el('ul', 'hidden absolute left-0 right-0 z-20 mt-1 rounded-xl border border-emerald-500/30 bg-zinc-950 shadow-2xl p-1 max-h-64 overflow-y-auto');
+  list.setAttribute('role', 'listbox');
+  textarea.parentElement!.style.position = 'relative';
+  textarea.after(list);
+  let matches: Usuario[] = [];
+  let active = 0;
+
+  const query = () => textarea.value.slice(0, textarea.selectionStart).match(/(?:^|\s)@([\p{L}\p{N}_]{0,30})$/u)?.[1];
+  const close = () => {
+    list.classList.add('hidden');
+    matches = [];
+  };
+  const choose = (user: Usuario) => {
+    const caret = textarea.selectionStart;
+    const before = textarea.value.slice(0, caret).replace(/@([\p{L}\p{N}_]{0,30})$/u, `@${user.entrenador} `);
+    textarea.value = before + textarea.value.slice(caret);
+    textarea.setSelectionRange(before.length, before.length);
+    textarea.focus();
+    close();
+  };
+  const render = () => {
+    list.replaceChildren(
+      ...matches.map((user, i) => {
+        const item = el('li');
+        const option = el('button', `w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-sm ${i === active ? 'bg-emerald-500/15 text-emerald-200' : 'text-zinc-200 hover:bg-zinc-800'}`);
+        option.type = 'button';
+        option.setAttribute('role', 'option');
+        const img = el('img', 'w-8 h-8 [image-rendering:pixelated]');
+        img.src = avatarUrl(user.avatar, user.shiny);
+        img.alt = '';
+        option.append(img, document.createTextNode(user.entrenador));
+        const badge = roleBadge(user.rol);
+        if (badge) option.append(badge);
+        // mousedown en vez de click: así el textarea no pierde el foco antes de elegir
+        option.addEventListener('mousedown', (event) => {
+          event.preventDefault();
+          choose(user);
+        });
+        item.append(option);
+        return item;
+      }),
+    );
+    list.classList.toggle('hidden', matches.length === 0);
+  };
+  const update = async () => {
+    const q = query();
+    if (q === undefined) return close();
+    await loadUsers();
+    const wanted = q.toLowerCase();
+    matches = users
+      .filter((u) => u.id !== me.cuenta && u.entrenador.toLowerCase().includes(wanted))
+      .sort((a, b) => Number(!a.entrenador.toLowerCase().startsWith(wanted)) - Number(!b.entrenador.toLowerCase().startsWith(wanted)))
+      .slice(0, 6);
+    active = 0;
+    render();
+  };
+  textarea.addEventListener('input', update);
+  textarea.addEventListener('click', update);
+  textarea.addEventListener('blur', () => setTimeout(close, 150));
+  textarea.addEventListener('keydown', (event) => {
+    if (!matches.length) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      active = (active + (event.key === 'ArrowDown' ? 1 : matches.length - 1)) % matches.length;
+      render();
+    } else if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      choose(matches[active]);
+    } else if (event.key === 'Escape') close();
+  });
+}
+
+// ---------- Avisos ----------
+
+async function loadNotices() {
+  if (!me.cuenta) return;
+  try {
+    const { avisos, nuevos } = await foroGet<{ avisos: Aviso[]; nuevos: number }>('?avisos=1');
+    const badge = $('avisos-nuevos');
+    badge.textContent = nuevos > 9 ? '9+' : String(nuevos);
+    badge.classList.toggle('hidden', nuevos === 0);
+    $('avisos-boton').classList.replace('hidden', 'inline-flex');
+    $('avisos-vacio').classList.toggle('hidden', avisos.length > 0);
+    $('avisos-lista').replaceChildren(
+      ...avisos.map((a) => {
+        const item = el('li');
+        const link = el('a', `flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-zinc-800 ${a.leido ? '' : 'bg-emerald-500/10'}`);
+        link.href = `#t/${a.temaId}/${a.mensajeId}`;
+        const img = el('img', 'w-10 h-10 flex-shrink-0 [image-rendering:pixelated]');
+        img.src = avatarUrl(a.avatar, a.shiny);
+        img.alt = '';
+        const text = el('div', 'min-w-0 text-sm');
+        const line = el('p', 'text-zinc-200');
+        line.append(el('strong', 'text-zinc-100', a.de), document.createTextNode(a.tipo === 'mencion' ? ' te mencionó en ' : ' respondió a tu comentario en '), el('strong', 'text-emerald-300', `«${a.titulo}»`));
+        text.append(line, el('p', 'text-xs text-zinc-500', timeAgo(a.creado)));
+        link.append(img, text);
+        link.addEventListener('click', () => $('avisos-panel').classList.add('hidden'));
+        item.append(link);
+        return item;
+      }),
+    );
+  } catch {
+    // Sin avisos no pasa nada: se reintenta en la próxima revisión
+  }
+}
+
+async function toggleNotices() {
+  const panel = $('avisos-panel');
+  panel.classList.toggle('hidden');
+  if (panel.classList.contains('hidden') || $('avisos-nuevos').classList.contains('hidden')) return;
+  // Al abrir el panel, los avisos quedan vistos
+  $('avisos-nuevos').classList.add('hidden');
+  await foroPost('avisosLeidos', {}).catch(() => undefined);
+}
+
+// ---------- Vistas ----------
 // ---------- Vistas ----------
 
 async function showCategories() {
@@ -397,17 +649,32 @@ function renderTopic(tema: Tema) {
         remove.addEventListener('click', () => deleteMessage(m, remove, i === 0));
         head.append(remove);
       }
-      body.append(head, messageText(m.texto));
+      body.append(head);
+      if (m.respuestaA) body.append(quote(m.respuestaA, tema));
+      body.append(messageText(m.texto));
+      if (!m.autor?.sistema || m.likes) {
+        const actions = el('div', 'mt-2 flex flex-wrap items-center gap-2');
+        actions.append(likeButton(m));
+        if (me.cuenta && !m.autor?.sistema) {
+          const answer = el('button', 'px-2.5 py-1 rounded-lg border border-zinc-700 text-xs font-bold text-zinc-300 hover:border-emerald-400/50 hover:text-emerald-200', '↩ Responder');
+          answer.type = 'button';
+          answer.addEventListener('click', () => setReplyTarget(m));
+          actions.append(answer);
+        }
+        body.append(actions);
+      }
       item.append(avatar(m.autor), body);
       return item;
     }),
   );
 }
 
+const signature = (tema: Tema) => `${tema.fijado}|${tema.mensajes.map((m) => `${m.id}:${m.likes}`).join(',')}`;
+
 async function showTopic(id: string, quiet = false) {
-  const { tema } = await foroGet<{ tema: Tema }>(`?tema=${encodeURIComponent(id)}`);
-  // Al actualizar en segundo plano solo se redibuja si llegó algo nuevo
-  const changed = !currentTopic || currentTopic.id !== tema.id || currentTopic.mensajes.length !== tema.mensajes.length || currentTopic.fijado !== tema.fijado;
+  const [{ tema }] = await Promise.all([foroGet<{ tema: Tema }>(`?tema=${encodeURIComponent(id)}`), loadUsers()]);
+  // Al actualizar en segundo plano solo se redibuja si llegó algo nuevo (mensajes o me gusta)
+  const changed = !currentTopic || currentTopic.id !== tema.id || signature(currentTopic) !== signature(tema);
   if (!quiet || changed) {
     const nearBottom = window.innerHeight + window.scrollY > document.body.scrollHeight - 300;
     renderTopic(tema);
@@ -472,8 +739,13 @@ function onReply(event: SubmitEvent) {
   const form = event.target as HTMLFormElement;
   if (!currentTopic) return;
   withButton(form, async () => {
-    const { tema } = await foroPost<{ tema: Tema }>('responder', { tema: currentTopic!.id, texto: $<HTMLTextAreaElement>('respuesta-texto').value });
+    const { tema } = await foroPost<{ tema: Tema }>('responder', {
+      tema: currentTopic!.id,
+      texto: $<HTMLTextAreaElement>('respuesta-texto').value,
+      respuestaA: replyTarget?.id ?? null,
+    });
     form.reset();
+    setReplyTarget(null);
     renderTopic(tema);
     $('form-respuesta').scrollIntoView({ block: 'end' });
   });
@@ -523,15 +795,20 @@ async function route() {
   const hash = location.hash.slice(1);
   try {
     if (hash.startsWith('t/')) {
+      // "#t/tema" o "#t/tema/comentario" (desde un aviso: lleva a ese comentario)
+      const [temaId, mensajeId] = hash.slice(2).split('/');
       currentTopic = null;
-      await showTopic(hash.slice(2));
-      window.scrollTo(0, 0);
+      setReplyTarget(null);
+      await showTopic(temaId);
+      if (mensajeId) setTimeout(() => scrollToMessage(mensajeId), 100);
+      else window.scrollTo(0, 0);
       refreshTimer = window.setInterval(() => {
         if (document.visibilityState === 'visible' && currentTopic) showTopic(currentTopic.id, true).catch(() => undefined);
       }, REFRESH_MS);
     } else if (hash.startsWith('c/')) await showTopics(hash.slice(2));
     else await showCategories();
     $('foro-puerta').classList.add('hidden');
+    loadNotices();
   } catch (err) {
     if (err instanceof ForoError && err.status === 401) showGate('anonimo');
     else if (err instanceof ForoError && err.status === 403) {
@@ -606,6 +883,18 @@ export function initForo() {
   $('cumple-admin-mensaje').addEventListener('click', (e) => {
     if (currentTopic?.cumple) copyText(birthdayMessage(currentTopic.cumple, currentTopic.cumple.telefono ?? ''), e.currentTarget as HTMLButtonElement, 'Copiar mensaje con @etiqueta');
   });
+  attachMentions($<HTMLTextAreaElement>('respuesta-texto'));
+  attachMentions($<HTMLTextAreaElement>('tema-texto'));
+  $('respuesta-a-cancelar').addEventListener('click', () => setReplyTarget(null));
+  $('avisos-boton').addEventListener('click', toggleNotices);
+  document.addEventListener('click', (event) => {
+    const panel = $('avisos-panel');
+    if (!panel.classList.contains('hidden') && !(event.target as HTMLElement).closest('#avisos-panel, #avisos-boton')) panel.classList.add('hidden');
+  });
+  // Los avisos se revisan cada minuto mientras la página está a la vista
+  noticesTimer = window.setInterval(() => {
+    if (document.visibilityState === 'visible') loadNotices();
+  }, 60_000);
   window.addEventListener('hashchange', route);
   showMe();
   route();

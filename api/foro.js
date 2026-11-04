@@ -6,12 +6,32 @@
  *   GET   ?tema=abc123            mensajes de un tema
  *   GET   ?perfil=abc123          perfil público de un miembro
  *   POST  { accion: 'tema', categoria, titulo, texto }
- *   POST  { accion: 'responder', tema, texto }
+ *   GET   ?usuarios=1                cuentas aprobadas (para sugerir @menciones)
+ *   GET   ?avisos=1                  menciones y respuestas recibidas
+ *   POST  { accion: 'responder', tema, texto, respuestaA? }   respuestaA: comentario al que responde
+ *   POST  { accion: 'like', mensaje }                          me gusta (tocar de nuevo lo quita)
+ *   POST  { accion: 'avisosLeidos' }
  *   POST  { accion: 'borrar', mensaje }
  *   POST  { accion: 'fijar', tema, fijado }                   solo administrador
  */
 import { hasAdminSession, sameOrigin } from './_cookies.js';
-import { CATEGORIAS, birthdayPhone, createTopic, deleteMessage, ensureBirthdays, forumSummary, getTopic, listTopics, pinTopic, publicProfile, reply } from './_cuentas.js';
+import {
+  CATEGORIAS,
+  birthdayPhone,
+  createTopic,
+  deleteMessage,
+  ensureBirthdays,
+  forumSummary,
+  forumUsers,
+  getTopic,
+  listTopics,
+  markNoticesRead,
+  notices,
+  pinTopic,
+  publicProfile,
+  reply,
+  toggleLike,
+} from './_cuentas.js';
 import { currentAccount, fail } from './_sesion.js';
 
 const ID = /^[a-z0-9-]{4,40}$/;
@@ -53,12 +73,14 @@ export default async function handler(req, res) {
       // Los temas de cumpleaños del día se abren solos al entrar al foro
       if (!query.tema && !query.perfil) await ensureBirthdays();
       if (query.tema) {
-        const tema = await getTopic(id(query.tema));
+        const tema = await getTopic(id(query.tema), account?.id ?? null);
         // El teléfono de quien cumple años solo lo recibe el administrador, para etiquetarlo en el grupo
         if (admin && tema.cumple) tema.cumple.telefono = await birthdayPhone(tema.id);
         return res.status(200).json({ ...me, tema });
       }
       if (query.perfil) return res.status(200).json({ ...me, perfil: await publicProfile(id(query.perfil)) });
+      if (query.usuarios) return res.status(200).json({ ...me, usuarios: await forumUsers() });
+      if (query.avisos) return res.status(200).json({ ...me, ...(account ? await notices(account.id) : { avisos: [], nuevos: 0 }) });
       if (query.categoria) {
         if (!CATEGORIAS[query.categoria]) throw new BadRequest('Esa categoría no existe.');
         return res.status(200).json({ ...me, temas: await listTopics(query.categoria) });
@@ -82,7 +104,13 @@ export default async function handler(req, res) {
         return res.status(200).json({ tema: await createTopic(writer(), body.categoria, titulo, texto) });
       }
       case 'responder':
-        return res.status(200).json({ tema: await reply(writer(), id(body.tema), text(body.texto, 'el mensaje', 2000)) });
+        return res
+          .status(200)
+          .json({ tema: await reply(writer(), id(body.tema), text(body.texto, 'el mensaje', 2000), body.respuestaA ? id(body.respuestaA) : null) });
+      case 'like':
+        return res.status(200).json(await toggleLike(writer(), id(body.mensaje)));
+      case 'avisosLeidos':
+        return res.status(200).json(await markNoticesRead(writer()));
       case 'borrar':
         return res.status(200).json(await deleteMessage(id(body.mensaje), { cuentaId: account?.id, admin }));
       case 'fijar':

@@ -21,10 +21,24 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
         <h1 class="text-4xl sm:text-5xl font-black text-zinc-100 tracking-tight">Foro <span class="text-emerald-400">Emerald</span></h1>
         <p class="text-sm text-zinc-400 mt-1">Solo para miembros de la comunidad.</p>
       </div>
-      <a id="foro-yo" href="/cuenta" class="hidden items-center gap-2 px-3 py-2 rounded-xl border border-zinc-800 hover:border-emerald-500/40 text-sm font-bold text-zinc-200">
-        <img id="foro-yo-avatar" src="" alt="" width="40" height="40" class="w-10 h-10 [image-rendering:pixelated]" />
-        <span id="foro-yo-nombre"></span>
-      </a>
+      <div class="flex items-center gap-2">
+        <!-- Avisos: menciones y respuestas a mis comentarios -->
+        <div class="relative">
+          <button id="avisos-boton" type="button" aria-label="Avisos" class="hidden relative w-12 h-12 items-center justify-center rounded-xl border border-zinc-800 hover:border-emerald-500/40 text-xl">
+            🔔
+            <span id="avisos-nuevos" class="hidden absolute -top-1.5 -right-1.5 min-w-[1.4rem] h-[1.4rem] px-1 rounded-full bg-amber-400 text-zinc-950 text-xs font-black flex items-center justify-center"></span>
+          </button>
+          <div id="avisos-panel" class="hidden absolute right-0 top-14 z-30 w-[min(22rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto rounded-2xl border border-emerald-500/30 bg-zinc-950 shadow-2xl p-2">
+            <p class="px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-400">Tus avisos</p>
+            <ul id="avisos-lista" class="space-y-1"></ul>
+            <p id="avisos-vacio" class="hidden px-3 py-4 text-sm text-zinc-400 text-center">Cuando alguien te mencione con @ o responda a tu comentario, te avisamos aquí.</p>
+          </div>
+        </div>
+        <a id="foro-yo" href="/cuenta" class="hidden items-center gap-2 px-3 py-2 rounded-xl border border-zinc-800 hover:border-emerald-500/40 text-sm font-bold text-zinc-200">
+          <img id="foro-yo-avatar" src="" alt="" width="40" height="40" class="w-10 h-10 [image-rendering:pixelated]" />
+          <span id="foro-yo-nombre"></span>
+        </a>
+      </div>
     </div>
 
     <p id="foro-cargando" class="text-center text-zinc-400 py-16">Cargando…</p>
@@ -145,7 +159,7 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
         <label for="tema-titulo" class="sr-only">Título</label>
         <input id="tema-titulo" maxlength="100" required placeholder="Título del tema" class={inputClass} />
         <label for="tema-texto" class="sr-only">Mensaje</label>
-        <textarea id="tema-texto" maxlength="2000" rows="5" required placeholder="Escribe tu mensaje…" class={inputClass}></textarea>
+        <textarea id="tema-texto" maxlength="2000" rows="5" required placeholder="Escribe tu mensaje… Usa @ para mencionar a alguien" class={inputClass}></textarea>
         <div class="flex justify-end gap-3">
           <button id="nuevo-tema-cancelar" type="button" class={ghostButton}>Cancelar</button>
           <button type="submit" class={primaryButton}>Publicar</button>
@@ -184,8 +198,12 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
       </div>
       <ol id="lista-mensajes" class="space-y-3"></ol>
       <form id="form-respuesta" class="glass-panel rounded-2xl p-4 space-y-3">
+        <div id="respuesta-a" class="hidden flex items-start gap-2 rounded-xl border-l-4 border-emerald-400 bg-emerald-500/10 px-3 py-2 text-sm">
+          <p class="min-w-0 flex-grow text-zinc-300"><span class="font-bold text-emerald-300">Respondiendo a <span id="respuesta-a-nombre"></span>:</span> <span id="respuesta-a-texto" class="text-zinc-400"></span></p>
+          <button id="respuesta-a-cancelar" type="button" aria-label="No responder a ese comentario" class="text-zinc-400 hover:text-zinc-100 font-black px-1">✕</button>
+        </div>
         <label for="respuesta-texto" class="sr-only">Tu respuesta</label>
-        <textarea id="respuesta-texto" maxlength="2000" rows="3" required placeholder="Escribe tu respuesta…" class={inputClass}></textarea>
+        <textarea id="respuesta-texto" maxlength="2000" rows="3" required placeholder="Escribe tu respuesta… Usa @ para mencionar a alguien" class={inputClass}></textarea>
         <div class="flex justify-end">
           <button type="submit" class={primaryButton}>Responder</button>
         </div>
@@ -210,6 +228,26 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
   import { initForo } from '../../scripts/foro';
   initForo();
 </script>
+
+<style is:global>
+  /* Creados desde el script: necesitan estilos globales */
+  .foro-mencion {
+    color: #6ee7b7;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.12);
+    border-radius: 0.35rem;
+    padding: 0 0.2rem;
+  }
+  .foro-mencion-mia {
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.18);
+  }
+  .foro-destacado {
+    outline: 2px solid #fbbf24;
+    outline-offset: 2px;
+    transition: outline-color 1.5s;
+  }
+</style>
 
 <style>
   .puerta-tab[aria-selected='true'] {

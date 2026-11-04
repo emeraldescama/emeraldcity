@@ -346,7 +346,7 @@ export async function listTopics(categoria) {
   }));
 }
 
-export async function getTopic(id) {
+export async function getTopic(id, viewerId = null) {
   const [topics, messages] = await run((sql) =>
     Promise.all([
       sql.query(
@@ -360,14 +360,20 @@ export async function getTopic(id) {
         [id],
       ),
       sql.query(
-        `SELECT f.id, f.texto, f.creado, f.sistema, ${AUTHOR_COLUMNS}
+        `SELECT f.id, f.texto, f.creado, f.sistema, f.respuesta_a, ${AUTHOR_COLUMNS},
+                (SELECT count(*) FROM foro_likes l WHERE l.mensaje_id = f.id)::integer AS likes,
+                EXISTS (SELECT 1 FROM foro_likes l WHERE l.mensaje_id = f.id AND l.cuenta_id = $2::text) AS me_gusta,
+                (SELECT string_agg(x.entrenador, ', ') FROM (
+                   SELECT m2.entrenador FROM foro_likes l2 JOIN cuentas c2 ON c2.id = l2.cuenta_id JOIN miembros m2 ON m2.id = c2.miembro_id
+                   WHERE l2.mensaje_id = f.id ORDER BY l2.creado DESC LIMIT 12
+                 ) x) AS gustan
          FROM foro_mensajes f
          LEFT JOIN cuentas c ON c.id = f.cuenta_id
          LEFT JOIN miembros m ON m.id = c.miembro_id
          WHERE f.tema_id = $1
          ORDER BY f.creado, f.id
          LIMIT 500`,
-        [id],
+        [id, viewerId],
       ),
     ]),
   );
@@ -390,7 +396,16 @@ export async function getTopic(id) {
           fecha: String(topic.cumple_fecha instanceof Date ? topic.cumple_fecha.toISOString() : topic.cumple_fecha).slice(0, 10),
         }
       : null,
-    mensajes: messages.map((row) => ({ id: row.id, texto: row.texto, creado: new Date(row.creado).toISOString(), autor: toAuthor(row) })),
+    mensajes: messages.map((row) => ({
+      id: row.id,
+      texto: row.texto,
+      creado: new Date(row.creado).toISOString(),
+      autor: toAuthor(row),
+      respuestaA: row.respuesta_a ?? null,
+      likes: Number(row.likes),
+      meGusta: bool(row.me_gusta),
+      gustan: row.gustan ? String(row.gustan).split(', ') : [],
+    })),
   };
 }
 
@@ -405,25 +420,124 @@ async function checkRate(sql, cuentaId) {
   if (Number(rows[0].hora) >= POSTS_PER_HOUR) throw new DbError(429, 'Enviaste muchos mensajes en la última hora. Intenta más tarde.');
 }
 
+// "@Ophiuc0" en un mensaje: nombres de entrenador de 2 a 30 letras, números o _
+const MENTION = /@([\p{L}\p{N}_]{2,30})/gu;
+
+/**
+ * Avisos de un mensaje nuevo: a quien escribió el comentario al que responde y a cada
+ * cuenta aprobada que se menciona con @. Nunca a uno mismo ni dos avisos a la misma persona.
+ */
+async function notify(sql, cuentaId, mensajeId, texto, parentAuthor) {
+  const notified = new Set([cuentaId]);
+  const add = async (to, tipo) => {
+    if (!to || notified.has(to)) return;
+    notified.add(to);
+    await sql.query(`INSERT INTO foro_avisos (id, cuenta_id, tipo, de_cuenta, mensaje_id) VALUES ($1, $2, $3, $4, $5)`, [newId(), to, tipo, cuentaId, mensajeId]);
+  };
+  await add(parentAuthor, 'respuesta');
+  const names = [...new Set([...texto.matchAll(MENTION)].map((m) => m[1].toLowerCase()))].slice(0, 10);
+  if (names.length) {
+    const mentioned = await sql.query(
+      `SELECT c.id FROM cuentas c JOIN miembros m ON m.id = c.miembro_id WHERE c.estado = 'aprobada' AND lower(m.entrenador) = ANY($1::text[])`,
+      [names],
+    );
+    for (const row of mentioned) await add(row.id, 'mencion');
+  }
+}
+
 export async function createTopic(cuentaId, categoria, titulo, texto) {
   const id = newId();
   await run(async (sql) => {
     await checkRate(sql, cuentaId);
+    const mensajeId = newId();
     await sql.query(`INSERT INTO foro_temas (id, categoria, titulo, cuenta_id) VALUES ($1, $2, $3, $4)`, [id, categoria, titulo, cuentaId]);
-    await sql.query(`INSERT INTO foro_mensajes (id, tema_id, cuenta_id, texto) VALUES ($1, $2, $3, $4)`, [newId(), id, cuentaId, texto]);
+    await sql.query(`INSERT INTO foro_mensajes (id, tema_id, cuenta_id, texto) VALUES ($1, $2, $3, $4)`, [mensajeId, id, cuentaId, texto]);
+    await notify(sql, cuentaId, mensajeId, texto, null);
   });
-  return getTopic(id);
+  return getTopic(id, cuentaId);
 }
 
-export async function reply(cuentaId, temaId, texto) {
+/** Respuesta en un tema; con respuestaA, responde a un comentario en particular */
+export async function reply(cuentaId, temaId, texto, respuestaA = null) {
   await run(async (sql) => {
     const exists = await sql.query(`SELECT 1 FROM foro_temas WHERE id = $1`, [temaId]);
     if (!exists.length) throw new DbError(404, 'Ese tema ya no existe.');
+    let parentAuthor = null;
+    if (respuestaA) {
+      const parent = await sql.query(`SELECT cuenta_id FROM foro_mensajes WHERE id = $1 AND tema_id = $2`, [respuestaA, temaId]);
+      if (!parent.length) throw new DbError(404, 'El comentario al que respondes ya no existe.');
+      parentAuthor = parent[0].cuenta_id;
+    }
     await checkRate(sql, cuentaId);
-    await sql.query(`INSERT INTO foro_mensajes (id, tema_id, cuenta_id, texto) VALUES ($1, $2, $3, $4)`, [newId(), temaId, cuentaId, texto]);
+    const mensajeId = newId();
+    await sql.query(`INSERT INTO foro_mensajes (id, tema_id, cuenta_id, texto, respuesta_a) VALUES ($1, $2, $3, $4, $5)`, [
+      mensajeId,
+      temaId,
+      cuentaId,
+      texto,
+      respuestaA,
+    ]);
     await sql.query(`UPDATE foro_temas SET actividad = now() WHERE id = $1`, [temaId]);
+    await notify(sql, cuentaId, mensajeId, texto, parentAuthor);
   });
-  return getTopic(temaId);
+  return getTopic(temaId, cuentaId);
+}
+
+/** Me gusta en un comentario: tocar de nuevo lo quita. No se da a los comentarios propios */
+export async function toggleLike(cuentaId, mensajeId) {
+  return run(async (sql) => {
+    const rows = await sql.query(`SELECT cuenta_id FROM foro_mensajes WHERE id = $1`, [mensajeId]);
+    if (!rows.length) throw new DbError(404, 'Ese comentario ya no existe.');
+    if (rows[0].cuenta_id === cuentaId) throw new DbError(409, 'No puedes darle me gusta a tu propio comentario.');
+    const removed = await sql.query(`DELETE FROM foro_likes WHERE mensaje_id = $1 AND cuenta_id = $2 RETURNING 1`, [mensajeId, cuentaId]);
+    if (!removed.length) await sql.query(`INSERT INTO foro_likes (mensaje_id, cuenta_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [mensajeId, cuentaId]);
+    const count = await sql.query(`SELECT count(*)::integer AS total FROM foro_likes WHERE mensaje_id = $1`, [mensajeId]);
+    return { likes: Number(count[0].total), meGusta: !removed.length };
+  });
+}
+
+/** Últimos avisos (menciones y respuestas) de una cuenta y cuántos no ha visto */
+export async function notices(cuentaId) {
+  const rows = await run((sql) =>
+    sql.query(
+      `SELECT a.id, a.tipo, a.leido, a.creado, a.mensaje_id, t.id AS tema_id, t.titulo, m.entrenador AS de, c.avatar, c.shiny
+       FROM foro_avisos a
+       JOIN foro_mensajes f ON f.id = a.mensaje_id JOIN foro_temas t ON t.id = f.tema_id
+       LEFT JOIN cuentas c ON c.id = a.de_cuenta LEFT JOIN miembros m ON m.id = c.miembro_id
+       WHERE a.cuenta_id = $1
+       ORDER BY a.creado DESC LIMIT 30`,
+      [cuentaId],
+    ),
+  );
+  const avisos = rows.map((r) => ({
+    id: r.id,
+    tipo: r.tipo,
+    leido: bool(r.leido),
+    creado: new Date(r.creado).toISOString(),
+    mensajeId: r.mensaje_id,
+    temaId: r.tema_id,
+    titulo: r.titulo,
+    de: r.de ?? 'Alguien',
+    avatar: r.avatar === null || r.avatar === undefined ? 25 : Number(r.avatar),
+    shiny: bool(r.shiny),
+  }));
+  return { avisos, nuevos: avisos.filter((a) => !a.leido).length };
+}
+
+export async function markNoticesRead(cuentaId) {
+  await run((sql) => sql.query(`UPDATE foro_avisos SET leido = true WHERE cuenta_id = $1 AND NOT leido`, [cuentaId]));
+  return { nuevos: 0 };
+}
+
+/** Cuentas aprobadas, para sugerir nombres al escribir @ */
+export async function forumUsers() {
+  const rows = await run((sql) =>
+    sql.query(
+      `SELECT c.id, m.entrenador, c.avatar, c.shiny, c.rol FROM cuentas c JOIN miembros m ON m.id = c.miembro_id
+       WHERE c.estado = 'aprobada' AND m.entrenador <> '' ORDER BY lower(m.entrenador)`,
+    ),
+  );
+  return rows.map((r) => ({ id: r.id, entrenador: r.entrenador, avatar: Number(r.avatar), shiny: bool(r.shiny), rol: r.rol ?? '' }));
 }
 
 /**
