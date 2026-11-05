@@ -4,6 +4,7 @@
  * su cuenta de la web.
  */
 import { avatarUrl } from '../utils/perfil';
+import { dayLabel, drawMissionsFlyer, missionsText } from './wildAreaFlyer';
 import { caracasToday, formatShortDate } from '../utils/eventos';
 
 interface Reto {
@@ -20,6 +21,8 @@ interface Reto {
   rechazadas: number;
   modo: 'captura' | 'logro';
   limite: number | null;
+  grupo: string;
+  pokemon: number[];
 }
 interface Dinamica {
   id: string;
@@ -297,10 +300,63 @@ async function onLoadWildArea(event: SubmitEvent) {
 
 // ---------- Dinámicas y retos ----------
 
+// ---------- Flyer de las misiones del día ----------
+
+/** La dinámica con misiones de "¡Lo logré!" más reciente (la de Wild Area) */
+const flyerDynamic = () => dynamics.find((d) => d.retos.some((r) => r.modo === 'logro'));
+
+function flyerMissions(date: string) {
+  const d = flyerDynamic();
+  return (d?.retos ?? []).filter((r) => r.modo === 'logro' && r.inicio <= date && r.fin >= date);
+}
+
+/** Llena el selector de días; elige hoy si cae dentro de la dinámica, si no el primero */
+function renderFlyerOptions() {
+  const d = flyerDynamic();
+  $('mf-vacio').classList.toggle('hidden', Boolean(d));
+  $('mf-contenido').classList.toggle('hidden', !d);
+  if (!d) return;
+  const select = $<HTMLSelectElement>('mf-dia');
+  const previous = select.value;
+  const list: string[] = [];
+  for (let day = d.inicio; day <= d.fin && list.length < 31; ) {
+    list.push(day);
+    const next = new Date(`${day}T12:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    day = next.toISOString().slice(0, 10);
+  }
+  select.replaceChildren(...list.map((day) => new Option(dayLabel(day).toLowerCase(), day)));
+  const today = caracasToday();
+  select.value = list.includes(previous) ? previous : list.includes(today) ? today : list[0];
+  drawFlyer();
+}
+
+async function drawFlyer() {
+  const d = flyerDynamic();
+  if (!d) return;
+  await drawMissionsFlyer($<HTMLCanvasElement>('mf-canvas'), d.nombre, $<HTMLSelectElement>('mf-dia').value, flyerMissions($<HTMLSelectElement>('mf-dia').value));
+}
+
+function flyerFile(): Promise<File> {
+  const date = $<HTMLSelectElement>('mf-dia').value;
+  return new Promise((resolve, reject) =>
+    $<HTMLCanvasElement>('mf-canvas').toBlob(
+      (blob) => (blob ? resolve(new File([blob], `wild-area-misiones-${date}.png`, { type: 'image/png' })) : reject(new Error('No se pudo crear la imagen.'))),
+      'image/png',
+    ),
+  );
+}
+
+const flyerText = () => {
+  const date = $<HTMLSelectElement>('mf-dia').value;
+  return missionsText(flyerDynamic()?.nombre ?? 'Wild Area', date, flyerMissions(date), location.origin);
+};
+
 async function loadDynamics(quiet = false) {
   try {
     dynamics = (await api<{ dinamicas: Dinamica[] }>('dinamicas')).dinamicas;
     renderDynamics();
+    renderFlyerOptions();
   } catch (err) {
     if (!quiet) showStatus((err as Error).message, 'error');
   }
@@ -560,6 +616,26 @@ export function initDynamics(options: { api: Api; showStatus: ShowStatus }) {
   $('wa-cargar').addEventListener('submit', onLoadWildArea);
   $('logros-refresh').addEventListener('click', () => loadClaims());
   $('logros-buscar').addEventListener('input', renderClaims);
+  $('mf-dia').addEventListener('change', drawFlyer);
+  $('mf-descargar').addEventListener('click', async () => {
+    const file = await flyerFile();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(file);
+    link.download = file.name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  });
+  $('mf-copiar').addEventListener('click', async () => {
+    await navigator.clipboard?.writeText(flyerText()).catch(() => undefined);
+    showStatus('Mensaje copiado. Pégalo en el grupo junto con el flyer.', 'ok');
+  });
+  // En el celular se puede mandar directo a WhatsApp
+  if (navigator.canShare?.({ files: [new File([''], 'probe.png', { type: 'image/png' })] })) {
+    $('mf-compartir').classList.remove('hidden');
+    $('mf-compartir').addEventListener('click', async () => {
+      await navigator.share({ files: [await flyerFile()], text: flyerText() }).catch(() => undefined);
+    });
+  }
   $('dinamica-form').addEventListener('submit', onSaveDynamic);
   $('dinamica-cancel').addEventListener('click', resetDynamicForm);
   $('dinamicas-refresh').addEventListener('click', () => loadDynamics());

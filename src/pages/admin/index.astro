@@ -367,6 +367,29 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <ul id="logros-lista" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></ul>
         </section>
 
+        <!-- Flyer con las misiones de un día, para compartir en el grupo -->
+        <section class="glass-panel rounded-2xl p-5 border border-pink-500/30 space-y-4">
+          <div>
+            <p class="font-black text-zinc-100">📣 Flyer de las misiones del día</p>
+            <p class="text-sm text-zinc-400 mt-1">Elige el día y descarga el flyer con sus misiones para compartirlo en el grupo.</p>
+          </div>
+          <p id="mf-vacio" class="hidden text-sm text-zinc-400">Primero carga las misiones de Wild Area (aquí abajo).</p>
+          <div id="mf-contenido" class="hidden grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+            <div class="lg:col-span-2 space-y-3">
+              <div>
+                <label for="mf-dia" class={labelClass}>Día</label>
+                <select id="mf-dia" class={inputClass}></select>
+              </div>
+              <div class="grid grid-cols-1 gap-2">
+                <button id="mf-compartir" type="button" class={`${primaryButton} w-full hidden`}>Compartir en WhatsApp</button>
+                <button id="mf-descargar" type="button" class={`${ghostButton} w-full`}>Descargar flyer</button>
+                <button id="mf-copiar" type="button" class={`${ghostButton} w-full`}>Copiar mensaje</button>
+              </div>
+            </div>
+            <canvas id="mf-canvas" class="lg:col-span-3 w-full max-w-md mx-auto rounded-2xl border border-pink-500/30"></canvas>
+          </div>
+        </section>
+
         <!-- Cargar las misiones del documento de Wild Area -->
         <section class="glass-panel rounded-2xl p-5 border border-pink-500/30 space-y-3">
           <p class="font-black text-zinc-100">🌧️ Cargar las misiones de Wild Area</p>
