@@ -47,6 +47,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <button type="button" data-tab="bienvenidas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Bienvenidas <span id="welcome-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button type="button" data-tab="cumples" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Cumpleaños <span id="cumples-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button type="button" data-tab="dinamicas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Wild Area <span id="entregas-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
+          <button type="button" data-tab="novedades" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">✨ Novedades</button>
           <button type="button" data-tab="cuentas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Cuentas y foro <span id="account-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button id="logout" type="button" class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 rounded-xl border border-zinc-800">Salir</button>
         </div>
@@ -523,6 +524,27 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           </div>
         </form>
       </dialog>
+
+      <!-- Pestaña: Novedades (notas de actualización para compartir con la comunidad) -->
+      <div id="tab-novedades" class="hidden grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div class="lg:col-span-2 space-y-4 self-start">
+          <h2 class="text-xl font-black text-zinc-100">✨ Notas de actualización</h2>
+          <p class="text-sm text-zinc-400">Cada vez que la página tiene algo nuevo para el público, aparece aquí con su flyer listo para compartir en el grupo.</p>
+          <div>
+            <label for="nv-actualizacion" class={labelClass}>Actualización</label>
+            <select id="nv-actualizacion" class={inputClass}></select>
+          </div>
+          <ul id="nv-lista" class="space-y-2 text-sm text-zinc-300"></ul>
+          <div class="grid grid-cols-1 gap-2">
+            <button id="nv-compartir" type="button" class={`${primaryButton} w-full hidden`}>Compartir en WhatsApp</button>
+            <button id="nv-descargar" type="button" class={`${ghostButton} w-full`}>Descargar flyer</button>
+            <button id="nv-copiar" type="button" class={`${ghostButton} w-full`}>Copiar mensaje</button>
+          </div>
+        </div>
+        <div class="lg:col-span-3">
+          <canvas id="nv-canvas" class="w-full max-w-xl mx-auto rounded-2xl border border-emerald-500/30 shadow-emerald-glow"></canvas>
+        </div>
+      </div>
 
       <!-- Pestaña: Cuentas de la web y foro -->
       <div id="tab-cuentas" class="hidden space-y-5">
