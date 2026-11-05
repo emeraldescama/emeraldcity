@@ -342,6 +342,9 @@ function render() {
     progress.classList.remove('hidden');
   }
 
+  // Invitación a unirse: solo para quien todavía no participa
+  $('wa-unete').classList.toggle('hidden', view.participa);
+
   // Acceso: entrar, validar el teléfono o el motivo por el que aún no participa
   const showAccess = !view.participa && view.dinamicas.length > 0;
   $('wa-acceso').classList.toggle('hidden', !showAccess);
