@@ -101,7 +101,7 @@ async function post(payload: Record<string, unknown>) {
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'No se pudo completar. Inténtalo de nuevo.');
+  if (!res.ok) throw Object.assign(new Error(data.error || 'No se pudo completar. Inténtalo de nuevo.'), { status: res.status });
   return data;
 }
 
@@ -468,6 +468,13 @@ async function onValidate(event: SubmitEvent) {
     $('wr-ok-nombre').textContent = view.cuenta ? `, ${view.cuenta.entrenador}` : '';
     renderRegistration(true);
   } catch (err) {
+    // La sesión se cerró mientras tenía la ventana abierta: se le pide entrar de nuevo
+    if ((err as { status?: number }).status === 401) {
+      view.cuenta = null;
+      renderRegistration();
+      $('wr-anon').querySelector('p')!.textContent = 'Tu sesión se cerró. Entra de nuevo con tu cuenta del foro para registrarte; al volver, la ventana se abre sola.';
+      return;
+    }
     error.textContent = (err as Error).message;
     error.classList.remove('hidden');
   } finally {
