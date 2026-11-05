@@ -19,6 +19,8 @@ interface Reto {
   limite: number | null;
   grupo: string;
   pokemon: number[];
+  /** Misión de un día que todavía no llega: solo trae la fecha */
+  bloqueado?: boolean;
 }
 interface Participante {
   id: string;
@@ -220,12 +222,14 @@ function missionsSection(d: Dinamica) {
   const tabs = el('div', 'flex gap-2 overflow-x-auto pb-2 -mx-1 px-1');
   tabs.setAttribute('role', 'tablist');
   for (const date of list) {
-    const first = d.retos.find((r) => r.inicio === date && r.pokemon.length && r.modo === 'logro')?.pokemon[0];
-    const tab = el('button', `wa-day ${date === view.hoy ? 'wa-today' : ''}`);
+    const first = d.retos.find((r) => r.inicio === date && !r.bloqueado && r.pokemon.length && r.modo === 'logro')?.pokemon[0];
+    const locked = date > view.hoy;
+    const tab = el('button', `wa-day ${date === view.hoy ? 'wa-today' : ''} ${locked ? 'opacity-70' : ''}`);
     tab.type = 'button';
     tab.setAttribute('role', 'tab');
     tab.setAttribute('aria-selected', String(date === chosen));
-    if (first) {
+    if (locked) tab.append(el('span', 'block text-2xl leading-9', '🔒'));
+    else if (first) {
       const img = el('img', 'w-9 h-9 mx-auto [image-rendering:pixelated]');
       img.src = avatarUrl(first);
       img.alt = '';
@@ -243,13 +247,25 @@ function missionsSection(d: Dinamica) {
   section.append(tabs);
 
   // Misiones del día elegido (también las que abarcan varios días, como la de "WILD")
-  const missions = d.retos.filter((r) => r.inicio <= chosen && r.fin >= chosen);
+  const missions = d.retos.filter((r) => r.inicio <= chosen && r.fin >= chosen && !r.bloqueado);
+  const lockedCount = d.retos.filter((r) => r.bloqueado && r.inicio === chosen).length;
   const header = el('div', 'flex flex-wrap items-baseline justify-between gap-2');
   header.append(
     el('h3', 'text-2xl font-black text-white', `${DAY_LONG[weekday(chosen)][0].toUpperCase()}${DAY_LONG[weekday(chosen)].slice(1)} ${formatShortDate(chosen)}`),
-    el('p', 'text-sm font-bold text-pink-200', chosen === view.hoy ? '¡Misiones de hoy!' : chosen < view.hoy ? 'Día terminado' : 'Próximamente'),
+    el('p', 'text-sm font-bold text-pink-200', chosen === view.hoy ? '¡Misiones de hoy!' : chosen < view.hoy ? 'Día terminado' : 'Bloqueado'),
   );
   section.append(header);
+  if (chosen > view.hoy) {
+    // Día que todavía no llega: candado y cuándo se desbloquea
+    const lock = el('div', 'wa-card p-8 text-center space-y-2');
+    lock.append(
+      el('p', 'text-5xl', '🔒'),
+      el('p', 'text-lg font-black text-white', `Las misiones del ${DAY_LONG[weekday(chosen)]} ${formatShortDate(chosen)} se desbloquean ese día`),
+      el('p', 'text-sm text-zinc-300', `${lockedCount ? `${lockedCount} misiones te esperan. ` : ''}Vuelve el ${DAY_LONG[weekday(chosen)]} desde las 12:00 AM para verlas y marcar tus logros.`),
+    );
+    section.append(lock);
+    return section;
+  }
   if (!missions.length) section.append(el('p', 'wa-card p-6 text-center text-sm text-zinc-300', 'No hay misiones este día.'));
 
   const groups = new Map<string, Reto[]>();

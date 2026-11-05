@@ -54,6 +54,15 @@ function toDynamic(row) {
   return { id: row.id, nombre: row.nombre, descripcion: row.descripcion, inicio: day(row.inicio), fin: day(row.fin) };
 }
 
+/**
+ * Las misiones se desbloquean el día que empiezan: de las que vienen solo se envía la
+ * fecha, sin título ni Pokémon, para que nadie las vea antes de tiempo.
+ */
+function lockFuture(reto) {
+  if (reto.estado !== 'proximo') return reto;
+  return { id: reto.id, inicio: reto.inicio, fin: reto.fin, estado: reto.estado, modo: reto.modo, bloqueado: true };
+}
+
 /** Cuentas que pueden participar: vinculadas a un miembro activo de Escama y aprobadas */
 export async function participants() {
   const [members, links] = await Promise.all([
@@ -133,7 +142,7 @@ export async function publicView(cuentaId) {
       .sort((a, b) => b.puntos - a.puntos || a.entrenador.localeCompare(b.entrenador, 'es'));
     return {
       ...dynamic,
-      retos: challenges.filter((c) => c.dinamica_id === dynamic.id).map((c) => toChallenge(c, today)),
+      retos: challenges.filter((c) => c.dinamica_id === dynamic.id).map((c) => lockFuture(toChallenge(c, today))),
       ranking,
     };
   });
