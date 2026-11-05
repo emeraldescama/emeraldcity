@@ -18,6 +18,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { endAdminSession, endUserSession, hasAdminSession, sameOrigin, startAdminSession } from './_cookies.js';
 import { missingEmailSettings, sendBirthdayEmail } from './_correo.js';
+import { WILD_AREA_NAMES, wildAreaTemplate } from './_wildarea.js';
 import { createMainAdmin, deleteAccount, listAccounts, resetPassword, setAccountRole, setAccountState } from './_cuentas.js';
 import {
   adminDynamics,
@@ -25,7 +26,10 @@ import {
   deleteDynamic,
   escamaAdminView,
   linkEscama,
+  loadTemplate,
+  pendingClaims,
   pendingSubmissions,
+  reviewClaims,
   reviewSubmission,
   saveChallenge,
   saveDynamic,
@@ -413,6 +417,20 @@ export default async function handler(req, res) {
         return res
           .status(200)
           .json(await reviewSubmission(validateId(String(body.id ?? '')), String(body.estado ?? ''), cleanText(body.nota, 'Nota', 200, false)));
+      // Misiones con "¡Lo logré!": el administrador las valida en persona
+      case 'logros':
+        return res.status(200).json({ logros: await pendingClaims() });
+      case 'logrosRevisar': {
+        const ids = Array.isArray(body.ids) ? body.ids.map((x) => validateId(String(x))).slice(0, 200) : [];
+        if (!ids.length) throw new HttpError(400, 'No hay logros para revisar.');
+        return res.status(200).json(await reviewClaims(ids, String(body.estado ?? '')));
+      }
+      case 'wildAreaCargar': {
+        const nombre = WILD_AREA_NAMES.includes(body.nombre) ? body.nombre : cleanText(body.nombre, 'Nombre', 80);
+        const lunes = String(body.lunes ?? '');
+        if (!DATE.test(lunes) || new Date(`${lunes}T12:00:00Z`).getUTCDay() !== 1) throw new HttpError(400, 'Elige un lunes como primer día.');
+        return res.status(200).json(await loadTemplate(wildAreaTemplate(nombre, lunes)));
+      }
       case 'escama':
         return res.status(200).json(await escamaAdminView());
       case 'escamaVincular':

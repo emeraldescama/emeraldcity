@@ -1,45 +1,91 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
 
-const ghostButton = 'inline-flex items-center px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-emerald-300 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 rounded-xl transition-colors';
-const primaryButton = 'inline-flex items-center px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 rounded-xl transition-all';
+const helpUrl = getGeneralContactWhatsAppUrl('Hola, tengo una duda sobre las misiones de Wild Area de Emerald City.');
+const artwork = (n: number) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${n}.png`;
 ---
 
 <Layout
-  title="Eventos y retos | Emerald City"
-  description="Dinámicas y retos diarios para los miembros de Escama Esmeralda de Emerald City. Suma puntos y sube en la tabla."
+  title="Wild Area | Emerald City"
+  description="Misiones diarias del Wild Area para los miembros de Escama Esmeralda: marca tus logros, muéstraselos al admin en la quedada y suma puntos."
 >
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-24 space-y-8">
-    <header class="text-center">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase tracking-wider mb-4">
-        Exclusivo Escama Esmeralda
+  <div class="wa">
+    <!-- Portada con la temática del Wild Area: nubes Dinamax, lluvia y pasto -->
+    <section class="wa-hero">
+      <div class="wa-rain" aria-hidden="true"></div>
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-24 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+        <div>
+          <p class="wa-chip">Exclusivo Escama Esmeralda</p>
+          <h1 class="wa-title">WILD AREA</h1>
+          <p id="wa-nombre" class="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight">Misiones del Wild Area</p>
+          <p id="wa-fechas" class="mt-2 text-sm font-bold uppercase tracking-wider text-pink-200/90"></p>
+          <p class="mt-4 text-zinc-200/90 max-w-xl">Cumple las misiones de cada día, toca <strong class="text-white">"¡Lo logré!"</strong> y muéstrale tu logro al admin en la quedada. Cada logro validado suma puntos para la tabla final.</p>
+          <p id="wa-progreso" class="hidden mt-5 wa-progress"></p>
+        </div>
+        <div class="wa-art" aria-hidden="true">
+          <img src={artwork(10225)} alt="" width="320" height="320" class="wa-art-main" />
+          <img src={artwork(10188)} alt="" width="180" height="180" class="wa-art-left" loading="lazy" />
+          <img src={artwork(10189)} alt="" width="180" height="180" class="wa-art-right" loading="lazy" />
+        </div>
       </div>
-      <h1 class="text-4xl sm:text-5xl font-black text-zinc-100 tracking-tight">Eventos <span class="text-emerald-400">Emerald</span></h1>
-      <p class="text-base text-zinc-400 mt-3 max-w-2xl mx-auto">Retos para los miembros activos de Escama Esmeralda. Cumple el reto, sube tu captura y suma puntos.</p>
-    </header>
-
-    <p id="ev-cargando" class="text-center text-zinc-400 py-10">Cargando…</p>
-    <p id="ev-error" class="hidden px-4 py-3 rounded-xl text-sm font-semibold border bg-red-500/10 border-red-500/40 text-red-300" role="alert"></p>
-
-    <!-- Cómo participar (si todavía no participa) -->
-    <section id="ev-participar" class="hidden glass-panel rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-      <div>
-        <p class="font-black text-zinc-100">¿Quieres participar?</p>
-        <p id="ev-motivo" class="text-sm text-zinc-400 mt-1"></p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <a id="ev-entrar" href="/cuenta" class={primaryButton}>Entrar a mi cuenta</a>
-        <a href="https://escama-6jm5.vercel.app/" target="_blank" rel="noopener" class={ghostButton}>Escama Esmeralda</a>
-      </div>
+      <svg class="wa-grass" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 70 C 180 20 300 110 520 60 C 720 15 860 100 1080 55 C 1250 20 1350 70 1440 45 L1440 120 L0 120 Z" fill="#14532d" />
+        <path d="M0 95 C 220 60 380 120 620 85 C 860 50 1020 115 1240 80 C 1340 65 1400 85 1440 78 L1440 120 L0 120 Z" fill="#0b2b18" />
+      </svg>
     </section>
 
-    <section id="ev-vacio" class="hidden glass-panel rounded-2xl p-10 text-center">
-      <p class="text-xl font-black text-zinc-100">Pronto anunciaremos la próxima dinámica</p>
-      <p class="text-sm text-zinc-400 mt-2">Mantente atento al grupo de WhatsApp de Escama Esmeralda.</p>
-    </section>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 pb-24 space-y-8 -mt-4 relative z-10">
+      <p id="wa-cargando" class="text-center text-zinc-300 py-10">Cargando misiones…</p>
+      <p id="wa-error" class="hidden px-4 py-3 rounded-xl text-sm font-semibold border bg-red-500/15 border-red-500/50 text-red-200" role="alert"></p>
 
-    <div id="ev-dinamicas" class="space-y-12"></div>
+      <!-- Acceso: entrar con la cuenta del foro y validar Escama Esmeralda -->
+      <section id="wa-acceso" class="hidden wa-card p-6 sm:p-8">
+        <div class="flex flex-col md:flex-row md:items-center gap-6">
+          <div class="flex-grow space-y-2">
+            <p class="text-xl font-black text-white">Para participar</p>
+            <p id="wa-motivo" class="text-sm text-zinc-300"></p>
+            <ol class="text-sm text-zinc-300 list-decimal pl-5 space-y-1">
+              <li>Ten tu cuenta del <a href="/foro" class="font-bold text-pink-200 underline">foro</a> aprobada.</li>
+              <li>Valida tu suscripción activa de Escama Esmeralda con tu número de teléfono.</li>
+            </ol>
+          </div>
+          <a id="wa-entrar" href="/foro" class="wa-button shrink-0 text-center">Entrar con mi cuenta</a>
+        </div>
+        <form id="wa-telefono-form" class="hidden mt-6 space-y-3 max-w-md" novalidate>
+          <label for="wa-telefono" class="block text-sm font-bold text-white">Tu número de teléfono de Escama Esmeralda</label>
+          <div class="flex gap-2">
+            <input id="wa-telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="0412 1234567" class="flex-grow rounded-xl bg-black/40 border border-pink-300/30 focus:border-pink-300 outline-none px-4 py-3 text-base text-white placeholder:text-zinc-500" />
+            <button type="submit" class="wa-button">Validar</button>
+          </div>
+          <p class="text-xs text-zinc-400">Es el número con el que te inscribiste en Escama Esmeralda. Solo lo usamos para comprobar tu suscripción.</p>
+          <p id="wa-telefono-error" class="hidden text-sm font-semibold text-red-200" role="alert"></p>
+        </form>
+      </section>
+
+      <section id="wa-vacio" class="hidden wa-card p-10 text-center">
+        <p class="text-xl font-black text-white">Las misiones del Wild Area se publican muy pronto</p>
+        <p class="text-sm text-zinc-300 mt-2">Mantente atento al grupo de WhatsApp de Escama Esmeralda.</p>
+      </section>
+
+      <div id="wa-dinamicas" class="space-y-12"></div>
+    </div>
   </div>
+
+  <!-- Después de "¡Lo logré!" -->
+  <dialog id="wa-logrado" class="wa-dialog m-auto w-[min(26rem,calc(100vw-2rem))] rounded-3xl p-0 text-zinc-100">
+    <div class="p-6 text-center space-y-4">
+      <div id="wa-logrado-arte" class="flex justify-center -mt-2"></div>
+      <p class="text-2xl font-black text-white">¡Lo lograste! 🎉</p>
+      <p id="wa-logrado-mision" class="text-sm font-bold text-pink-200"></p>
+      <p class="text-zinc-200">Acércate a la <strong>quedada de hoy</strong> y busca al <strong>admin Mauricio</strong>. Muéstrale tu logro en el juego y se te sumarán los puntos automáticamente en la página.</p>
+      <a href={helpUrl} target="_blank" rel="noopener" class="block wa-button-ghost">¿Tienes dudas? Escríbenos por WhatsApp</a>
+      <div class="flex flex-col gap-2">
+        <button id="wa-logrado-ok" type="button" class="wa-button w-full">¡Entendido!</button>
+        <button id="wa-logrado-deshacer" type="button" class="text-sm font-bold text-zinc-400 hover:text-zinc-200 underline">Me equivoqué, deshacer</button>
+      </div>
+    </div>
+  </dialog>
 
   <input id="ev-archivo" type="file" accept="image/*" class="hidden" />
 </Layout>
@@ -48,3 +94,219 @@ const primaryButton = 'inline-flex items-center px-5 py-3 text-sm font-bold text
   import { initEventos } from '../scripts/eventosDinamicas';
   initEventos();
 </script>
+
+<style is:global>
+  /* Temática del Wild Area (solo esta página): cielo Dinamax, pasto de Galar y lluvia */
+  .wa {
+    --wa-pink: #ff3d7f;
+    --wa-magenta: #d946ef;
+    --wa-grass: #22c55e;
+    background: linear-gradient(180deg, #14061f 0%, #1d0a2e 30%, #0b1f14 75%, #07130c 100%);
+    margin-bottom: -1px;
+  }
+  .wa-hero {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 380px at 15% 0%, rgba(255, 61, 127, 0.45), transparent 70%),
+      radial-gradient(700px 360px at 85% 10%, rgba(217, 70, 239, 0.4), transparent 70%),
+      radial-gradient(600px 300px at 50% 60%, rgba(244, 63, 94, 0.18), transparent 70%),
+      linear-gradient(180deg, #2a0b3d 0%, #3b0f4a 45%, #1d0a2e 100%);
+  }
+  .wa-rain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.18;
+    background-image: repeating-linear-gradient(105deg, transparent 0 22px, rgba(255, 255, 255, 0.5) 22px 23px, transparent 23px 46px);
+    background-size: 200px 200px;
+    animation: wa-rain 1.2s linear infinite;
+  }
+  @keyframes wa-rain {
+    to {
+      background-position: -60px 200px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wa-rain,
+    .wa-art img {
+      animation: none !important;
+    }
+  }
+  .wa-grass {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    width: 100%;
+    height: 90px;
+  }
+  .wa-chip {
+    display: inline-flex;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+  }
+  .wa-title {
+    margin-top: 0.75rem;
+    font-size: clamp(3.4rem, 13vw, 7rem);
+    line-height: 0.9;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    background: linear-gradient(90deg, #ff8fab, #ff3d7f 35%, #f0abfc 70%, #fde68a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 28px rgba(255, 61, 127, 0.55));
+  }
+  .wa-progress {
+    display: inline-flex;
+    padding: 0.5rem 0.9rem;
+    border-radius: 0.9rem;
+    font-weight: 800;
+    color: #fff;
+    background: rgba(255, 61, 127, 0.18);
+    border: 1px solid rgba(255, 61, 127, 0.55);
+  }
+  .wa-art {
+    position: relative;
+    height: 300px;
+  }
+  .wa-art img {
+    position: absolute;
+    object-fit: contain;
+    filter: drop-shadow(0 0 30px rgba(255, 61, 127, 0.6));
+    animation: wa-float 6s ease-in-out infinite;
+  }
+  .wa-art-main {
+    width: 300px;
+    height: 300px;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+  }
+  .wa-art-left {
+    width: 150px;
+    height: 150px;
+    left: 2%;
+    bottom: 0;
+    animation-delay: -2s !important;
+  }
+  .wa-art-right {
+    width: 150px;
+    height: 150px;
+    right: 2%;
+    bottom: 0;
+    animation-delay: -4s !important;
+  }
+  @keyframes wa-float {
+    50% {
+      translate: 0 -10px;
+    }
+  }
+  @media (max-width: 640px) {
+    .wa-art {
+      height: 210px;
+    }
+    .wa-art-main {
+      width: 210px;
+      height: 210px;
+    }
+    .wa-art-left,
+    .wa-art-right {
+      width: 105px;
+      height: 105px;
+    }
+  }
+  .wa-card {
+    border-radius: 1.5rem;
+    background: linear-gradient(180deg, rgba(42, 11, 61, 0.85), rgba(16, 24, 18, 0.9));
+    border: 1px solid rgba(255, 61, 127, 0.28);
+    box-shadow: 0 20px 60px -30px rgba(255, 61, 127, 0.5);
+  }
+  .wa-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.8rem 1.3rem;
+    border-radius: 0.9rem;
+    font-weight: 900;
+    color: #fff;
+    background: linear-gradient(135deg, #ff3d7f, #d946ef);
+    box-shadow: 0 0 22px rgba(255, 61, 127, 0.45);
+    transition: transform 0.15s, filter 0.15s;
+  }
+  .wa-button:hover {
+    filter: brightness(1.1);
+  }
+  .wa-button:active {
+    transform: scale(0.97);
+  }
+  .wa-button:disabled {
+    opacity: 0.5;
+    box-shadow: none;
+  }
+  .wa-button-ghost {
+    padding: 0.7rem 1rem;
+    border-radius: 0.9rem;
+    font-weight: 800;
+    font-size: 0.875rem;
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.45);
+    background: rgba(34, 197, 94, 0.08);
+  }
+  .wa-day {
+    flex-shrink: 0;
+    min-width: 5.2rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: 1rem;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: #e4e4e7;
+  }
+  .wa-day[aria-selected='true'] {
+    border-color: #ff3d7f;
+    background: linear-gradient(180deg, rgba(255, 61, 127, 0.35), rgba(217, 70, 239, 0.2));
+    color: #fff;
+    box-shadow: 0 0 20px rgba(255, 61, 127, 0.35);
+  }
+  .wa-day.wa-today {
+    outline: 2px dashed rgba(253, 230, 138, 0.7);
+    outline-offset: 2px;
+  }
+  .wa-mission {
+    border-radius: 1.25rem;
+    background: rgba(10, 6, 18, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .wa-mission.wa-open {
+    border-color: rgba(255, 61, 127, 0.45);
+  }
+  .wa-orb {
+    position: relative;
+    width: 6.5rem;
+    height: 6.5rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: radial-gradient(circle at 50% 45%, rgba(255, 61, 127, 0.4), rgba(217, 70, 239, 0.12) 60%, transparent 72%);
+  }
+  .wa-orb img {
+    position: absolute;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+  }
+  .wa-dialog {
+    background: linear-gradient(180deg, #2a0b3d, #0f1d14);
+    border: 1px solid rgba(255, 61, 127, 0.5);
+  }
+  .wa-dialog::backdrop {
+    background: rgba(10, 2, 18, 0.82);
+  }
+</style>

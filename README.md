@@ -89,11 +89,13 @@ El formulario de `/unirse` guarda a cada miembro en la base de datos de la pági
 - Los íconos de perfil son los sprites de PokeAPI; la lista de nombres en español está en `public/data/pokemon.json` (se regenera con `node scripts/pokemon-nombres.mjs`).
 - Las tablas (`cuentas`, `foro_temas`, `foro_mensajes`) se crean solas en la misma base de datos Neon.
 
-### Eventos y retos (Escama Esmeralda)
+### Eventos: Wild Area (Escama Esmeralda)
 
-- La página `/eventos` muestra las dinámicas (por ejemplo, rumbo a Wild Area), el reto del día y la tabla de puntos con el Pokémon de perfil de cada participante.
-- Participan los miembros **activos** de Escama Esmeralda (no están de baja y su suscripción no venció) que tienen su cuenta de la web aprobada y vinculada. La lista se lee en vivo de `https://escama-6jm5.vercel.app/api/data` (vista pública, sin pagos ni teléfonos) y se guarda 5 minutos en memoria. Si la página cambia de dirección, define `ESCAMA_URL` en Vercel.
-- En el panel, pestaña **Dinámicas**: crear dinámicas y retos (los retos aparecen desde su fecha de inicio), revisar las capturas (aprobar suma los puntos; la captura se borra al revisarla) y vincular a cada miembro de Escama con su cuenta (el panel sugiere la cuenta cuando el alias o el nombre coinciden).
+- `/eventos` tiene la temática de Wild Area: misiones por día (lunes a domingo), con la ilustración del Pokémon de cada misión, sus puntos y su límite, y la tabla de puntos.
+- Participan los miembros **activos** de Escama Esmeralda con su cuenta del foro aprobada. La cuenta se vincula sola si su teléfono de Emerald City es el mismo que tiene en Escama; si no, el miembro escribe su número y la página lo valida. Para eso hace falta `ESCAMA_PIN` en Vercel (el PIN de administrador de Escama Esmeralda): con él el servidor lee los teléfonos de Escama, que nunca se muestran. Sin `ESCAMA_PIN`, el administrador vincula a cada miembro desde el panel.
+- Cada misión se marca con **"¡Lo logré!"** (hasta su límite). Queda por validar: en la quedada el administrador lo comprueba en persona y lo valida en el panel, pestaña **Wild Area → Logros por validar**, y los puntos se suman solos.
+- Las misiones del documento se cargan con un botón en esa pestaña ("Cargar las misiones de Wild Area", eligiendo el nombre y el lunes en que empieza). La plantilla está en `api/_wildarea.js`.
+- Los retos antiguos con captura siguen funcionando. Si la página de Escama cambia de dirección, define `ESCAMA_URL`.
 
 ### Cumpleaños
 

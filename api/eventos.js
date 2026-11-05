@@ -1,48 +1,76 @@
 /**
- * Sección Eventos (/eventos): dinámicas con retos para los miembros de Escama Esmeralda.
- *   GET                                    dinámicas vigentes, retos publicados y tabla de puntos
- *   POST { accion: 'entregar', reto, captura }   sube la captura del reto cumplido (JPEG en base64)
+ * Sección Eventos (/eventos, Wild Area): misiones para los miembros de Escama Esmeralda.
+ *   GET                                          dinámicas, misiones y tabla de puntos
+ *   POST { accion: 'validar', telefono }         valida la suscripción de Escama con el teléfono
+ *   POST { accion: 'logre', reto }               "¡Lo logré!": queda por validar en la quedada
+ *   POST { accion: 'deshacer', reto }            quita el último "¡Lo logré!" sin validar
+ *   POST { accion: 'entregar', reto, captura }   retos con captura (JPEG en base64)
  */
 import { sameOrigin } from './_cookies.js';
-import { participationProblem, publicView, submit } from './_dinamicas.js';
+import { autoLinkByPhone, claim, participationProblem, publicView, submit, undoClaim, validatePhone } from './_dinamicas.js';
+import { escamaPhoneProblem } from './_escama.js';
 import { currentAccount, fail } from './_sesion.js';
 
 // El navegador reduce la captura antes de enviarla
 const MAX_SCREENSHOT_BYTES = 700 * 1024;
+const ID = /^[a-z0-9-]{4,40}$/;
+
+async function view(account) {
+  const cuentaId = account?.estado === 'aprobada' ? account.id : null;
+  let data = await publicView(cuentaId);
+  // Si su teléfono de Emerald City es el mismo que tiene en Escama, se vincula solo
+  if (cuentaId && !data.participa && (await autoLinkByPhone(cuentaId).catch(() => false))) data = await publicView(cuentaId);
+  // Si tiene cuenta pero no participa, se le explica por qué
+  const motivo = !account
+    ? 'Entra con tu cuenta del foro para participar.'
+    : account.estado !== 'aprobada'
+      ? 'Tu cuenta del foro todavía no está aprobada.'
+      : data.participa
+        ? null
+        : await participationProblem(account.id);
+  return {
+    ...data,
+    cuenta: account ? { id: account.id, entrenador: account.entrenador, avatar: account.avatar, shiny: account.shiny, estado: account.estado } : null,
+    motivo,
+    // Se le muestra el formulario del teléfono a quien tiene cuenta aprobada y aún no está vinculado
+    validarTelefono: Boolean(cuentaId && !data.participa && !escamaPhoneProblem() && motivo?.startsWith('Valida')),
+  };
+}
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   try {
-    if (req.method === 'GET') {
-      const account = await currentAccount(req, res, { optional: true });
-      const cuentaId = account?.estado === 'aprobada' ? account.id : null;
-      const view = await publicView(cuentaId);
-      // Si tiene cuenta pero no participa, se le explica por qué
-      const motivo = !account
-        ? 'Entra con tu cuenta para participar.'
-        : account.estado !== 'aprobada'
-          ? 'Tu cuenta todavía no está aprobada.'
-          : view.participa
-            ? null
-            : await participationProblem(account.id);
-      return res.status(200).json({ ...view, cuenta: account ? { id: account.id, entrenador: account.entrenador } : null, motivo });
-    }
+    if (req.method === 'GET') return res.status(200).json(await view(await currentAccount(req, res, { optional: true })));
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');
       return res.status(405).json({ error: 'Método no permitido.' });
     }
     if (!sameOrigin(req)) return res.status(403).json({ error: 'Petición no permitida.' });
     const body = req.body || {};
-    if (body.accion !== 'entregar') return res.status(400).json({ error: 'Acción desconocida.' });
     const account = await currentAccount(req, res, { approved: true });
     const reto = String(body.reto ?? '');
-    if (!/^[a-z0-9-]{4,40}$/.test(reto)) return res.status(400).json({ error: 'Reto no válido.' });
-    const captura = typeof body.captura === 'string' ? body.captura : '';
-    const bytes = Buffer.from(captura, 'base64');
-    if (!bytes.length) return res.status(400).json({ error: 'Falta la captura.' });
-    if (bytes.length > MAX_SCREENSHOT_BYTES) return res.status(400).json({ error: 'La captura es demasiado pesada.' });
-    if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return res.status(400).json({ error: 'La captura no es una imagen válida.' });
-    return res.status(200).json(await submit(account.id, reto, captura));
+
+    switch (body.accion) {
+      case 'validar':
+        await validatePhone(account.id, String(body.telefono ?? ''));
+        return res.status(200).json(await view(account));
+      case 'logre':
+      case 'deshacer':
+        if (!ID.test(reto)) return res.status(400).json({ error: 'Misión no válida.' });
+        await (body.accion === 'logre' ? claim(account.id, reto) : undoClaim(account.id, reto));
+        return res.status(200).json(await view(account));
+      case 'entregar': {
+        if (!ID.test(reto)) return res.status(400).json({ error: 'Reto no válido.' });
+        const captura = typeof body.captura === 'string' ? body.captura : '';
+        const bytes = Buffer.from(captura, 'base64');
+        if (!bytes.length) return res.status(400).json({ error: 'Falta la captura.' });
+        if (bytes.length > MAX_SCREENSHOT_BYTES) return res.status(400).json({ error: 'La captura es demasiado pesada.' });
+        if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return res.status(400).json({ error: 'La captura no es una imagen válida.' });
+        return res.status(200).json(await submit(account.id, reto, captura));
+      }
+      default:
+        return res.status(400).json({ error: 'Acción desconocida.' });
+    }
   } catch (err) {
     return fail(res, err);
   }

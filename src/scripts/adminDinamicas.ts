@@ -18,6 +18,8 @@ interface Reto {
   pendientes: number;
   aprobadas: number;
   rechazadas: number;
+  modo: 'captura' | 'logro';
+  limite: number | null;
 }
 interface Dinamica {
   id: string;
@@ -61,7 +63,7 @@ let showStatus: ShowStatus;
 let dynamics: Dinamica[] = [];
 let editingDynamic: string | null = null;
 let editingChallenge: { id: string | null; dinamicaId: string } | null = null;
-let escama: { miembros: MiembroEscama[]; cuentas: CuentaSimple[] } = { miembros: [], cuentas: [] };
+let escama: { miembros: MiembroEscama[]; cuentas: CuentaSimple[]; telefonos?: string } = { miembros: [], cuentas: [] };
 
 const smallButton = 'px-2.5 py-1.5 text-xs font-bold rounded-lg border whitespace-nowrap disabled:opacity-40';
 const STATE_LABELS = { proximo: 'Próximo', abierto: 'Abierto', cerrado: 'Cerrado' };
@@ -113,9 +115,8 @@ export async function loadSubmissions(quiet = false) {
 }
 
 function renderSubmissions(entregas: Entrega[]) {
-  const count = $('entregas-count');
-  count.textContent = String(entregas.length);
-  count.classList.toggle('hidden', entregas.length === 0);
+  pendingCaptures = entregas.length;
+  updateBadge();
   $('entregas-empty').classList.toggle('hidden', entregas.length > 0);
   $('entregas-list').replaceChildren(
     ...entregas.map((entrega) => {
@@ -172,6 +173,128 @@ function renderSubmissions(entregas: Entrega[]) {
   );
 }
 
+// ---------- Logros por validar ----------
+
+interface Logro {
+  id: string;
+  creado: string;
+  cuentaId: string;
+  mision: string;
+  puntos: number;
+  dia: string;
+  grupo: string;
+  pokemon: number | null;
+  dinamica: string;
+  entrenador: string;
+  avatar: number;
+  shiny: boolean;
+}
+
+let claims: Logro[] = [];
+let pendingCaptures = 0;
+
+function updateBadge() {
+  const count = $('entregas-count');
+  const total = claims.length + pendingCaptures;
+  count.textContent = String(total);
+  count.classList.toggle('hidden', total === 0);
+}
+
+export async function loadClaims(quiet = false) {
+  try {
+    claims = (await api<{ logros: Logro[] }>('logros')).logros;
+    renderClaims();
+  } catch (err) {
+    if (!quiet) showStatus((err as Error).message, 'error');
+  }
+}
+
+/** Una tarjeta por persona con sus logros pendientes: así se valida a cada quien de una vez */
+function renderClaims() {
+  updateBadge();
+  const query = $<HTMLInputElement>('logros-buscar').value.trim().toLowerCase();
+  const people = new Map<string, Logro[]>();
+  for (const c of claims) if (!query || c.entrenador.toLowerCase().includes(query)) people.set(c.cuentaId, [...(people.get(c.cuentaId) ?? []), c]);
+  $('logros-vacio').classList.toggle('hidden', people.size > 0);
+  $('logros-vacio').textContent = claims.length ? 'Nadie con ese nombre tiene logros por validar.' : 'No hay logros por validar.';
+  $('logros-lista').replaceChildren(
+    ...[...people.values()].map((list) => {
+      const first = list[0];
+      const total = list.reduce((sum, c) => sum + c.puntos, 0);
+      const item = el('li', 'glass-panel rounded-2xl p-4 space-y-3');
+      const head = el('div', 'flex items-center gap-3');
+      const img = el('img', 'w-12 h-12 [image-rendering:pixelated]');
+      img.src = avatarUrl(first.avatar, first.shiny);
+      img.alt = '';
+      const who = el('div', 'flex-grow min-w-0');
+      who.append(el('p', 'font-black text-zinc-100 truncate', first.entrenador), el('p', 'text-xs text-zinc-400', `${list.length} logro${list.length === 1 ? '' : 's'} · ${total} pts posibles`));
+      head.append(img, who);
+      if (list.length > 1) head.append(button(`✓ Validar todos (+${total})`, 'text-zinc-950 bg-emerald-400 border-emerald-400', (b) => review(list, 'aprobado', b)));
+      const rows = el('ul', 'space-y-2');
+      for (const c of list) {
+        const row = el('li', 'flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-2');
+        const pk = el('img', 'w-10 h-10 shrink-0 [image-rendering:pixelated]');
+        if (c.pokemon) pk.src = avatarUrl(c.pokemon);
+        pk.alt = '';
+        const text = el('div', 'flex-grow min-w-0');
+        text.append(
+          el('p', 'text-sm font-bold text-zinc-100', c.mision),
+          el('p', 'text-xs text-zinc-400', `${formatShortDate(c.dia)} · +${c.puntos} pts · marcado ${new Date(c.creado).toLocaleTimeString('es-VE', { hour: 'numeric', minute: '2-digit' })}`),
+        );
+        row.append(c.pokemon ? pk : el('span', 'w-10 text-center text-2xl', '🥚'), text);
+        row.append(
+          button('✓', 'text-zinc-950 bg-emerald-400 border-emerald-400 text-base px-3', (b) => review([c], 'aprobado', b)),
+          button('✗', 'text-red-300 border-red-500/40 text-base px-3', (b) => review([c], 'rechazado', b)),
+        );
+        rows.append(row);
+      }
+      item.append(head, rows);
+      return item;
+    }),
+  );
+}
+
+async function review(list: Logro[], estado: 'aprobado' | 'rechazado', b: HTMLButtonElement) {
+  b.disabled = true;
+  try {
+    await api('logrosRevisar', { ids: list.map((c) => c.id), estado });
+    const ids = new Set(list.map((c) => c.id));
+    claims = claims.filter((c) => !ids.has(c.id));
+    renderClaims();
+    const points = list.reduce((sum, c) => sum + c.puntos, 0);
+    showStatus(estado === 'aprobado' ? `${list[0].entrenador} sumó ${points} punto${points === 1 ? '' : 's'}.` : `Se rechazó el logro de ${list[0].entrenador}.`, 'ok');
+  } catch (err) {
+    b.disabled = false;
+    showStatus((err as Error).message, 'error');
+  }
+}
+
+/** Próximo lunes (o hoy, si es lunes), para cargar las misiones */
+function nextMonday() {
+  const today = caracasToday();
+  const d = new Date(`${today}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+async function onLoadWildArea(event: SubmitEvent) {
+  event.preventDefault();
+  const submit = (event.target as HTMLFormElement).querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  submit.disabled = true;
+  try {
+    const { retos } = await api<{ retos: number }>('wildAreaCargar', {
+      nombre: $<HTMLSelectElement>('wa-cargar-nombre').value,
+      lunes: $<HTMLInputElement>('wa-cargar-lunes').value,
+    });
+    showStatus(`¡Listo! Se cargaron ${retos} misiones de Wild Area. Ya se ven en la página de Eventos.`, 'ok');
+    await loadDynamics();
+  } catch (err) {
+    showStatus((err as Error).message, 'error');
+  } finally {
+    submit.disabled = false;
+  }
+}
+
 // ---------- Dinámicas y retos ----------
 
 async function loadDynamics(quiet = false) {
@@ -210,7 +333,7 @@ function renderDynamics() {
           el(
             'p',
             'text-xs text-zinc-400',
-            `${dateRange(reto.inicio, reto.fin)} · ${STATE_LABELS[reto.estado]} · ${reto.aprobadas} aprobada${reto.aprobadas === 1 ? '' : 's'}${reto.pendientes ? ` · ${reto.pendientes} por revisar` : ''}`,
+            `${dateRange(reto.inicio, reto.fin)} · ${STATE_LABELS[reto.estado]} · ${reto.modo === 'logro' ? `"¡Lo logré!"${reto.limite === null ? ' sin límite' : ` · límite ${reto.limite}`}` : 'con captura'} · ${reto.aprobadas} validado${reto.aprobadas === 1 ? '' : 's'}${reto.pendientes ? ` · ${reto.pendientes} por revisar` : ''}`,
           ),
         );
         const buttons = el('div', 'flex gap-2');
@@ -372,7 +495,9 @@ function renderEscama() {
   const onlyActive = $<HTMLInputElement>('escama-solo-activos').checked;
   const active = escama.miembros.filter((m) => m.estado === 'activo');
   const linkedActive = active.filter((m) => m.cuentaId).length;
-  $('escama-resumen').textContent = `${active.length} activos en Escama Esmeralda · ${linkedActive} vinculados con su cuenta (esos son los que participan).`;
+  $('escama-resumen').textContent = `${active.length} activos en Escama Esmeralda · ${linkedActive} vinculados con su cuenta (esos son los que participan). ${
+    escama.telefonos ? `⚠️ ${escama.telefonos}` : '✓ Los miembros pueden validarse solos con su teléfono.'
+  }`;
   const shown = escama.miembros
     .filter((m) => !onlyActive || m.estado === 'activo')
     .sort((a, b) => Number(Boolean(a.cuentaId)) - Number(Boolean(b.cuentaId)) || a.nombre.localeCompare(b.nombre, 'es'));
@@ -421,6 +546,7 @@ async function saveLink(member: MiembroEscama, cuentaId: string | null, control:
 }
 
 export function loadDynamicsTab() {
+  loadClaims();
   loadSubmissions();
   loadDynamics();
   loadEscama();
@@ -430,6 +556,10 @@ export function initDynamics(options: { api: Api; showStatus: ShowStatus }) {
   api = options.api;
   showStatus = options.showStatus;
   resetDynamicForm();
+  $<HTMLInputElement>('wa-cargar-lunes').value = nextMonday();
+  $('wa-cargar').addEventListener('submit', onLoadWildArea);
+  $('logros-refresh').addEventListener('click', () => loadClaims());
+  $('logros-buscar').addEventListener('input', renderClaims);
   $('dinamica-form').addEventListener('submit', onSaveDynamic);
   $('dinamica-cancel').addEventListener('click', resetDynamicForm);
   $('dinamicas-refresh').addEventListener('click', () => loadDynamics());

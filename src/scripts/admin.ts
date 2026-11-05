@@ -17,7 +17,7 @@ import { drawWeeklyFlyer, weeklyText } from './weeklyFlyer';
 import { compressImage } from './images';
 import { initAccounts, loadAccounts } from './adminCuentas';
 import { initBirthdays } from './adminCumples';
-import { initDynamics, loadDynamicsTab, loadSubmissions } from './adminDinamicas';
+import { initDynamics, loadClaims, loadDynamicsTab, loadSubmissions } from './adminDinamicas';
 import { initMembers, loadMembers, onShowTab } from './adminMiembros';
 
 type EventInput = Omit<Evento, 'id' | 'flyer'>;
@@ -354,6 +354,7 @@ function showPanel() {
   loadMembers(true);
   loadAccounts(true);
   loadSubmissions(true);
+  loadClaims(true);
 }
 
 function logout() {

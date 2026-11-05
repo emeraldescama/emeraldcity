@@ -1,10 +1,10 @@
 /**
- * Página /eventos: dinámicas con retos diarios para los miembros activos de Escama
- * Esmeralda. Muestra los retos, la tabla de puntos con el perfil de cada participante y
- * deja subir la captura de cada reto cumplido.
+ * Página /eventos (Wild Area): misiones por día para los miembros activos de Escama
+ * Esmeralda. Cada misión se marca con "¡Lo logré!" y la valida el admin en la quedada;
+ * los retos antiguos con captura siguen funcionando igual.
  */
 import { compressImage } from './images';
-import { avatarUrl, TEAM_COLORS, TEAM_NAMES, type Equipo } from '../utils/perfil';
+import { artworkUrl, avatarUrl, TEAM_COLORS, TEAM_NAMES, type Equipo } from '../utils/perfil';
 import { formatShortDate } from '../utils/eventos';
 
 interface Reto {
@@ -15,6 +15,10 @@ interface Reto {
   inicio: string;
   fin: string;
   estado: 'abierto' | 'cerrado' | 'proximo';
+  modo: 'logro' | 'captura';
+  limite: number | null;
+  grupo: string;
+  pokemon: number[];
 }
 interface Participante {
   id: string;
@@ -34,18 +38,31 @@ interface Dinamica {
   retos: Reto[];
   ranking: Participante[];
 }
+interface Logros {
+  pendientes: number;
+  aprobados: number;
+  rechazados: number;
+}
 interface Vista {
   hoy: string;
   dinamicas: Dinamica[];
   participa: boolean;
   entregas?: Record<string, { estado: 'pendiente' | 'aprobada' | 'rechazada'; nota: string }>;
-  cuenta: { id: string; entrenador: string } | null;
+  logros?: Record<string, Logros>;
+  cuenta: { id: string; entrenador: string; avatar: number; shiny: boolean; estado: string } | null;
   motivo: string | null;
+  validarTelefono: boolean;
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const DAY_NAMES = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+const DAY_LONG = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
 let view: Vista;
 let uploadingFor: string | null = null;
+let lastClaim: Reto | null = null;
+// Día elegido en cada dinámica
+const selectedDay = new Map<string, string>();
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = ''): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -54,151 +71,293 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text 
   return node;
 }
 
+const weekday = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay();
 const range = (inicio: string, fin: string) => (inicio === fin ? formatShortDate(inicio) : `${formatShortDate(inicio)} – ${formatShortDate(fin)}`);
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
 
+function days(inicio: string, fin: string): string[] {
+  const list: string[] = [];
+  for (let d = inicio; d <= fin && list.length < 31; ) {
+    list.push(d);
+    const next = new Date(`${d}T12:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    d = next.toISOString().slice(0, 10);
+  }
+  return list;
+}
+
 function showError(message = '') {
-  $('ev-error').textContent = message;
-  $('ev-error').classList.toggle('hidden', !message);
+  $('wa-error').textContent = message;
+  $('wa-error').classList.toggle('hidden', !message);
 }
 
-// ---------- Retos ----------
-
-function statusBadge(retoId: string) {
-  const entrega = view.entregas?.[retoId];
-  if (!entrega) return null;
-  const styles = {
-    pendiente: ['En revisión ⏳', 'text-amber-300 border-amber-500/40 bg-amber-500/10'],
-    aprobada: ['Cumplido ✅', 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10'],
-    rechazada: ['Rechazado', 'text-red-300 border-red-500/40 bg-red-500/10'],
-  } as const;
-  const [label, style] = styles[entrega.estado];
-  const wrap = el('div', 'space-y-1');
-  wrap.append(el('span', `inline-flex px-2.5 py-1 text-xs font-bold rounded-lg border ${style}`, label));
-  if (entrega.estado === 'rechazada' && entrega.nota) wrap.append(el('p', 'text-xs text-red-300', entrega.nota));
-  return wrap;
+async function post(payload: Record<string, unknown>) {
+  const res = await fetch('/api/eventos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'No se pudo completar. Inténtalo de nuevo.');
+  return data;
 }
 
-function challengeCard(reto: Reto) {
+// ---------- Ilustraciones ----------
+
+/** Pokémon de la misión en un círculo con brillo Dinamax (o un huevo) */
+function orb(pokemon: number[], size = 'wa-orb') {
+  const box = el('div', size);
+  if (!pokemon.length) {
+    box.append(el('span', 'absolute inset-0 flex items-center justify-center text-5xl', '🥚'));
+    return box;
+  }
+  const shown = pokemon.slice(0, 3);
+  const layouts = [
+    [{ l: 5, t: 5, s: 90 }],
+    [
+      { l: 0, t: 12, s: 62 },
+      { l: 38, t: 30, s: 62 },
+    ],
+    [
+      { l: 0, t: 6, s: 52 },
+      { l: 48, t: 6, s: 52 },
+      { l: 24, t: 44, s: 54 },
+    ],
+  ][shown.length - 1];
+  shown.forEach((n, i) => {
+    const img = el('img');
+    img.src = artworkUrl(n);
+    img.alt = '';
+    img.loading = 'lazy';
+    const { l, t, s } = layouts[i];
+    img.style.left = `${l}%`;
+    img.style.top = `${t}%`;
+    img.style.width = `${s}%`;
+    img.style.height = `${s}%`;
+    box.append(img);
+  });
+  return box;
+}
+
+// ---------- Misiones ----------
+
+function missionCard(reto: Reto) {
   const open = reto.estado === 'abierto';
-  const card = el('article', `glass-card rounded-2xl p-5 flex flex-col gap-3 ${open ? 'border-emerald-500/40' : 'opacity-80'}`);
-  const head = el('div', 'flex items-start justify-between gap-3');
-  const title = el('div', 'min-w-0');
-  title.append(
-    el('p', 'text-xs font-bold uppercase tracking-wider text-amber-400', open ? `Reto · ${reto.fin === view.hoy ? 'hasta hoy' : `hasta el ${formatShortDate(reto.fin)}`}` : range(reto.inicio, reto.fin)),
-    el('h3', 'text-lg font-black text-zinc-100 mt-1 break-words', reto.titulo),
-  );
-  head.append(title, el('span', 'flex-shrink-0 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-sm font-black', `+${reto.puntos}`));
-  card.append(head);
-  if (reto.descripcion) card.append(el('p', 'text-sm text-zinc-300 whitespace-pre-line break-words', reto.descripcion));
+  const card = el('article', `wa-mission p-4 flex gap-4 items-start ${open ? 'wa-open' : ''}`);
+  card.append(orb(reto.pokemon));
 
-  const footer = el('div', 'mt-auto flex flex-wrap items-center gap-3');
-  const badge = statusBadge(reto.id);
-  if (badge) footer.append(badge);
+  const body = el('div', 'min-w-0 flex-grow space-y-2');
+  const head = el('div', 'flex items-start justify-between gap-3');
+  head.append(
+    el('h4', 'font-black text-white leading-snug break-words', reto.titulo),
+    el('span', 'shrink-0 px-2.5 py-1 rounded-lg bg-pink-500/20 border border-pink-400/50 text-pink-100 text-sm font-black', `+${reto.puntos} pt${reto.puntos === 1 ? '' : 's'}`),
+  );
+  body.append(head);
+  if (reto.descripcion) body.append(el('p', 'text-sm text-zinc-300', reto.descripcion));
+
+  const mine = view.logros?.[reto.id] ?? { pendientes: 0, aprobados: 0, rechazados: 0 };
+  const used = mine.pendientes + mine.aprobados;
+  const chips = el('div', 'flex flex-wrap items-center gap-2 text-xs font-bold');
+  chips.append(el('span', 'px-2 py-1 rounded-md bg-white/5 border border-white/10 text-zinc-300', reto.limite === null ? 'Sin límite' : `Límite: ${reto.limite}`));
+  if (reto.fin !== reto.inicio) chips.append(el('span', 'px-2 py-1 rounded-md bg-white/5 border border-white/10 text-zinc-300', range(reto.inicio, reto.fin)));
+  if (mine.aprobados) chips.append(el('span', 'px-2 py-1 rounded-md bg-emerald-500/15 border border-emerald-400/50 text-emerald-200', `✓ ${mine.aprobados} validado${mine.aprobados === 1 ? '' : 's'}`));
+  if (mine.pendientes) chips.append(el('span', 'px-2 py-1 rounded-md bg-amber-500/15 border border-amber-400/50 text-amber-200', `⏳ ${mine.pendientes} por validar`));
+  body.append(chips);
+
+  const actions = el('div', 'flex flex-wrap items-center gap-2 pt-1');
+  if (reto.modo === 'captura') actions.append(...captureActions(reto));
+  else if (!open) {
+    actions.append(el('span', 'text-xs font-bold text-zinc-400', reto.estado === 'proximo' ? `Disponible el ${DAY_LONG[weekday(reto.inicio)]} ${formatShortDate(reto.inicio)}` : 'Misión cerrada'));
+  } else if (view.participa) {
+    if (reto.limite !== null && used >= reto.limite) actions.append(el('span', 'text-xs font-bold text-emerald-200', '¡Completaste el límite de esta misión!'));
+    else {
+      const button = el('button', 'wa-button text-sm', used ? '¡Lo logré otra vez!' : '¡Lo logré!');
+      button.type = 'button';
+      button.addEventListener('click', () => onClaim(reto, button));
+      actions.append(button);
+    }
+    if (mine.pendientes) {
+      const undo = el('button', 'text-xs font-bold text-zinc-400 hover:text-zinc-200 underline', 'Deshacer');
+      undo.type = 'button';
+      undo.addEventListener('click', () => onUndo(reto, undo));
+      actions.append(undo);
+    }
+  }
+  if (actions.childElementCount) body.append(actions);
+  card.append(body);
+  return card;
+}
+
+/** Retos antiguos: se completan subiendo la captura */
+function captureActions(reto: Reto): HTMLElement[] {
   const entrega = view.entregas?.[reto.id];
-  if (open && view.participa && entrega?.estado !== 'aprobada') {
-    const upload = el('button', 'px-4 py-2.5 text-sm font-bold text-zinc-950 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-xl disabled:opacity-50', entrega ? 'Cambiar captura' : 'Subir mi captura');
+  const out: HTMLElement[] = [];
+  if (entrega) {
+    const labels = { pendiente: 'En revisión ⏳', aprobada: 'Cumplido ✅', rechazada: `Rechazado${entrega.nota ? `: ${entrega.nota}` : ''}` };
+    out.push(el('span', 'text-xs font-bold text-zinc-200', labels[entrega.estado]));
+  }
+  if (reto.estado === 'abierto' && view.participa && entrega?.estado !== 'aprobada') {
+    const upload = el('button', 'wa-button text-sm', entrega ? 'Cambiar captura' : 'Subir mi captura');
     upload.type = 'button';
     upload.dataset.reto = reto.id;
     upload.addEventListener('click', () => {
       uploadingFor = reto.id;
       $<HTMLInputElement>('ev-archivo').click();
     });
-    footer.append(upload);
+    out.push(upload);
   }
-  if (footer.childElementCount) card.append(footer);
-  return card;
+  return out;
+}
+
+/** Selector de días (LUN 9 … DOM 15) y las misiones del día elegido, por grupos */
+function missionsSection(d: Dinamica) {
+  const section = el('section', 'space-y-5');
+  const list = days(d.inicio, d.fin);
+  const chosen = selectedDay.get(d.id) ?? (list.includes(view.hoy) ? view.hoy : view.hoy < d.inicio ? d.inicio : list.at(-1)!);
+  selectedDay.set(d.id, chosen);
+
+  const tabs = el('div', 'flex gap-2 overflow-x-auto pb-2 -mx-1 px-1');
+  tabs.setAttribute('role', 'tablist');
+  for (const date of list) {
+    const first = d.retos.find((r) => r.inicio === date && r.pokemon.length && r.modo === 'logro')?.pokemon[0];
+    const tab = el('button', `wa-day ${date === view.hoy ? 'wa-today' : ''}`);
+    tab.type = 'button';
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', String(date === chosen));
+    if (first) {
+      const img = el('img', 'w-9 h-9 mx-auto [image-rendering:pixelated]');
+      img.src = avatarUrl(first);
+      img.alt = '';
+      img.loading = 'lazy';
+      tab.append(img);
+    }
+    tab.append(el('span', 'block text-xs font-black tracking-wider', DAY_NAMES[weekday(date)]), el('span', 'block text-lg font-black leading-tight', String(Number(date.slice(8)))));
+    if (date === view.hoy) tab.append(el('span', 'block text-[10px] font-black uppercase text-amber-200', 'Hoy'));
+    tab.addEventListener('click', () => {
+      selectedDay.set(d.id, date);
+      render();
+    });
+    tabs.append(tab);
+  }
+  section.append(tabs);
+
+  // Misiones del día elegido (también las que abarcan varios días, como la de "WILD")
+  const missions = d.retos.filter((r) => r.inicio <= chosen && r.fin >= chosen);
+  const header = el('div', 'flex flex-wrap items-baseline justify-between gap-2');
+  header.append(
+    el('h3', 'text-2xl font-black text-white', `${DAY_LONG[weekday(chosen)][0].toUpperCase()}${DAY_LONG[weekday(chosen)].slice(1)} ${formatShortDate(chosen)}`),
+    el('p', 'text-sm font-bold text-pink-200', chosen === view.hoy ? '¡Misiones de hoy!' : chosen < view.hoy ? 'Día terminado' : 'Próximamente'),
+  );
+  section.append(header);
+  if (!missions.length) section.append(el('p', 'wa-card p-6 text-center text-sm text-zinc-300', 'No hay misiones este día.'));
+
+  const groups = new Map<string, Reto[]>();
+  for (const reto of missions) groups.set(reto.grupo, [...(groups.get(reto.grupo) ?? []), reto]);
+  for (const [group, retos] of groups) {
+    const block = el('div', 'space-y-3');
+    if (group) block.append(el('p', 'text-xs font-black uppercase tracking-[0.15em] text-amber-200/90', group));
+    const grid = el('div', 'grid grid-cols-1 md:grid-cols-2 gap-3');
+    grid.append(...retos.map(missionCard));
+    block.append(grid);
+    section.append(block);
+  }
+  return section;
 }
 
 // ---------- Tabla de puntos ----------
 
-function rankingList(ranking: Participante[]) {
-  if (!ranking.length) return el('p', 'glass-panel rounded-2xl p-6 text-center text-sm text-zinc-400', 'Todavía no hay participantes.');
-  const list = el('ol', 'space-y-2');
+function rankingSection(ranking: Participante[]) {
+  const section = el('section', 'wa-card p-5 sm:p-6 space-y-4');
+  section.append(el('h3', 'text-2xl font-black text-white', '🏆 Tabla de puntos'));
+  if (!ranking.length) {
+    section.append(el('p', 'text-sm text-zinc-300', 'Todavía no hay participantes. ¡Valida tu Escama Esmeralda y sé el primero!'));
+    return section;
+  }
   const medals = ['🥇', '🥈', '🥉'];
+  const list = el('ol', 'space-y-2');
   let position = 0;
   ranking.forEach((p, i) => {
     // Empates comparten el puesto
     if (i === 0 || p.puntos !== ranking[i - 1].puntos) position = i + 1;
     const mine = p.id === view.cuenta?.id;
-    const item = el('li', `glass-panel rounded-2xl px-4 py-3 flex items-center gap-3 ${mine ? 'border-emerald-400/60 bg-emerald-500/5' : ''}`);
-    const place = el('span', 'w-8 text-center font-black text-lg flex-shrink-0', p.puntos > 0 && position <= 3 ? medals[position - 1] : String(position));
-    const img = el('img', 'w-12 h-12 flex-shrink-0 rounded-xl bg-zinc-900 border border-zinc-800 [image-rendering:pixelated]');
+    const top = p.puntos > 0 && position <= 3;
+    const item = el('li', `rounded-2xl px-4 py-3 flex items-center gap-3 border ${mine ? 'border-pink-400/70 bg-pink-500/10' : top ? 'border-amber-400/40 bg-amber-500/5' : 'border-white/10 bg-black/30'}`);
+    item.append(el('span', 'w-8 text-center font-black text-lg shrink-0 text-white', top ? medals[position - 1] : String(position)));
+    const img = el('img', 'w-12 h-12 shrink-0 [image-rendering:pixelated]');
     img.src = avatarUrl(p.avatar, p.shiny);
     img.alt = '';
     img.loading = 'lazy';
     const info = el('div', 'min-w-0 flex-grow');
-    const name = el('p', 'font-bold text-zinc-100 flex items-center gap-1.5 truncate');
+    const name = el('p', 'font-bold text-white flex items-center gap-1.5 truncate');
     if (p.equipo) {
-      const dot = el('span', 'w-2.5 h-2.5 rounded-full flex-shrink-0');
+      const dot = el('span', 'w-2.5 h-2.5 rounded-full shrink-0');
       dot.style.background = TEAM_COLORS[p.equipo as Exclude<Equipo, ''>];
       dot.title = `Equipo ${TEAM_NAMES[p.equipo as Exclude<Equipo, ''>]}`;
       name.append(dot);
     }
-    name.append(document.createTextNode(`${p.entrenador}${mine ? ' (tú)' : ''}`));
-    info.append(name, el('p', 'text-xs text-zinc-400', `${p.retos} reto${p.retos === 1 ? '' : 's'} cumplido${p.retos === 1 ? '' : 's'}`));
-    const points = el('span', 'flex-shrink-0 text-right');
-    points.append(el('span', 'block text-xl font-black text-emerald-400 leading-none', String(p.puntos)), el('span', 'text-[10px] font-bold uppercase text-zinc-500', 'puntos'));
-    item.append(place, img, info, points);
+    name.append(el('span', 'truncate', p.entrenador));
+    info.append(name, el('p', 'text-xs text-zinc-400', `${mine ? 'Tú · ' : ''}${p.retos} logro${p.retos === 1 ? '' : 's'} validado${p.retos === 1 ? '' : 's'}`));
+    const points = el('span', 'shrink-0 text-right');
+    points.append(el('span', 'block text-2xl font-black text-pink-200 leading-none', String(p.puntos)), el('span', 'text-[10px] font-bold uppercase text-zinc-400', 'puntos'));
+    item.append(img, info, points);
     list.append(item);
   });
-  return list;
+  section.append(list);
+  return section;
 }
 
 // ---------- Página ----------
 
 function render() {
-  $('ev-vacio').classList.toggle('hidden', view.dinamicas.length > 0);
-  const showJoin = !view.participa && view.dinamicas.length > 0;
-  $('ev-participar').classList.toggle('hidden', !showJoin);
-  $('ev-motivo').textContent =
-    view.motivo ?? 'Participan los miembros activos de Escama Esmeralda con su cuenta de la web aprobada.';
-  $('ev-entrar').classList.toggle('hidden', Boolean(view.cuenta));
+  const main = view.dinamicas[0];
+  $('wa-vacio').classList.toggle('hidden', view.dinamicas.length > 0);
+  if (main) {
+    $('wa-nombre').textContent = main.nombre;
+    $('wa-fechas').textContent = `${range(main.inicio, main.fin)} · Escama Esmeralda`;
+    const total = daysBetween(main.inicio, main.fin) + 1;
+    const progress = $('wa-progreso');
+    progress.textContent =
+      view.hoy < main.inicio
+        ? `Empieza en ${daysBetween(view.hoy, main.inicio)} día${daysBetween(view.hoy, main.inicio) === 1 ? '' : 's'}`
+        : view.hoy > main.fin
+          ? 'Terminó · tabla final'
+          : `Día ${daysBetween(main.inicio, view.hoy) + 1} de ${total}`;
+    progress.classList.remove('hidden');
+  }
 
-  $('ev-dinamicas').replaceChildren(
+  // Acceso: entrar, validar el teléfono o el motivo por el que aún no participa
+  const showAccess = !view.participa && view.dinamicas.length > 0;
+  $('wa-acceso').classList.toggle('hidden', !showAccess);
+  $('wa-motivo').textContent = view.motivo ?? '';
+  $('wa-entrar').classList.toggle('hidden', Boolean(view.cuenta));
+  $('wa-telefono-form').classList.toggle('hidden', !view.validarTelefono);
+
+  $('wa-dinamicas').replaceChildren(
     ...view.dinamicas.map((d) => {
-      const section = el('section', 'space-y-6');
-      const hero = el('div', 'glass-panel rounded-3xl p-6 sm:p-8 border-emerald-500/30');
-      const left = daysBetween(view.hoy, d.fin);
-      hero.append(
-        el('p', 'text-xs font-bold uppercase tracking-wider text-amber-400', range(d.inicio, d.fin)),
-        el('h2', 'text-3xl sm:text-4xl font-black text-zinc-100 tracking-tight mt-1', d.nombre),
-      );
-      if (d.descripcion) hero.append(el('p', 'text-zinc-300 mt-3 whitespace-pre-line', d.descripcion));
-      hero.append(
-        el(
-          'p',
-          'mt-4 inline-flex px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm font-bold text-emerald-300',
-          left > 1 ? `Faltan ${left} días` : left === 1 ? 'Termina mañana' : left === 0 ? 'Último día' : 'Dinámica terminada · tabla final',
-        ),
-      );
-      section.append(hero);
-
-      const open = d.retos.filter((r) => r.estado === 'abierto');
-      const closed = d.retos.filter((r) => r.estado === 'cerrado');
-      const grid = el('div', 'grid grid-cols-1 lg:grid-cols-5 gap-8');
-      const challenges = el('div', 'lg:col-span-3 space-y-4');
-      challenges.append(el('h3', 'text-xl font-black text-zinc-100', open.length === 1 ? 'Reto del día' : 'Retos abiertos'));
-      if (open.length) {
-        const cards = el('div', 'grid grid-cols-1 gap-4');
-        cards.append(...open.map(challengeCard));
-        challenges.append(cards);
-      } else {
-        challenges.append(el('p', 'glass-panel rounded-2xl p-6 text-center text-sm text-zinc-400', left >= 0 ? 'El próximo reto se publica pronto.' : 'La dinámica terminó. ¡Gracias por participar!'));
+      const block = el('div', 'space-y-8');
+      if (view.dinamicas.length > 1) block.append(el('h2', 'text-3xl font-black text-white', d.nombre));
+      if (view.participa) {
+        const me = d.ranking.find((p) => p.id === view.cuenta?.id);
+        if (me) {
+          const summary = el('div', 'wa-card p-4 flex items-center gap-4');
+          const img = el('img', 'w-14 h-14 [image-rendering:pixelated]');
+          img.src = avatarUrl(me.avatar, me.shiny);
+          img.alt = '';
+          const text = el('div', 'flex-grow');
+          text.append(el('p', 'font-black text-white', `¡Estás participando, ${me.entrenador}!`), el('p', 'text-sm text-zinc-300', 'Marca tus logros y muéstraselos al admin en la quedada.'));
+          const pts = el('p', 'text-right');
+          pts.append(el('span', 'block text-3xl font-black text-pink-200 leading-none', String(me.puntos)), el('span', 'text-[10px] font-bold uppercase text-zinc-400', 'tus puntos'));
+          summary.append(img, text, pts);
+          block.append(summary);
+        }
       }
-      if (closed.length) {
-        const details = el('details', 'group');
-        const summary = el('summary', 'cursor-pointer text-sm font-bold text-emerald-400 hover:text-emerald-300 py-2', `Retos anteriores (${closed.length})`);
-        const cards = el('div', 'grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3');
-        cards.append(...closed.map(challengeCard));
-        details.append(summary, cards);
-        challenges.append(details);
-      }
-      const table = el('div', 'lg:col-span-2 space-y-4');
-      table.append(el('h3', 'text-xl font-black text-zinc-100', 'Tabla de puntos'), rankingList(d.ranking));
-      grid.append(challenges, table);
-      section.append(grid);
-      return section;
+      const grid = el('div', 'grid grid-cols-1 lg:grid-cols-3 gap-8 items-start');
+      const missions = missionsSection(d);
+      missions.classList.add('lg:col-span-2');
+      grid.append(missions, rankingSection(d.ranking));
+      block.append(grid);
+      return block;
     }),
   );
 }
@@ -207,13 +366,62 @@ async function load() {
   try {
     const res = await fetch('/api/eventos', { credentials: 'same-origin' });
     const data = await res.json().catch(() => ({ error: `El servidor respondió ${res.status}.` }));
-    if (!res.ok) throw new Error(data.error || 'No se pudieron cargar los eventos.');
+    if (!res.ok) throw new Error(data.error || 'No se pudieron cargar las misiones.');
     view = data;
     render();
   } catch (err) {
     showError((err as Error).message);
   } finally {
-    $('ev-cargando').classList.add('hidden');
+    $('wa-cargando').classList.add('hidden');
+  }
+}
+
+// ---------- Acciones ----------
+
+async function onClaim(reto: Reto, button: HTMLButtonElement) {
+  button.disabled = true;
+  showError();
+  try {
+    view = await post({ accion: 'logre', reto: reto.id });
+    lastClaim = reto;
+    render();
+    $('wa-logrado-mision').textContent = reto.titulo;
+    $('wa-logrado-arte').replaceChildren(orb(reto.pokemon));
+    $<HTMLDialogElement>('wa-logrado').showModal();
+  } catch (err) {
+    button.disabled = false;
+    showError((err as Error).message);
+  }
+}
+
+async function onUndo(reto: Reto, button?: HTMLButtonElement) {
+  if (button) button.disabled = true;
+  try {
+    view = await post({ accion: 'deshacer', reto: reto.id });
+    render();
+  } catch (err) {
+    if (button) button.disabled = false;
+    showError((err as Error).message);
+  }
+}
+
+async function onValidate(event: SubmitEvent) {
+  event.preventDefault();
+  const form = event.target as HTMLFormElement;
+  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  const error = $('wa-telefono-error');
+  error.classList.add('hidden');
+  button.disabled = true;
+  button.textContent = 'Validando…';
+  try {
+    view = await post({ accion: 'validar', telefono: $<HTMLInputElement>('wa-telefono').value });
+    render();
+  } catch (err) {
+    error.textContent = (err as Error).message;
+    error.classList.remove('hidden');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Validar';
   }
 }
 
@@ -223,33 +431,23 @@ async function onFileChosen() {
   const retoId = uploadingFor;
   input.value = '';
   if (!file || !retoId) return;
-  const button = document.querySelector<HTMLButtonElement>(`button[data-reto="${retoId}"]`);
-  if (button) {
-    button.disabled = true;
-    button.textContent = 'Subiendo…';
-  }
   showError();
   try {
     const { base64 } = await compressImage(file, { maxSide: 1100, maxBytes: 450 * 1024 });
-    const res = await fetch('/api/eventos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ accion: 'entregar', reto: retoId, captura: base64 }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'No se pudo subir la captura.');
+    await post({ accion: 'entregar', reto: retoId, captura: base64 });
     await load();
   } catch (err) {
     showError((err as Error).message);
-    if (button) {
-      button.disabled = false;
-      button.textContent = 'Subir mi captura';
-    }
   }
 }
 
 export function initEventos() {
   $('ev-archivo').addEventListener('change', onFileChosen);
+  $('wa-telefono-form').addEventListener('submit', onValidate);
+  $('wa-logrado-ok').addEventListener('click', () => $<HTMLDialogElement>('wa-logrado').close());
+  $('wa-logrado-deshacer').addEventListener('click', async () => {
+    $<HTMLDialogElement>('wa-logrado').close();
+    if (lastClaim) await onUndo(lastClaim);
+  });
   load();
 }

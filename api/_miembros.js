@@ -164,6 +164,23 @@ const SCHEMA = [
     revisada timestamptz,
     UNIQUE (reto_id, cuenta_id)
   )`,
+  // Misiones con "¡Lo logré!" (Wild Area): el administrador las valida en persona
+  `ALTER TABLE retos ADD COLUMN IF NOT EXISTS modo text NOT NULL DEFAULT 'captura'`,
+  `ALTER TABLE retos ADD COLUMN IF NOT EXISTS limite integer`,
+  `ALTER TABLE retos ADD COLUMN IF NOT EXISTS grupo text NOT NULL DEFAULT ''`,
+  `ALTER TABLE retos ADD COLUMN IF NOT EXISTS pokemon text NOT NULL DEFAULT ''`,
+  `ALTER TABLE retos ADD COLUMN IF NOT EXISTS orden integer NOT NULL DEFAULT 0`,
+  `CREATE TABLE IF NOT EXISTS logros (
+    id text PRIMARY KEY,
+    reto_id text NOT NULL REFERENCES retos(id) ON DELETE CASCADE,
+    cuenta_id text NOT NULL REFERENCES cuentas(id) ON DELETE CASCADE,
+    estado text NOT NULL DEFAULT 'pendiente',
+    creado timestamptz NOT NULL DEFAULT now(),
+    revisado timestamptz
+  )`,
+  `CREATE INDEX IF NOT EXISTS logros_reto_cuenta ON logros (reto_id, cuenta_id)`,
+  // Intentos de validar el teléfono de Escama: frena que alguien pruebe números al azar
+  `CREATE TABLE IF NOT EXISTS escama_intentos (cuenta_id text NOT NULL, creado timestamptz NOT NULL DEFAULT now())`,
 ];
 
 let sqlClient;

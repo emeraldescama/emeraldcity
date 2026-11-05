@@ -46,7 +46,7 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
           <button type="button" data-tab="miembros" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Miembros</button>
           <button type="button" data-tab="bienvenidas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Bienvenidas <span id="welcome-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button type="button" data-tab="cumples" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Cumpleaños <span id="cumples-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
-          <button type="button" data-tab="dinamicas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Dinámicas <span id="entregas-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
+          <button type="button" data-tab="dinamicas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Wild Area <span id="entregas-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button type="button" data-tab="cuentas" class="tab-button px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl border transition-colors">Cuentas y foro <span id="account-count" class="hidden ml-1 px-1.5 rounded-md bg-amber-400 text-zinc-950"></span></button>
           <button id="logout" type="button" class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 rounded-xl border border-zinc-800">Salir</button>
         </div>
@@ -353,6 +353,42 @@ const primaryButton = 'px-5 py-3 text-sm font-bold text-zinc-950 bg-gradient-to-
 
       <!-- Pestaña: Dinámicas de la sección Eventos (retos para Escama Esmeralda) -->
       <div id="tab-dinamicas" class="hidden space-y-10">
+        <!-- Logros de "¡Lo logré!" para validar en persona en la quedada -->
+        <section class="space-y-4">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-black text-zinc-100">🏆 Logros por validar</h2>
+              <p class="text-sm text-zinc-400 mt-1 max-w-2xl">Quienes tocaron "¡Lo logré!". Pídeles que te muestren el logro en el juego y toca ✓ para sumar los puntos (o ✗ si no lo comprueban).</p>
+            </div>
+            <button id="logros-refresh" type="button" class={ghostButton}>Actualizar</button>
+          </div>
+          <input id="logros-buscar" type="search" placeholder="Buscar por nombre de entrenador…" class={inputClass} />
+          <p id="logros-vacio" class="hidden text-sm text-zinc-400 glass-panel rounded-2xl p-6 text-center">No hay logros por validar.</p>
+          <ul id="logros-lista" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></ul>
+        </section>
+
+        <!-- Cargar las misiones del documento de Wild Area -->
+        <section class="glass-panel rounded-2xl p-5 border border-pink-500/30 space-y-3">
+          <p class="font-black text-zinc-100">🌧️ Cargar las misiones de Wild Area</p>
+          <p class="text-sm text-zinc-400">Crea la dinámica con todas las misiones del documento (lunes a domingo), listas para "¡Lo logré!". Después puedes editarlas o borrarlas aquí abajo.</p>
+          <form id="wa-cargar" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div>
+              <label for="wa-cargar-nombre" class={labelClass}>Nombre</label>
+              <select id="wa-cargar-nombre" class={inputClass}>
+                <option>La Cacería Formidable</option>
+                <option>El Despertar de Duraludon</option>
+                <option>Lluvia del Área Silvestre</option>
+                <option>Ascenso Rascacielos</option>
+              </select>
+            </div>
+            <div>
+              <label for="wa-cargar-lunes" class={labelClass}>Lunes en que empieza</label>
+              <input id="wa-cargar-lunes" type="date" required class={inputClass} />
+            </div>
+            <button type="submit" class={primaryButton}>Cargar misiones</button>
+          </form>
+        </section>
+
         <section class="space-y-4">
           <div class="flex flex-wrap items-end justify-between gap-3">
             <div>
