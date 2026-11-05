@@ -22,7 +22,11 @@ const artwork = (n: number) => `https://raw.githubusercontent.com/PokeAPI/sprite
           <p id="wa-nombre" class="text-2xl sm:text-3xl font-black text-zinc-100 tracking-tight">Misiones del Wild Area</p>
           <p id="wa-fechas" class="mt-2 text-sm font-bold uppercase tracking-wider text-pink-200/90"></p>
           <p class="mt-4 text-zinc-200/90 max-w-xl">Cumple las misiones de cada día, toca <strong class="text-white">"¡Lo logré!"</strong> y muéstrale tu logro al admin en la quedada. Cada logro validado suma puntos para la tabla final.</p>
-          <p id="wa-progreso" class="hidden mt-5 wa-progress"></p>
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <button id="wa-registrarme" type="button" class="hidden wa-button text-lg px-7 py-3.5">✨ Registrarme</button>
+            <span id="wa-registrado" class="hidden items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-400/60 bg-emerald-500/15 text-emerald-100 font-black">✓ Ya estás registrado</span>
+            <p id="wa-progreso" class="hidden wa-progress"></p>
+          </div>
         </div>
         <div class="wa-art" aria-hidden="true">
           <img src={artwork(10225)} alt="" width="320" height="320" class="wa-art-main" />
@@ -56,30 +60,6 @@ const artwork = (n: number) => `https://raw.githubusercontent.com/PokeAPI/sprite
       <p id="wa-cargando" class="text-center text-zinc-300 py-10">Cargando misiones…</p>
       <p id="wa-error" class="hidden px-4 py-3 rounded-xl text-sm font-semibold border bg-red-500/15 border-red-500/50 text-red-200" role="alert"></p>
 
-      <!-- Acceso: entrar con la cuenta del foro y validar Escama Esmeralda -->
-      <section id="wa-acceso" class="hidden wa-card p-6 sm:p-8">
-        <div class="flex flex-col md:flex-row md:items-center gap-6">
-          <div class="flex-grow space-y-2">
-            <p class="text-xl font-black text-white">Para participar</p>
-            <p id="wa-motivo" class="text-sm text-zinc-300"></p>
-            <ol class="text-sm text-zinc-300 list-decimal pl-5 space-y-1">
-              <li>Ten tu cuenta del <a href="/foro" class="font-bold text-pink-200 underline">foro</a> aprobada.</li>
-              <li>Valida tu suscripción activa de Escama Esmeralda con tu número de teléfono.</li>
-            </ol>
-          </div>
-          <a id="wa-entrar" href="/foro" class="wa-button shrink-0 text-center">Entrar con mi cuenta</a>
-        </div>
-        <form id="wa-telefono-form" class="hidden mt-6 space-y-3 max-w-md" novalidate>
-          <label for="wa-telefono" class="block text-sm font-bold text-white">Tu número de teléfono de Escama Esmeralda</label>
-          <div class="flex gap-2">
-            <input id="wa-telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="0412 1234567" class="flex-grow rounded-xl bg-black/40 border border-pink-300/30 focus:border-pink-300 outline-none px-4 py-3 text-base text-white placeholder:text-zinc-500" />
-            <button type="submit" class="wa-button">Validar</button>
-          </div>
-          <p class="text-xs text-zinc-400">Es el número con el que te inscribiste en Escama Esmeralda. Solo lo usamos para comprobar tu suscripción.</p>
-          <p id="wa-telefono-error" class="hidden text-sm font-semibold text-red-200" role="alert"></p>
-        </form>
-      </section>
-
       <section id="wa-vacio" class="hidden wa-card p-10 text-center">
         <p class="text-xl font-black text-white">Las misiones del Wild Area se publican muy pronto</p>
         <p class="text-sm text-zinc-300 mt-2">Mantente atento al grupo de WhatsApp de Escama Esmeralda.</p>
@@ -88,6 +68,49 @@ const artwork = (n: number) => `https://raw.githubusercontent.com/PokeAPI/sprite
       <div id="wa-dinamicas" class="space-y-12"></div>
     </div>
   </div>
+
+  <!-- Registro en el Wild Area: validar Escama Esmeralda con el teléfono -->
+  <dialog id="wa-registro" class="wa-dialog m-auto w-[min(28rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] rounded-3xl p-0 text-zinc-100">
+    <div class="p-6 space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <p class="text-2xl font-black text-white">Regístrate en el Wild Area 🌧️</p>
+        <button id="wr-cerrar" type="button" aria-label="Cerrar" class="text-zinc-400 hover:text-white text-xl font-black px-1">✕</button>
+      </div>
+
+      <div id="wr-intro" class="space-y-3">
+        <p class="text-zinc-200">El Wild Area de Emerald es un <strong class="text-white">evento exclusivo para los miembros activos de Escama Esmeralda</strong>, nuestro plan de apoyo a la comunidad.</p>
+        <p class="text-zinc-200">Si ya eres miembro, escribe el número de teléfono con el que te inscribiste en Escama Esmeralda y <strong class="text-white">te registramos al instante</strong>.</p>
+      </div>
+
+      <!-- Sin sesión: primero la cuenta del foro -->
+      <div id="wr-anon" class="hidden space-y-3 rounded-2xl border border-pink-300/30 bg-black/30 p-4">
+        <p class="text-sm text-zinc-200">Para registrarte necesitas tu cuenta del foro de Emerald City. Entra con ella o créala en un minuto, y vuelves aquí solo.</p>
+        <a id="wr-entrar" href="/foro" class="wa-button w-full">Entrar o crear mi cuenta</a>
+      </div>
+
+      <!-- Con sesión: el teléfono de Escama -->
+      <form id="wr-form" class="hidden space-y-3" novalidate>
+        <label for="wr-telefono" class="block text-sm font-bold text-white">Tu teléfono registrado en Escama Esmeralda</label>
+        <input id="wr-telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="0412 1234567" class="w-full rounded-xl bg-black/40 border border-pink-300/30 focus:border-pink-300 outline-none px-4 py-3.5 text-lg text-white placeholder:text-zinc-500" />
+        <p id="wr-error" class="hidden rounded-xl bg-red-500/15 border border-red-400/50 p-3 text-sm font-semibold text-red-100" role="alert"></p>
+        <button type="submit" class="wa-button w-full text-lg">Registrarme</button>
+        <p class="text-xs text-zinc-400">Solo lo usamos para comprobar tu suscripción. No se muestra a nadie.</p>
+      </form>
+
+      <!-- Otro motivo (por ejemplo, la suscripción venció) -->
+      <p id="wr-motivo" class="hidden rounded-2xl border border-amber-300/40 bg-amber-500/10 p-4 text-sm text-amber-100"></p>
+
+      <!-- Registro listo -->
+      <div id="wr-ok" class="hidden space-y-3 text-center">
+        <p class="text-5xl">🎉</p>
+        <p class="text-xl font-black text-white">¡Listo<span id="wr-ok-nombre"></span>! Ya estás registrado.</p>
+        <p class="text-zinc-200">Tu cuenta quedó vinculada a Escama Esmeralda. Ya puedes marcar tus logros en las misiones de cada día, y en el foro lucirás la escama verde de miembro activo.</p>
+        <button id="wr-ver" type="button" class="wa-button w-full">Ver mis misiones</button>
+      </div>
+
+      <p id="wr-no-miembro" class="text-center text-sm text-zinc-300">¿Todavía no eres miembro de Escama Esmeralda? <a href={joinUrl} target="_blank" rel="noopener" class="font-bold text-pink-200 underline">Quiero ser parte</a></p>
+    </div>
+  </dialog>
 
   <!-- Después de "¡Lo logré!" -->
   <dialog id="wa-logrado" class="wa-dialog m-auto w-[min(26rem,calc(100vw-2rem))] rounded-3xl p-0 text-zinc-100">
@@ -113,6 +136,11 @@ const artwork = (n: number) => `https://raw.githubusercontent.com/PokeAPI/sprite
 </script>
 
 <style is:global>
+  /* Algunas clases de esta página fijan display: "hidden" siempre debe poder ocultarlas */
+  .wa .hidden,
+  .wa-dialog .hidden {
+    display: none !important;
+  }
   /* Temática del Wild Area (solo esta página): cielo Dinamax, pasto de Galar y lluvia */
   .wa {
     --wa-pink: #ff3d7f;

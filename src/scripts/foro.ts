@@ -9,6 +9,7 @@ import { avatarUrl, CATEGORY_HINTS, CATEGORY_NAMES, ROLE_BADGES, TEAM_COLORS, TE
 import { birthdayMessage, canvasToFile, drawBirthdayFlyer, type Cumpleanero } from './birthdayFlyer';
 import { cuentaApi, type CuentaPropia } from './cuenta';
 import { getGeneralContactWhatsAppUrl } from '../utils/whatsapp';
+import { escamaBadge } from '../utils/escamaBadge';
 
 interface Autor {
   id: string;
@@ -20,6 +21,8 @@ interface Autor {
   sistema?: boolean;
   /** 'principal' o 'admin': etiqueta de administrador */
   rol?: string;
+  /** Miembro activo de Escama Esmeralda: lleva la escama verde */
+  escama?: boolean;
 }
 interface Categoria {
   id: string;
@@ -54,6 +57,7 @@ interface Usuario {
   avatar: number;
   shiny: boolean;
   rol: string;
+  escama?: boolean;
 }
 interface Aviso {
   id: string;
@@ -174,6 +178,19 @@ async function accountCall(accion: string, payload: Record<string, unknown>) {
   return data as { cuenta: CuentaPropia };
 }
 
+/** Si vino desde "Registrarme" en Eventos, vuelve allá con la cuenta lista */
+function returnIfAsked(): boolean {
+  try {
+    const target = sessionStorage.getItem('emerald-volver');
+    if (!target) return false;
+    sessionStorage.removeItem('emerald-volver');
+    location.href = target;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function showPending(account: CuentaPropia) {
   $('pendiente-nombre').textContent = `, ${account.entrenador}`;
   const message = `Hola, soy ${account.entrenador} y ya creé mi cuenta del foro de Emerald City. ¿Me la pueden aprobar? 🙏`;
@@ -210,6 +227,8 @@ async function onCreate(event: SubmitEvent) {
   button.textContent = 'Creando tu cuenta…';
   try {
     const { cuenta } = await accountCall('crear', { codigo, telefono: $<HTMLInputElement>('pc-telefono').value, clave });
+    // Quien viene a registrarse en el Wild Area no necesita esperar la aprobación
+    if (returnIfAsked()) return;
     showMe();
     showPending(cuenta);
   } catch (err) {
@@ -242,6 +261,7 @@ async function onLogin(event: SubmitEvent) {
   button.textContent = 'Entrando…';
   try {
     const { cuenta } = await accountCall('entrar', { codigo: $<HTMLInputElement>('pe-codigo').value, clave: $<HTMLInputElement>('pe-clave').value });
+    if (returnIfAsked()) return;
     showMe();
     if (cuenta.estado === 'aprobada') {
       $('foro-puerta').classList.add('hidden');
@@ -281,9 +301,11 @@ function authorName(autor: Autor | null) {
   button.append(document.createTextNode(autor.entrenador));
   button.addEventListener('click', () => openProfile(autor.id));
   const badge = roleBadge(autor.rol);
-  if (!badge) return button;
+  if (!badge && !autor.escama) return button;
   const wrap = el('span', 'inline-flex flex-wrap items-center gap-1.5');
-  wrap.append(button, badge);
+  wrap.append(button);
+  if (autor.escama) wrap.append(escamaBadge());
+  if (badge) wrap.append(badge);
   return wrap;
 }
 
@@ -447,6 +469,7 @@ function attachMentions(textarea: HTMLTextAreaElement) {
         img.src = avatarUrl(user.avatar, user.shiny);
         img.alt = '';
         option.append(img, document.createTextNode(user.entrenador));
+        if (user.escama) option.append(escamaBadge());
         const badge = roleBadge(user.rol);
         if (badge) option.append(badge);
         // mousedown en vez de click: así el textarea no pierde el foco antes de elegir
@@ -578,6 +601,7 @@ async function showTopics(categoria: string) {
       title.append(document.createTextNode(t.titulo));
       const meta = el('p', 'text-xs text-zinc-400 mt-1 flex flex-wrap items-center gap-1.5');
       meta.append(document.createTextNode(t.autor?.entrenador ?? 'Cuenta borrada'));
+      if (t.autor?.escama) meta.append(escamaBadge());
       const badge = roleBadge(t.autor?.rol);
       if (badge) meta.append(badge);
       meta.append(document.createTextNode(`· ${t.respuestas} respuesta${t.respuestas === 1 ? '' : 's'} · ${timeAgo(t.actividad)}`));
@@ -766,7 +790,16 @@ async function openProfile(id: string) {
     $<HTMLImageElement>('pm-avatar').src = avatarUrl(perfil.avatar, perfil.shiny);
     $('pm-nombre').textContent = perfil.entrenador;
     const badge = roleBadge(perfil.rol);
-    if (badge) $('pm-nombre').append(document.createElement('br'), badge);
+    if (badge || perfil.escama) {
+      const badges = el('span', 'flex flex-wrap items-center justify-center gap-2 mt-2');
+      if (perfil.escama) {
+        const scale = el('span', 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-emerald-400/60 bg-emerald-500/10 text-[11px] font-black uppercase tracking-wider text-emerald-200');
+        scale.append(escamaBadge(), document.createTextNode('Escama Esmeralda'));
+        badges.append(scale);
+      }
+      if (badge) badges.append(badge);
+      $('pm-nombre').append(badges);
+    }
     $('pm-detalle').textContent = [
       perfil.ciudad,
       perfil.equipo ? `Equipo ${TEAM_NAMES[perfil.equipo as Exclude<Equipo, ''>]}` : '',

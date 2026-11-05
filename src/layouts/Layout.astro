@@ -132,4 +132,64 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://emeraldc
     box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
     transform: translateY(-2px);
   }
+
+  /* Insignia de miembro activo de Escama Esmeralda (foro, eventos) */
+  .escama-badge {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    width: 1.4rem;
+    height: 1.4rem;
+    cursor: help;
+    border-radius: 999px;
+    animation: escama-brillo 2.6s ease-in-out infinite;
+  }
+  .escama-badge-md {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  .escama-badge svg {
+    width: 100%;
+    height: 100%;
+  }
+  @keyframes escama-brillo {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.55));
+    }
+    50% {
+      filter: drop-shadow(0 0 7px rgba(74, 222, 128, 0.95)) brightness(1.15);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .escama-badge {
+      animation: none;
+      filter: drop-shadow(0 0 4px rgba(74, 222, 128, 0.8));
+    }
+  }
+  .escama-badge::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
+    z-index: 40;
+    white-space: nowrap;
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #dcfce7;
+    background: #052e16;
+    border: 1px solid rgba(74, 222, 128, 0.6);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .escama-badge:hover::after,
+  .escama-badge:focus-visible::after,
+  .escama-badge-tip::after {
+    opacity: 1;
+  }
 </style>

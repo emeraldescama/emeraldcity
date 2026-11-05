@@ -32,7 +32,30 @@ import {
   reply,
   toggleLike,
 } from './_cuentas.js';
+import { participants } from './_dinamicas.js';
 import { currentAccount, fail } from './_sesion.js';
+
+/** Cuentas vinculadas a un miembro activo de Escama Esmeralda (llevan la escama verde) */
+async function escamaActive() {
+  try {
+    return new Set((await participants()).map((p) => p.id));
+  } catch {
+    // Si Escama no responde, el foro sigue funcionando sin las insignias
+    return new Set();
+  }
+}
+
+const mark = (active, autor) => {
+  if (autor?.id && active.has(autor.id)) autor.escama = true;
+  return autor;
+};
+
+/** Tema con la escama verde en los autores que son miembros activos de Escama */
+async function withScales(tema) {
+  const active = await escamaActive();
+  for (const m of tema.mensajes) mark(active, m.autor);
+  return tema;
+}
 
 const ID = /^[a-z0-9-]{4,40}$/;
 
@@ -76,14 +99,20 @@ export default async function handler(req, res) {
         const tema = await getTopic(id(query.tema), account?.id ?? null);
         // El teléfono de quien cumple años solo lo recibe el administrador, para etiquetarlo en el grupo
         if (admin && tema.cumple) tema.cumple.telefono = await birthdayPhone(tema.id);
-        return res.status(200).json({ ...me, tema });
+        return res.status(200).json({ ...me, tema: await withScales(tema) });
       }
-      if (query.perfil) return res.status(200).json({ ...me, perfil: await publicProfile(id(query.perfil)) });
-      if (query.usuarios) return res.status(200).json({ ...me, usuarios: await forumUsers() });
+      if (query.perfil) return res.status(200).json({ ...me, perfil: mark(await escamaActive(), await publicProfile(id(query.perfil))) });
+      if (query.usuarios) {
+        const active = await escamaActive();
+        return res.status(200).json({ ...me, usuarios: (await forumUsers()).map((u) => mark(active, u)) });
+      }
       if (query.avisos) return res.status(200).json({ ...me, ...(account ? await notices(account.id) : { avisos: [], nuevos: 0 }) });
       if (query.categoria) {
         if (!CATEGORIAS[query.categoria]) throw new BadRequest('Esa categoría no existe.');
-        return res.status(200).json({ ...me, temas: await listTopics(query.categoria) });
+        const active = await escamaActive();
+        const temas = await listTopics(query.categoria);
+        for (const t of temas) mark(active, t.autor);
+        return res.status(200).json({ ...me, temas });
       }
       return res.status(200).json({ ...me, categorias: await forumSummary() });
     }
@@ -101,12 +130,12 @@ export default async function handler(req, res) {
         if (body.categoria === 'cumpleanos') throw new BadRequest('Los temas de cumpleaños los abre la web sola cada día.');
         const titulo = text(body.titulo, 'el título', 100);
         const texto = text(body.texto, 'el mensaje', 2000);
-        return res.status(200).json({ tema: await createTopic(writer(), body.categoria, titulo, texto) });
+        return res.status(200).json({ tema: await withScales(await createTopic(writer(), body.categoria, titulo, texto)) });
       }
       case 'responder':
         return res
           .status(200)
-          .json({ tema: await reply(writer(), id(body.tema), text(body.texto, 'el mensaje', 2000), body.respuestaA ? id(body.respuestaA) : null) });
+          .json({ tema: await withScales(await reply(writer(), id(body.tema), text(body.texto, 'el mensaje', 2000), body.respuestaA ? id(body.respuestaA) : null)) });
       case 'like':
         return res.status(200).json(await toggleLike(writer(), id(body.mensaje)));
       case 'avisosLeidos':
@@ -115,7 +144,7 @@ export default async function handler(req, res) {
         return res.status(200).json(await deleteMessage(id(body.mensaje), { cuentaId: account?.id, admin }));
       case 'fijar':
         if (!admin) return res.status(403).json({ error: 'Solo el equipo puede fijar temas.' });
-        return res.status(200).json({ tema: await pinTopic(id(body.tema), body.fijado === true) });
+        return res.status(200).json({ tema: await withScales(await pinTopic(id(body.tema), body.fijado === true)) });
       default:
         throw new BadRequest('Acción desconocida.');
     }

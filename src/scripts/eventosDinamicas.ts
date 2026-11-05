@@ -345,12 +345,11 @@ function render() {
   // Invitación a unirse: solo para quien todavía no participa
   $('wa-unete').classList.toggle('hidden', view.participa);
 
-  // Acceso: entrar, validar el teléfono o el motivo por el que aún no participa
-  const showAccess = !view.participa && view.dinamicas.length > 0;
-  $('wa-acceso').classList.toggle('hidden', !showAccess);
-  $('wa-motivo').textContent = view.motivo ?? '';
-  $('wa-entrar').classList.toggle('hidden', Boolean(view.cuenta));
-  $('wa-telefono-form').classList.toggle('hidden', !view.validarTelefono);
+  // Portada: "Registrarme" para quien todavía no participa, "Ya estás registrado" para quien sí
+  $('wa-registrarme').classList.toggle('hidden', view.participa);
+  $('wa-registrado').classList.toggle('hidden', !view.participa);
+  $('wa-registrado').classList.toggle('inline-flex', view.participa);
+  renderRegistration();
 
   $('wa-dinamicas').replaceChildren(
     ...view.dinamicas.map((d) => {
@@ -388,6 +387,11 @@ async function load() {
     if (!res.ok) throw new Error(data.error || 'No se pudieron cargar las misiones.');
     view = data;
     render();
+    // "/eventos#registro": abre la ventana de registro (por ejemplo, al volver del foro)
+    if (location.hash === '#registro' && !view.participa) {
+      history.replaceState(null, '', location.pathname);
+      openRegistration();
+    }
   } catch (err) {
     showError((err as Error).message);
   } finally {
@@ -424,23 +428,51 @@ async function onUndo(reto: Reto, button?: HTMLButtonElement) {
   }
 }
 
+// ---------- Registro: validar Escama Esmeralda con el teléfono ----------
+
+const RETURN_KEY = 'emerald-volver';
+
+/** Qué muestra la ventana de registro según quién la abre */
+function renderRegistration(done = false) {
+  const anon = !view.cuenta;
+  const form = !done && Boolean(view.cuenta) && view.validarTelefono;
+  // Otro motivo: por ejemplo, ya vinculado pero con la suscripción vencida
+  const motivo = !done && !anon && !form && !view.participa ? view.motivo : '';
+  $('wr-intro').classList.toggle('hidden', done);
+  $('wr-anon').classList.toggle('hidden', done || !anon);
+  $('wr-form').classList.toggle('hidden', !form);
+  $('wr-motivo').classList.toggle('hidden', !motivo);
+  $('wr-motivo').textContent = motivo ?? '';
+  $('wr-ok').classList.toggle('hidden', !done);
+  $('wr-no-miembro').classList.toggle('hidden', done);
+}
+
+function openRegistration() {
+  renderRegistration();
+  $('wr-error').classList.add('hidden');
+  $<HTMLDialogElement>('wa-registro').showModal();
+  if (!$('wr-form').classList.contains('hidden')) $('wr-telefono').focus();
+}
+
 async function onValidate(event: SubmitEvent) {
   event.preventDefault();
   const form = event.target as HTMLFormElement;
   const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-  const error = $('wa-telefono-error');
+  const error = $('wr-error');
   error.classList.add('hidden');
   button.disabled = true;
-  button.textContent = 'Validando…';
+  button.textContent = 'Registrando…';
   try {
-    view = await post({ accion: 'validar', telefono: $<HTMLInputElement>('wa-telefono').value });
+    view = await post({ accion: 'validar', telefono: $<HTMLInputElement>('wr-telefono').value });
     render();
+    $('wr-ok-nombre').textContent = view.cuenta ? `, ${view.cuenta.entrenador}` : '';
+    renderRegistration(true);
   } catch (err) {
     error.textContent = (err as Error).message;
     error.classList.remove('hidden');
   } finally {
     button.disabled = false;
-    button.textContent = 'Validar';
+    button.textContent = 'Registrarme';
   }
 }
 
@@ -462,7 +494,21 @@ async function onFileChosen() {
 
 export function initEventos() {
   $('ev-archivo').addEventListener('change', onFileChosen);
-  $('wa-telefono-form').addEventListener('submit', onValidate);
+  $('wr-form').addEventListener('submit', onValidate);
+  $('wa-registrarme').addEventListener('click', openRegistration);
+  $('wr-cerrar').addEventListener('click', () => $<HTMLDialogElement>('wa-registro').close());
+  $('wr-ver').addEventListener('click', () => {
+    $<HTMLDialogElement>('wa-registro').close();
+    document.getElementById('wa-dinamicas')?.scrollIntoView({ behavior: 'smooth' });
+  });
+  // Sin sesión: al volver del foro con la cuenta lista, la ventana se abre sola
+  $('wr-entrar').addEventListener('click', () => {
+    try {
+      sessionStorage.setItem(RETURN_KEY, '/eventos#registro');
+    } catch {
+      // Sin almacenamiento, la persona vuelve a Eventos a mano
+    }
+  });
   $('wa-logrado-ok').addEventListener('click', () => $<HTMLDialogElement>('wa-logrado').close());
   $('wa-logrado-deshacer').addEventListener('click', async () => {
     $<HTMLDialogElement>('wa-logrado').close();
