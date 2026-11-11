@@ -37,10 +37,12 @@ export function wildAreaTemplate(nombre, lunes) {
   WEEKDAYS.forEach((dia, i) => {
     const date = addDays(lunes, i);
     const base = { inicio: date, fin: date, pokemon: dia.pokemon, grupo: `Pokémon del día: ${dia.jefes}` };
+    // De miércoles a viernes, límite 1 (pedido del administrador, 10 nov 2026)
+    const limite = i >= 2 ? 1 : 2;
     retos.push(
-      { ...base, titulo: `Captura un shiny de ${dia.jefes}`, puntos: 1, limite: 2 },
-      { ...base, titulo: `Captura un hundo (100 %) de ${dia.jefes}`, puntos: 2, limite: 2 },
-      { ...base, titulo: `Consigue un fondo de ${dia.jefes}`, puntos: 1, limite: 2 },
+      { ...base, titulo: `Captura un shiny de ${dia.jefes}`, puntos: 1, limite },
+      { ...base, titulo: `Captura un hundo (100 %) de ${dia.jefes}`, puntos: 2, limite },
+      { ...base, titulo: `Consigue un fondo de ${dia.jefes}`, puntos: 1, limite },
       { inicio: date, fin: date, pokemon: [EGG], grupo: 'Misión exclusiva del día', titulo: `Eclosiona un huevo de ${dia.huevo}`, puntos: 1, limite: 1 },
     );
   });

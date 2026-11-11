@@ -181,6 +181,17 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS logros_reto_cuenta ON logros (reto_id, cuenta_id)`,
   // Intentos de validar el teléfono de Escama: frena que alguien pruebe números al azar
   `CREATE TABLE IF NOT EXISTS escama_intentos (cuenta_id text NOT NULL, creado timestamptz NOT NULL DEFAULT now())`,
+  // Pedido del administrador (10 nov 2026): en Wild Area, las misiones de miércoles, jueves y
+  // viernes con límite 2 pasan a límite 1. Se aplica una sola vez (la marca en "ajustes" lo
+  // impide después), así que si luego se cambia un límite a mano, no se vuelve a tocar.
+  `UPDATE retos SET limite = 1
+   WHERE modo = 'logro' AND limite = 2 AND inicio = fin AND inicio >= DATE '2026-11-11'
+     AND extract(isodow FROM inicio) IN (3, 4, 5)
+     AND NOT EXISTS (SELECT 1 FROM ajustes WHERE clave = 'migracion-limites-wild-area')`,
+  `INSERT INTO ajustes (clave, valor)
+   SELECT 'migracion-limites-wild-area', now()::text
+   WHERE EXISTS (SELECT 1 FROM retos WHERE modo = 'logro' AND inicio >= DATE '2026-11-11' AND extract(isodow FROM inicio) IN (3, 4, 5))
+   ON CONFLICT (clave) DO NOTHING`,
 ];
 
 let sqlClient;
