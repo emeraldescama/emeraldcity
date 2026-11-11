@@ -99,8 +99,8 @@ export async function createAccount(codigo, telefono, password) {
       throw new DbError(403, 'El WhatsApp no coincide con el que registraste en la comunidad.');
     }
     const id = newId();
-    // El perfil empieza con el Pokémon favorito que eligió al registrarse
-    await sql.query(`INSERT INTO cuentas (id, miembro_id, clave, avatar) VALUES ($1, $2, $3, coalesce($4::integer, 25))`, [
+    // Queda aprobada de una vez; el perfil empieza con el Pokémon favorito que eligió al registrarse
+    await sql.query(`INSERT INTO cuentas (id, miembro_id, clave, avatar, estado) VALUES ($1, $2, $3, coalesce($4::integer, 25), 'aprobada')`, [
       id,
       member.id,
       await hashPassword(password),
@@ -109,6 +109,48 @@ export async function createAccount(codigo, telefono, password) {
     return [{ id }];
   });
   return accountById(rows[0].id);
+}
+
+// Intentos fallidos de recuperar la contraseña que se permiten por hora: pocos por código, y
+// más por conexión (en una quedada muchos teléfonos salen a internet por la misma)
+const RESET_TRIES_PER_CODE = 5;
+const RESET_TRIES_PER_NETWORK = 15;
+
+/**
+ * El miembro cambia su contraseña olvidada sin ayuda: demuestra que es él con su código de
+ * amistad y el WhatsApp con el que se registró (la misma prueba que al crear la cuenta).
+ * Cierra las sesiones abiertas en otros teléfonos y devuelve la cuenta para entrar.
+ */
+export async function recoverPassword(codigo, telefono, nueva, red = '') {
+  const tries = await run((sql) =>
+    sql.query(
+      `SELECT count(*) FILTER (WHERE codigo = $1)::integer AS por_codigo,
+              count(*) FILTER (WHERE $2 <> '' AND red = $2)::integer AS por_red
+       FROM recuperar_intentos WHERE creado > now() - interval '1 hour'`,
+      [codigo, red],
+    ),
+  );
+  if (Number(tries[0].por_codigo) >= RESET_TRIES_PER_CODE || Number(tries[0].por_red) >= RESET_TRIES_PER_NETWORK) {
+    throw new DbError(429, 'Hiciste muchos intentos. Espera una hora o escríbele al equipo por WhatsApp.');
+  }
+  const failed = async (status, message) => {
+    await run((sql) => sql.query(`INSERT INTO recuperar_intentos (codigo, red) VALUES ($1, $2)`, [codigo, red]));
+    throw new DbError(status, message);
+  };
+  const rows = await run((sql) =>
+    sql.query(`SELECT c.id, c.estado, m.telefono FROM cuentas c JOIN miembros m ON m.id = c.miembro_id WHERE m.codigo = $1`, [codigo]),
+  );
+  const account = rows[0];
+  if (!account) return failed(404, 'Ese código no tiene cuenta todavía. Créala en "Crear mi cuenta".');
+  if (account.estado === 'bloqueada') throw new DbError(403, 'Tu cuenta está bloqueada. Escríbele al equipo si crees que es un error.');
+  if (!account.telefono) {
+    throw new DbError(409, 'No tienes un WhatsApp registrado en la comunidad, así que no podemos comprobar que eres tú. Escríbele al equipo y te ayudamos.');
+  }
+  if (normalizePhone(telefono) !== account.telefono) {
+    return failed(403, 'El WhatsApp no coincide con el que registraste en la comunidad.');
+  }
+  await run(async (sql) => sql.query(`UPDATE cuentas SET clave = $2, sesion = sesion + 1 WHERE id = $1`, [account.id, await hashPassword(nueva)]));
+  return accountById(account.id);
 }
 
 /** Cuenta con ese código y contraseña, o null */

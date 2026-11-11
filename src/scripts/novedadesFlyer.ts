@@ -301,13 +301,16 @@ export async function drawUpdatesFlyer(canvas: HTMLCanvasElement, update: Actual
   // Tarjetas: dos columnas, cada una con su ejemplo dibujado
   const top = 392;
   const footer = 150;
-  const rows = Math.ceil(items.length / 2);
-  const cardW = (WIDTH - PAD * 2 - GAP) / 2;
+  // Con 1 o 2 novedades, una por fila a todo el ancho (así no queda espacio vacío)
+  const columns = items.length <= 2 ? 1 : 2;
+  const rows = Math.ceil(items.length / columns);
+  const cardW = (WIDTH - PAD * 2 - GAP * (columns - 1)) / columns;
   const cardH = Math.min(420, (height - top - footer - GAP * (rows - 1)) / rows);
-  const exampleH = Math.min(176, cardH - 166);
+  // A todo el ancho hay más espacio: el ejemplo crece y la tarjeta no queda vacía
+  const exampleH = columns === 1 ? cardH - 150 : Math.min(176, cardH - 166);
   for (const [i, item] of items.entries()) {
-    const x = PAD + (i % 2) * (cardW + GAP);
-    const y = top + Math.floor(i / 2) * (cardH + GAP);
+    const x = PAD + (i % columns) * (cardW + GAP);
+    const y = top + Math.floor(i / columns) * (cardH + GAP);
     round(ctx, x, y, cardW, cardH, 26, 'rgba(6, 20, 16, 0.88)', 'rgba(52, 211, 153, 0.35)');
     // Ejemplo
     ctx.save();

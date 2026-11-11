@@ -6,9 +6,11 @@
  *   POST { accion: 'yo' }                                    datos de la cuenta abierta
  *   POST { accion: 'perfil', avatar, shiny, equipo, bio, cumpleDia, cumpleMes }
  *   POST { accion: 'clave', actual, nueva }
+ *   POST { accion: 'recuperar', codigo, telefono, clave }   contraseña olvidada: entra con una nueva
  */
 import { endUserSession, sameOrigin, startUserSession } from './_cookies.js';
-import { EQUIPOS, MAX_POKEMON, changePassword, createAccount, login, updateProfile } from './_cuentas.js';
+import { createHash } from 'node:crypto';
+import { EQUIPOS, MAX_POKEMON, changePassword, createAccount, login, recoverPassword, updateProfile } from './_cuentas.js';
 import { validBirthday } from './_miembros.js';
 import { currentAccount, fail } from './_sesion.js';
 
@@ -49,6 +51,16 @@ export default async function handler(req, res) {
         if (account.estado === 'bloqueada') {
           return res.status(403).json({ error: 'Tu cuenta está bloqueada. Escríbele al equipo si crees que es un error.' });
         }
+        startUserSession(res, account);
+        return res.status(200).json({ cuenta: account });
+      }
+      case 'recuperar': {
+        const codigo = code(body.codigo);
+        if (codigo.length !== 12) return res.status(400).json({ error: 'El código de amistad tiene 12 números.' });
+        // Huella de la conexión (no la IP tal cual) para limitar los intentos
+        const ip = String(req.headers['x-real-ip'] || String(req.headers['x-forwarded-for'] ?? '').split(',')[0] || '').trim();
+        const red = ip ? createHash('sha256').update(`emerald-city:recuperar:${ip}`).digest('hex') : '';
+        const account = await recoverPassword(codigo, String(body.telefono ?? ''), validPassword(body.clave), red);
         startUserSession(res, account);
         return res.status(200).json({ cuenta: account });
       }

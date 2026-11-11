@@ -157,12 +157,50 @@ function showGate(gate: Gate, message = '') {
   $('foro-puerta').classList.remove('hidden');
 }
 
-function setGateTab(tab: 'crear' | 'entrar') {
+function setGateTab(tab: 'crear' | 'entrar' | 'recuperar') {
   for (const button of document.querySelectorAll<HTMLButtonElement>('.puerta-tab')) {
-    button.setAttribute('aria-selected', String(button.dataset.puerta === tab));
+    button.setAttribute('aria-selected', String(button.dataset.puerta === (tab === 'recuperar' ? 'entrar' : tab)));
   }
   $('puerta-crear').classList.toggle('hidden', tab !== 'crear');
   $('puerta-entrar').classList.toggle('hidden', tab !== 'entrar');
+  $('puerta-recuperar').classList.toggle('hidden', tab !== 'recuperar');
+}
+
+/** Ya dentro (cuenta nueva, contraseña recuperada o entrada): directo al foro */
+async function enterForum() {
+  if (returnIfAsked()) return;
+  showMe();
+  $('foro-puerta').classList.add('hidden');
+  await route();
+}
+
+async function onRecover(event: SubmitEvent) {
+  event.preventDefault();
+  const form = event.target as HTMLFormElement;
+  const codigo = $<HTMLInputElement>('pr-codigo').value.replace(/\D/g, '');
+  const clave = $<HTMLInputElement>('pr-clave').value;
+  const showErr = (message: string, help = false) => {
+    $('pr-error-texto').textContent = message;
+    $('pr-ayuda').classList.toggle('hidden', !help);
+    $('pr-error').classList.toggle('hidden', !message);
+  };
+  showErr('');
+  if (codigo.length !== 12) return showErr('Escribe tu código de amistad completo: son 12 números.');
+  if (clave.length < 6) return showErr('La contraseña nueva debe tener al menos 6 letras o números.');
+  const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  button.disabled = true;
+  button.textContent = 'Cambiando…';
+  try {
+    await accountCall('recuperar', { codigo, telefono: $<HTMLInputElement>('pr-telefono').value, clave });
+    await enterForum();
+  } catch (err) {
+    const status = err instanceof ForoError ? err.status : 0;
+    // Sin WhatsApp registrado, bloqueada o con muchos intentos: solo el equipo puede ayudar
+    showErr((err as Error).message, [403, 409, 429].includes(status));
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Cambiar contraseña y entrar';
+  }
 }
 
 /** Llamada a /api/cuenta que conserva el código de error para explicar qué pasó */
@@ -227,10 +265,11 @@ async function onCreate(event: SubmitEvent) {
   button.textContent = 'Creando tu cuenta…';
   try {
     const { cuenta } = await accountCall('crear', { codigo, telefono: $<HTMLInputElement>('pc-telefono').value, clave });
-    // Quien viene a registrarse en el Wild Area no necesita esperar la aprobación
-    if (returnIfAsked()) return;
-    showMe();
-    showPending(cuenta);
+    // Ya no hay que esperar aprobación: entra de una vez
+    if (cuenta.estado === 'pendiente') {
+      showMe();
+      showPending(cuenta);
+    } else await enterForum();
   } catch (err) {
     const status = err instanceof ForoError ? err.status : 0;
     const help = (text: string) => ({ label: 'Pedir ayuda por WhatsApp', href: getGeneralContactWhatsAppUrl(text) });
@@ -901,7 +940,18 @@ export function initForo() {
   setGateTab('crear');
   $('puerta-crear').addEventListener('submit', onCreate);
   $('puerta-entrar').addEventListener('submit', onLogin);
-  for (const id of ['pc-codigo', 'pe-codigo']) $(id).addEventListener('input', () => formatCode($<HTMLInputElement>(id)));
+  $('puerta-recuperar').addEventListener('submit', onRecover);
+  $('pe-olvide').addEventListener('click', () => {
+    setGateTab('recuperar');
+    $<HTMLInputElement>('pr-codigo').value = $<HTMLInputElement>('pe-codigo').value;
+  });
+  $('pr-volver').addEventListener('click', () => setGateTab('entrar'));
+  // "/foro#recuperar" abre directo el formulario de contraseña olvidada
+  if (location.hash === '#recuperar') {
+    setGateTab('recuperar');
+    history.replaceState(null, '', location.pathname);
+  }
+  for (const id of ['pc-codigo', 'pe-codigo', 'pr-codigo']) $(id).addEventListener('input', () => formatCode($<HTMLInputElement>(id)));
   for (const button of document.querySelectorAll<HTMLButtonElement>('.ver-clave')) {
     button.addEventListener('click', () => {
       const input = $<HTMLInputElement>(button.dataset.ver!);

@@ -192,6 +192,10 @@ const SCHEMA = [
    SELECT 'migracion-limites-wild-area', now()::text
    WHERE EXISTS (SELECT 1 FROM retos WHERE modo = 'logro' AND inicio >= DATE '2026-11-11' AND extract(isodow FROM inicio) IN (3, 4, 5))
    ON CONFLICT (clave) DO NOTHING`,
+  // Ya no hay aprobación: quien crea su cuenta entra al foro de una vez (las que esperaban, también)
+  `UPDATE cuentas SET estado = 'aprobada' WHERE estado = 'pendiente'`,
+  // Intentos de recuperar la contraseña: frena que alguien pruebe teléfonos al azar
+  `CREATE TABLE IF NOT EXISTS recuperar_intentos (codigo text NOT NULL, red text NOT NULL DEFAULT '', creado timestamptz NOT NULL DEFAULT now())`,
 ];
 
 let sqlClient;

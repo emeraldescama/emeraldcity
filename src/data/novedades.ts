@@ -27,6 +27,26 @@ export interface Actualizacion {
 
 export const ACTUALIZACIONES: Actualizacion[] = [
   {
+    id: '2026-11-foro-al-instante',
+    fecha: '2026-11-11',
+    titulo: 'Entrar al foro es más fácil',
+    novedades: [
+      {
+        titulo: 'Tu cuenta, al instante',
+        texto: 'Crea tu cuenta del foro y empieza a conversar de una vez, sin esperar aprobación.',
+        ejemplo: 'foro',
+        enlace: '/foro',
+      },
+      {
+        titulo: '¿Olvidaste tu contraseña?',
+        texto: 'Crea una nueva tú mismo con tu código de amistad y tu WhatsApp.',
+        ejemplo: 'emoji',
+        emoji: '🔑',
+        enlace: '/foro',
+      },
+    ],
+  },
+  {
     id: '2026-11-wild-area',
     fecha: '2026-11-05',
     titulo: 'Wild Area, foro más vivo y cumpleaños',

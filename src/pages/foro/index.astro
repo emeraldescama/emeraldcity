@@ -57,8 +57,8 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
             </li>
             <li class="rounded-xl border border-zinc-800 p-2.5 sm:p-4">
               <span class="inline-flex w-6 h-6 sm:w-7 sm:h-7 items-center justify-center rounded-full bg-zinc-800 text-zinc-200 text-sm font-black">2</span>
-              <p class="text-xs sm:text-base font-bold text-zinc-100 mt-1.5 sm:mt-2 leading-tight">El equipo la aprueba</p>
-              <p class="hidden sm:block text-xs text-zinc-400 mt-1">Avísanos por WhatsApp y lo hacemos rápido.</p>
+              <p class="text-xs sm:text-base font-bold text-zinc-100 mt-1.5 sm:mt-2 leading-tight">Elige tu Pokémon</p>
+              <p class="hidden sm:block text-xs text-zinc-400 mt-1">Tu ícono en el foro y en tu flyer de cumpleaños.</p>
             </li>
             <li class="rounded-xl border border-zinc-800 p-2.5 sm:p-4">
               <span class="inline-flex w-6 h-6 sm:w-7 sm:h-7 items-center justify-center rounded-full bg-zinc-800 text-zinc-200 text-sm font-black">3</span>
@@ -114,7 +114,36 @@ const ghostButton = 'px-4 py-2.5 text-xs font-bold uppercase tracking-wider text
             </div>
             <p id="pe-error" class="hidden rounded-xl bg-red-500/10 border border-red-500/40 p-3 text-sm text-red-200" role="alert"></p>
             <button type="submit" class={`${primaryButton} w-full text-base py-4`}>Entrar al foro</button>
-            <a href={helpUrl('Hola, olvidé mi contraseña del foro de Emerald City. ¿Me ayudan?')} target="_blank" rel="noopener" class="block text-center text-sm font-bold text-emerald-300 underline">Olvidé mi contraseña</a>
+            <button id="pe-olvide" type="button" class="block mx-auto text-sm font-bold text-emerald-300 underline">Olvidé mi contraseña</button>
+          </form>
+
+          <!-- Contraseña olvidada: la cambia la misma persona, sin esperar al equipo -->
+          <form id="puerta-recuperar" class="hidden glass-panel rounded-2xl p-6 space-y-4" novalidate>
+            <div>
+              <p class="text-lg font-black text-zinc-100">Crea una contraseña nueva</p>
+              <p class="text-sm text-zinc-400 mt-1">Para comprobar que eres tú, escribe tu código de amistad y el WhatsApp con el que te registraste en la comunidad.</p>
+            </div>
+            <div>
+              <label for="pr-codigo" class={labelClass}>Tu código de amistad</label>
+              <input id="pr-codigo" inputmode="numeric" autocomplete="username" placeholder="1234 5678 9012" maxlength="14" class={`${inputClass} font-mono tracking-widest`} />
+            </div>
+            <div>
+              <label for="pr-telefono" class={labelClass}>Tu WhatsApp registrado</label>
+              <input id="pr-telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="0412 1234567" class={inputClass} />
+            </div>
+            <div>
+              <label for="pr-clave" class={labelClass}>Tu contraseña nueva</label>
+              <div class="relative">
+                <input id="pr-clave" type="password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 letras o números" class={`${inputClass} pr-20`} />
+                <button type="button" data-ver="pr-clave" class="ver-clave absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-bold text-emerald-300">Ver</button>
+              </div>
+            </div>
+            <div id="pr-error" class="hidden rounded-xl bg-red-500/10 border border-red-500/40 p-3 text-sm text-red-200 space-y-2" role="alert">
+              <p id="pr-error-texto"></p>
+              <a id="pr-ayuda" href={helpUrl('Hola, olvidé mi contraseña del foro de Emerald City y no puedo recuperarla. ¿Me ayudan?')} target="_blank" rel="noopener" class="hidden font-bold text-emerald-300 underline">Pedir ayuda por WhatsApp</a>
+            </div>
+            <button type="submit" class={`${primaryButton} w-full text-base py-4`}>Cambiar contraseña y entrar</button>
+            <button id="pr-volver" type="button" class="block mx-auto text-sm font-bold text-zinc-400 underline">Volver a entrar</button>
           </form>
 
           <p class="text-center text-sm text-zinc-400 mt-4">
