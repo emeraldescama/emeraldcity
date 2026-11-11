@@ -441,7 +441,17 @@ async function main() {
   const created = [];
 
   for (const source of feed) {
-    for (const meetup of toMeetups(source)) {
+    // Algunos eventos llegan sin fecha todavía (por ejemplo, Pokémon Night Out): se saltan
+    if (typeof source?.start !== 'string' || typeof source?.end !== 'string') continue;
+    let meetups;
+    try {
+      meetups = toMeetups(source);
+    } catch (error) {
+      // Un evento raro no debe detener la sincronización de los demás
+      console.warn(`Evento omitido (${source.eventID}): ${error.message}`);
+      continue;
+    }
+    for (const meetup of meetups) {
       const id = meetup.id.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 80);
       const jsonPath = join(EVENTS_DIR, `${id}.json`);
       // Los eventos de varios días que ya empezaron siguen contando hasta su último día
