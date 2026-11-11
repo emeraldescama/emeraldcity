@@ -6,9 +6,11 @@
 import { compressImage } from './images';
 import { artworkUrl, avatarUrl, TEAM_COLORS, TEAM_NAMES, type Equipo } from '../utils/perfil';
 import { formatShortDate } from '../utils/eventos';
+import { parsePokemonList, pokemonListText } from './pokemonPicker';
 
 interface Reto {
   id: string;
+  dinamicaId: string;
   titulo: string;
   descripcion: string;
   puntos: number;
@@ -54,6 +56,8 @@ interface Vista {
   cuenta: { id: string; entrenador: string; avatar: number; shiny: boolean; estado: string } | null;
   motivo: string | null;
   validarTelefono: boolean;
+  /** Con la sesión del panel: ve las misiones futuras y puede editarlas */
+  admin?: boolean;
 }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -186,9 +190,79 @@ function missionCard(reto: Reto) {
       actions.append(undo);
     }
   }
+  if (view.admin) {
+    const edit = el('button', 'text-xs font-bold text-pink-200 hover:text-white border border-pink-300/40 rounded-lg px-2.5 py-1', '✏️ Editar');
+    edit.type = 'button';
+    edit.addEventListener('click', () => openEditor(reto));
+    actions.append(edit);
+  }
   if (actions.childElementCount) body.append(actions);
   card.append(body);
   return card;
+}
+
+// ---------- Editar una misión (administrador) ----------
+
+let editing: Reto | null = null;
+const field = <T extends HTMLElement = HTMLInputElement>(id: string) => $<T>(id);
+
+async function openEditor(reto: Reto) {
+  editing = reto;
+  field('we-titulo').value = reto.titulo;
+  field<HTMLTextAreaElement>('we-descripcion').value = reto.descripcion;
+  field('we-puntos').value = String(reto.puntos);
+  field('we-limite').value = reto.limite === null ? '' : String(reto.limite);
+  field('we-sin-limite').checked = reto.limite === null;
+  field('we-grupo').value = reto.grupo;
+  field('we-pokemon').value = await pokemonListText(reto.pokemon);
+  $('we-error').classList.add('hidden');
+  $<HTMLDialogElement>('wa-editar').showModal();
+}
+
+async function onSaveEdit(event: SubmitEvent) {
+  event.preventDefault();
+  if (!editing) return;
+  const error = $('we-error');
+  const fail = (message: string) => {
+    error.textContent = message;
+    error.classList.remove('hidden');
+  };
+  error.classList.add('hidden');
+  const { numbers, unknown } = await parsePokemonList(field('we-pokemon').value);
+  if (unknown.length) return fail(`No reconocimos estos Pokémon: ${unknown.join(', ')}. Escríbelos como en el juego o con su número.`);
+  const button = (event.target as HTMLFormElement).querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  button.disabled = true;
+  try {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        action: 'retoGuardar',
+        reto: {
+          id: editing.id,
+          dinamicaId: editing.dinamicaId,
+          titulo: field('we-titulo').value,
+          descripcion: field<HTMLTextAreaElement>('we-descripcion').value,
+          puntos: Number(field('we-puntos').value),
+          inicio: editing.inicio,
+          fin: editing.fin,
+          limite: field('we-sin-limite').checked ? null : field('we-limite').value || null,
+          grupo: field('we-grupo').value,
+          pokemon: numbers,
+        },
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) throw new Error('Tu sesión del panel terminó. Entra de nuevo al panel con tu PIN.');
+    if (!res.ok) throw new Error(data.error || 'No se pudo guardar.');
+    $<HTMLDialogElement>('wa-editar').close();
+    await load();
+  } catch (err) {
+    fail((err as Error).message);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 /** Retos antiguos: se completan subiendo la captura */
@@ -255,7 +329,11 @@ function missionsSection(d: Dinamica) {
     el('p', 'text-sm font-bold text-pink-200', chosen === view.hoy ? '¡Misiones de hoy!' : chosen < view.hoy ? 'Día terminado' : 'Bloqueado'),
   );
   section.append(header);
-  if (chosen > view.hoy) {
+  if (chosen > view.hoy && view.admin) {
+    section.append(
+      el('p', 'rounded-xl border border-amber-300/50 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-100', `🔒 El público ve este día con candado hasta el ${DAY_LONG[weekday(chosen)]}. Tú lo ves porque tienes abierta la sesión del panel, para poder corregir las misiones.`),
+    );
+  } else if (chosen > view.hoy) {
     // Día que todavía no llega: candado y cuándo se desbloquea
     const lock = el('div', 'wa-card p-8 text-center space-y-2');
     lock.append(
@@ -502,6 +580,14 @@ async function onFileChosen() {
 export function initEventos() {
   $('ev-archivo').addEventListener('change', onFileChosen);
   $('wr-form').addEventListener('submit', onValidate);
+  $('we-form').addEventListener('submit', onSaveEdit);
+  $('we-cerrar').addEventListener('click', () => $<HTMLDialogElement>('wa-editar').close());
+  $('we-sin-limite').addEventListener('change', () => {
+    if ($<HTMLInputElement>('we-sin-limite').checked) $<HTMLInputElement>('we-limite').value = '';
+  });
+  $('we-limite').addEventListener('input', () => {
+    if ($<HTMLInputElement>('we-limite').value) $<HTMLInputElement>('we-sin-limite').checked = false;
+  });
   $('wa-registrarme').addEventListener('click', openRegistration);
   $('wr-cerrar').addEventListener('click', () => $<HTMLDialogElement>('wa-registro').close());
   $('wr-ver').addEventListener('click', () => {

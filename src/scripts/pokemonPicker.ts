@@ -90,3 +90,25 @@ export async function findPokemonInText(text: string): Promise<number | null> {
   }
   return null;
 }
+
+/**
+ * "Zacian, Ralts" o "888, 10188" → números. Devuelve también los que no reconoció, para
+ * avisarle a quien escribe. Las formas especiales (Zacian Espada Suprema = 10188) van con número.
+ */
+export async function parsePokemonList(text: string): Promise<{ numbers: number[]; unknown: string[] }> {
+  const numbers: number[] = [];
+  const unknown: string[] = [];
+  for (const part of text.split(/,|\by\b/).map((p) => p.trim()).filter(Boolean)) {
+    const digits = part.replace(/^#/, '');
+    const number = /^\d+$/.test(digits) ? Number(digits) : await findPokemonInText(part);
+    if (number && number >= 1 && number <= 20000) numbers.push(number);
+    else unknown.push(part);
+  }
+  return { numbers: [...new Set(numbers)].slice(0, 5), unknown };
+}
+
+/** [280, 10188] → "Ralts, 10188" (las formas especiales quedan con su número) */
+export async function pokemonListText(numbers: number[]): Promise<string> {
+  const names = new Map(await pokemonList());
+  return numbers.map((n) => names.get(n) ?? String(n)).join(', ');
+}

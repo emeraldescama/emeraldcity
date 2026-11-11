@@ -7,7 +7,7 @@
  *   POST { accion: 'deshacer', reto }            quita el último "¡Lo logré!" sin validar
  *   POST { accion: 'entregar', reto, captura }   retos con captura (JPEG en base64)
  */
-import { sameOrigin } from './_cookies.js';
+import { hasAdminSession, sameOrigin } from './_cookies.js';
 import { autoLinkByPhone, claim, participationProblem, publicView, submit, undoClaim, validatePhone } from './_dinamicas.js';
 import { setAccountState } from './_cuentas.js';
 import { escamaPhoneProblem } from './_escama.js';
@@ -17,11 +17,11 @@ import { currentAccount, fail } from './_sesion.js';
 const MAX_SCREENSHOT_BYTES = 700 * 1024;
 const ID = /^[a-z0-9-]{4,40}$/;
 
-async function view(account) {
+async function view(account, admin = false) {
   const cuentaId = account?.estado === 'aprobada' ? account.id : null;
-  let data = await publicView(cuentaId);
+  let data = await publicView(cuentaId, { admin });
   // Si su teléfono de Emerald City es el mismo que tiene en Escama, se vincula solo
-  if (cuentaId && !data.participa && (await autoLinkByPhone(cuentaId).catch(() => false))) data = await publicView(cuentaId);
+  if (cuentaId && !data.participa && (await autoLinkByPhone(cuentaId).catch(() => false))) data = await publicView(cuentaId, { admin });
   // Si tiene cuenta pero no participa, se le explica por qué
   const motivo = !account
     ? 'Entra con tu cuenta del foro para participar.'
@@ -34,6 +34,8 @@ async function view(account) {
     ...data,
     cuenta: account ? { id: account.id, entrenador: account.entrenador, avatar: account.avatar, shiny: account.shiny, estado: account.estado } : null,
     motivo,
+    // Con la sesión del panel: puede editar las misiones desde esta misma página
+    admin,
     // Se le muestra el formulario del teléfono a quien tiene cuenta (aprobada o pendiente) y aún no participa
     validarTelefono: Boolean(account && !data.participa && !escamaPhoneProblem() && (account.estado !== 'aprobada' || motivo?.startsWith('Valida'))),
   };
@@ -42,7 +44,7 @@ async function view(account) {
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   try {
-    if (req.method === 'GET') return res.status(200).json(await view(await currentAccount(req, res, { optional: true })));
+    if (req.method === 'GET') return res.status(200).json(await view(await currentAccount(req, res, { optional: true }), hasAdminSession(req)));
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');
       return res.status(405).json({ error: 'Método no permitido.' });
@@ -57,7 +59,7 @@ export default async function handler(req, res) {
       const pending = await currentAccount(req, res);
       await validatePhone(pending.id, String(body.telefono ?? ''));
       const account = pending.estado === 'pendiente' ? await setAccountState(pending.id, 'aprobada') : pending;
-      return res.status(200).json({ ...(await view(account)), registrado: true });
+      return res.status(200).json({ ...(await view(account, hasAdminSession(req))), registrado: true });
     }
 
     const account = await currentAccount(req, res, { approved: true });
@@ -66,7 +68,7 @@ export default async function handler(req, res) {
       case 'deshacer':
         if (!ID.test(reto)) return res.status(400).json({ error: 'Misión no válida.' });
         await (body.accion === 'logre' ? claim(account.id, reto) : undoClaim(account.id, reto));
-        return res.status(200).json(await view(account));
+        return res.status(200).json(await view(account, hasAdminSession(req)));
       case 'entregar': {
         if (!ID.test(reto)) return res.status(400).json({ error: 'Reto no válido.' });
         const captura = typeof body.captura === 'string' ? body.captura : '';

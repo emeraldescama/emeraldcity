@@ -5,6 +5,7 @@
  */
 import { avatarUrl } from '../utils/perfil';
 import { dayLabel, drawMissionsFlyer, missionsText } from './wildAreaFlyer';
+import { parsePokemonList, pokemonListText } from './pokemonPicker';
 import { caracasToday, formatShortDate } from '../utils/eventos';
 
 interface Reto {
@@ -471,6 +472,11 @@ function openChallenge(dinamicaId: string, reto?: Reto) {
   $<HTMLInputElement>('re-puntos').value = String(reto?.puntos ?? 5);
   $<HTMLInputElement>('re-inicio').value = reto?.inicio ?? today;
   $<HTMLInputElement>('re-fin').value = reto?.fin ?? today;
+  $<HTMLInputElement>('re-limite').value = reto?.limite ? String(reto.limite) : '';
+  $<HTMLInputElement>('re-sin-limite').checked = Boolean(reto) && reto!.limite === null;
+  $<HTMLInputElement>('re-grupo').value = reto?.grupo ?? '';
+  $<HTMLInputElement>('re-pokemon').value = '';
+  if (reto?.pokemon.length) pokemonListText(reto.pokemon).then((text) => ($<HTMLInputElement>('re-pokemon').value = text));
   $('reto-error').textContent = '';
   $<HTMLDialogElement>('reto-dialog').showModal();
 }
@@ -479,8 +485,13 @@ async function onSaveChallenge(event: SubmitEvent) {
   event.preventDefault();
   if (!editingChallenge) return;
   const submit = (event.target as HTMLFormElement).querySelector<HTMLButtonElement>('button[type="submit"]')!;
-  submit.disabled = true;
   $('reto-error').textContent = '';
+  const { numbers, unknown } = await parsePokemonList($<HTMLInputElement>('re-pokemon').value);
+  if (unknown.length) {
+    $('reto-error').textContent = `No reconocimos estos Pokémon: ${unknown.join(', ')}. Escríbelos como en el juego o con su número.`;
+    return;
+  }
+  submit.disabled = true;
   try {
     await api('retoGuardar', {
       reto: {
@@ -490,6 +501,9 @@ async function onSaveChallenge(event: SubmitEvent) {
         puntos: Number($<HTMLInputElement>('re-puntos').value),
         inicio: $<HTMLInputElement>('re-inicio').value,
         fin: $<HTMLInputElement>('re-fin').value,
+        limite: $<HTMLInputElement>('re-sin-limite').checked ? null : $<HTMLInputElement>('re-limite').value || null,
+        grupo: $<HTMLInputElement>('re-grupo').value,
+        pokemon: numbers,
       },
     });
     $<HTMLDialogElement>('reto-dialog').close();

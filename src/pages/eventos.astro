@@ -112,6 +112,46 @@ const artwork = (n: number) => `https://raw.githubusercontent.com/PokeAPI/sprite
     </div>
   </dialog>
 
+  <!-- Editar una misión (solo con la sesión del panel abierta) -->
+  <dialog id="wa-editar" class="wa-dialog m-auto w-[min(30rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] rounded-3xl p-0 text-zinc-100">
+    <form id="we-form" class="p-6 space-y-4" novalidate>
+      <div class="flex items-start justify-between gap-3">
+        <p class="text-2xl font-black text-white">✏️ Editar misión</p>
+        <button id="we-cerrar" type="button" aria-label="Cerrar" class="text-zinc-400 hover:text-white text-xl font-black px-1">✕</button>
+      </div>
+      <div>
+        <label for="we-titulo" class="block text-sm font-bold text-white mb-1">Misión</label>
+        <input id="we-titulo" maxlength="120" required class="wa-input" />
+      </div>
+      <div>
+        <label for="we-descripcion" class="block text-sm font-bold text-white mb-1">Descripción <span class="font-normal text-zinc-400">(opcional)</span></label>
+        <textarea id="we-descripcion" maxlength="600" rows="2" class="wa-input"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="we-puntos" class="block text-sm font-bold text-white mb-1">Puntos</label>
+          <input id="we-puntos" type="number" min="1" max="1000" required class="wa-input" />
+        </div>
+        <div>
+          <label for="we-limite" class="block text-sm font-bold text-white mb-1">Límite</label>
+          <input id="we-limite" type="number" min="1" max="100" class="wa-input" />
+          <label class="mt-1.5 inline-flex items-center gap-2 text-xs font-semibold text-zinc-300"><input id="we-sin-limite" type="checkbox" class="w-4 h-4 accent-pink-400" /> Sin límite</label>
+        </div>
+      </div>
+      <div>
+        <label for="we-grupo" class="block text-sm font-bold text-white mb-1">Grupo</label>
+        <input id="we-grupo" maxlength="120" class="wa-input" />
+      </div>
+      <div>
+        <label for="we-pokemon" class="block text-sm font-bold text-white mb-1">Pokémon de la imagen</label>
+        <input id="we-pokemon" placeholder="Ej: Ralts, 10188 (vacío = huevo)" class="wa-input" />
+      </div>
+      <p class="text-xs text-zinc-400">Los cambios se ven al instante y no se pierden los logros que ya tenga la misión.</p>
+      <p id="we-error" class="hidden rounded-xl bg-red-500/15 border border-red-400/50 p-3 text-sm font-semibold text-red-100" role="alert"></p>
+      <button type="submit" class="wa-button w-full">Guardar cambios</button>
+    </form>
+  </dialog>
+
   <!-- Después de "¡Lo logré!" -->
   <dialog id="wa-logrado" class="wa-dialog m-auto w-[min(26rem,calc(100vw-2rem))] rounded-3xl p-0 text-zinc-100">
     <div class="p-6 text-center space-y-4">
@@ -350,6 +390,18 @@ const artwork = (n: number) => `https://raw.githubusercontent.com/PokeAPI/sprite
   .wa-dialog {
     background: linear-gradient(180deg, #2a0b3d, #0f1d14);
     border: 1px solid rgba(255, 61, 127, 0.5);
+  }
+  .wa-input {
+    width: 100%;
+    border-radius: 0.75rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(249, 168, 212, 0.3);
+    padding: 0.7rem 0.9rem;
+    color: #fff;
+    outline: none;
+  }
+  .wa-input:focus {
+    border-color: #f9a8d4;
   }
   .wa-dialog::backdrop {
     background: rgba(10, 2, 18, 0.82);

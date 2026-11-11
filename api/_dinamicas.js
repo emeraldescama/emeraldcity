@@ -85,7 +85,7 @@ export async function participants() {
  * Lo que ve todo el mundo en /eventos: dinámicas vigentes, sus retos ya publicados y la
  * tabla de puntos. Con cuentaId, también si esa cuenta participa y cómo van sus entregas.
  */
-export async function publicView(cuentaId) {
+export async function publicView(cuentaId, { admin = false } = {}) {
   const today = caracasToday();
   const [dynamics, people] = await Promise.all([
     run((sql) =>
@@ -142,7 +142,8 @@ export async function publicView(cuentaId) {
       .sort((a, b) => b.puntos - a.puntos || a.entrenador.localeCompare(b.entrenador, 'es'));
     return {
       ...dynamic,
-      retos: challenges.filter((c) => c.dinamica_id === dynamic.id).map((c) => lockFuture(toChallenge(c, today))),
+      // El administrador ve también las misiones de los días que vienen, para poder corregirlas
+      retos: challenges.filter((c) => c.dinamica_id === dynamic.id).map((c) => (admin ? toChallenge(c, today) : lockFuture(toChallenge(c, today)))),
       ranking,
     };
   });
@@ -332,11 +333,16 @@ export async function saveChallenge(input) {
   await run(async (sql) => {
     const dynamic = await sql.query(`SELECT 1 FROM dinamicas WHERE id = $1`, [input.dinamicaId]);
     if (!dynamic.length) throw new DbError(404, 'Esa dinámica ya no existe.');
+    // Un reto nuevo en una dinámica de "¡Lo logré!" (como Wild Area) también es de "¡Lo logré!"
+    const logro = await sql.query(`SELECT 1 FROM retos WHERE dinamica_id = $1 AND modo = 'logro' LIMIT 1`, [input.dinamicaId]);
+    const modo = input.modo ?? (logro.length ? 'logro' : 'captura');
+    // Al editar se conservan el tipo, el orden y los logros que ya tenga la misión
     await sql.query(
-      `INSERT INTO retos (id, dinamica_id, titulo, descripcion, puntos, inicio, fin) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO retos (id, dinamica_id, titulo, descripcion, puntos, inicio, fin, modo, limite, grupo, pokemon, orden)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, (SELECT coalesce(max(orden), 0) + 1 FROM retos WHERE dinamica_id = $2))
        ON CONFLICT (id) DO UPDATE SET titulo = excluded.titulo, descripcion = excluded.descripcion, puntos = excluded.puntos,
-         inicio = excluded.inicio, fin = excluded.fin`,
-      [id, input.dinamicaId, input.titulo, input.descripcion, input.puntos, input.inicio, input.fin],
+         inicio = excluded.inicio, fin = excluded.fin, limite = excluded.limite, grupo = excluded.grupo, pokemon = excluded.pokemon`,
+      [id, input.dinamicaId, input.titulo, input.descripcion, input.puntos, input.inicio, input.fin, modo, input.limite, input.grupo, input.pokemon.join(',')],
     );
   });
   return { id };
@@ -464,6 +470,9 @@ export async function reviewClaims(ids, estado) {
 export async function loadTemplate(template) {
   const id = newId();
   await run(async (sql) => {
+    // Tocar el botón dos veces no debe duplicar la semana
+    const existing = await sql.query(`SELECT nombre FROM dinamicas WHERE inicio = $1 AND fin = $2`, [template.inicio, template.fin]);
+    if (existing.length) throw new DbError(409, `Ya cargaste las misiones de esa semana ("${existing[0].nombre}"). Edítalas o bórrala antes de cargarla de nuevo.`);
     await sql.query(`INSERT INTO dinamicas (id, nombre, descripcion, inicio, fin) VALUES ($1, $2, $3, $4, $5)`, [
       id,
       template.nombre,

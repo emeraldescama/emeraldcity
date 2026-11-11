@@ -297,6 +297,21 @@ function validateChallenge(input) {
     descripcion: cleanText(data.descripcion, 'Descripción', 600, false),
     puntos,
     ...validateDateRange(data),
+    ...validateMissionExtras(data),
+  };
+}
+
+/** Límite, grupo y Pokémon de la imagen de una misión */
+function validateMissionExtras(data) {
+  const limite = data.limite === null || data.limite === undefined || data.limite === '' ? null : Number(data.limite);
+  if (limite !== null && (!Number.isInteger(limite) || limite < 1 || limite > 100)) throw new HttpError(400, 'El límite debe ser un número entre 1 y 100, o "sin límite".');
+  const pokemon = Array.isArray(data.pokemon) ? data.pokemon.map(Number) : [];
+  if (pokemon.length > 5 || pokemon.some((n) => !Number.isInteger(n) || n < 1 || n > 20000)) throw new HttpError(400, 'Los Pokémon de la imagen no son válidos.');
+  return {
+    limite,
+    grupo: cleanText(data.grupo, 'Grupo', 120, false),
+    pokemon,
+    modo: data.modo === 'logro' || data.modo === 'captura' ? data.modo : undefined,
   };
 }
 
