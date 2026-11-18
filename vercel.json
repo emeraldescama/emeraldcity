@@ -29,6 +29,9 @@
     "api/cumple-correo.js": {
       "includeFiles": "public/data/pokemon.json"
     },
+    "api/registro.js": {
+      "includeFiles": "public/data/pokemon.json"
+    },
     "api/admin.js": {
       "includeFiles": "public/data/pokemon.json"
     }

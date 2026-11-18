@@ -6,6 +6,7 @@
  *   GMAIL_USER           el Gmail que envía, por ejemplo emeraldcity@gmail.com
  *   GMAIL_APP_PASSWORD   la contraseña de aplicación de 16 letras de esa cuenta
  *   CORREO_CUMPLEANOS    a quién le llega (varios, separados por coma)
+ *   CORREO_REGISTROS     a quién le llega el aviso de cada registro nuevo en /unirse
  *   SITE_URL             opcional, la dirección de la página para los enlaces
  */
 import { readFileSync } from 'node:fs';
@@ -162,4 +163,56 @@ export async function sendBirthdayEmail({ test = false } = {}) {
     );
   }
   return { enviado: true, cumpleaneros: people.map((p) => p.entrenador), para: process.env.CORREO_CUMPLEANOS };
+}
+
+/**
+ * Aviso por correo de cada registro nuevo en /unirse. Le llega a CORREO_REGISTROS (varios,
+ * separados por coma). Si falta algo por configurar no hace nada: el registro se guarda igual.
+ */
+export async function sendNewMemberEmail(member, captura) {
+  const to = process.env.CORREO_REGISTROS?.trim();
+  if (!to || !process.env.GMAIL_USER?.trim() || !process.env.GMAIL_APP_PASSWORD?.trim()) return { enviado: false };
+
+  const birthday = member.cumpleDia ? `${member.cumpleDia} de ${MONTHS[member.cumpleMes - 1]}` : '';
+  const rows = [
+    ['Nombre de entrenador', member.entrenador],
+    ['Nombre y apellido', member.nombre],
+    ['Ciudad o país', member.ciudad],
+    ['Código de amistad', formatCode(member.codigo)],
+    ['Edad', member.edad],
+    ['WhatsApp', member.telefono ? `+${member.telefono}` : ''],
+    ['Acepta mensajes de otros entrenadores', member.contacto ? 'Sí' : 'No'],
+    ['Campfire', member.campfire ? member.campfireNombre || 'Sí' : 'No'],
+    ['Aparece en Haz amigos', member.mostrarEnAmigos ? 'Sí' : 'No'],
+    ['Cumpleaños', birthday],
+    ['Pokémon favorito', pokemonName(member.pokemon)],
+  ].filter(([, value]) => value !== '' && value !== null && value !== undefined);
+
+  const whatsapp = member.telefono
+    ? `<p style="margin:16px 0 0"><a href="https://wa.me/${escape(member.telefono)}" style="display:inline-block;background:#10b981;color:#022c22;font-weight:bold;padding:10px 16px;border-radius:10px;text-decoration:none">Escribirle por WhatsApp</a></p>`
+    : '';
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#18181b">
+  <h2 style="color:#059669;margin:0 0 4px">🎉 Nuevo registro en Emerald City</h2>
+  <p style="margin:0 0 16px;color:#52525b">${escape(member.entrenador)} acaba de llenar el formulario de la página.</p>
+  <table style="border-collapse:collapse;width:100%">${rows
+    .map(([label, value]) => `<tr><td style="padding:6px 8px;border-bottom:1px solid #e4e4e7;color:#52525b">${escape(label)}</td><td style="padding:6px 8px;border-bottom:1px solid #e4e4e7;font-weight:bold">${escape(value)}</td></tr>`)
+    .join('')}</table>
+  ${whatsapp}
+  <p style="margin:16px 0 0;font-size:13px;color:#52525b">La captura de su perfil va adjunta. Lo ves también en el <a href="${SITE_URL}/admin" style="color:#059669">panel de administración</a>, pestaña Miembros.</p>
+</div>`;
+  const text = `Nuevo registro en Emerald City\n\n${rows.map(([label, value]) => `${label}: ${value}`).join('\n')}\n\nPanel: ${SITE_URL}/admin`;
+
+  const transport = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: process.env.GMAIL_USER.trim(), pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, '') },
+  });
+  await transport.sendMail({
+    from: `"Emerald City" <${process.env.GMAIL_USER.trim()}>`,
+    to,
+    subject: `🎉 Nuevo registro: ${member.entrenador} · Emerald City`,
+    html,
+    text,
+    attachments: captura ? [{ filename: `perfil-${member.codigo}.jpg`, content: Buffer.from(captura, 'base64'), contentType: 'image/jpeg' }] : [],
+  });
+  return { enviado: true };
 }

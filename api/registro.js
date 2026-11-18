@@ -1,6 +1,7 @@
 /**
  * Recibe el formulario de /unirse y guarda al nuevo miembro en la base de datos.
  */
+import { sendNewMemberEmail } from './_correo.js';
 import { DbError, addMember, normalizePhone, validBirthday, validPokemon } from './_miembros.js';
 
 const MIN_AGE = 16;
@@ -69,6 +70,12 @@ export default async function handler(req, res) {
     const registro = validate(body);
     const { captura, ...datos } = registro;
     await addMember(datos, captura);
+    // Aviso por correo al equipo; si falla, el registro ya quedó guardado igual
+    try {
+      await sendNewMemberEmail(datos, captura);
+    } catch (err) {
+      console.error('No se pudo mandar el aviso del registro:', err.message);
+    }
     return res.status(200).json({ ok: true });
   } catch (err) {
     if (err instanceof FormError) return res.status(400).json({ error: err.message });
